@@ -41,10 +41,10 @@ export const mockActivities: Activity[] = [
     distance_m: 2400,
     price_type: 'FREE',
     max_participants: 8,
-    participant_count: 6,
+    participant_count: 8,
     checked_in_count: 0,
     waitlist_count: 0,
-    available_slots: 2,
+    available_slots: 0,
     status: 'PUBLISHED',
   },
   {

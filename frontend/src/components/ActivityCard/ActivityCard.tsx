@@ -46,7 +46,9 @@ function ActivityCard({ activity }: ActivityCardProps) {
               uczestników
             </Typography>
             <Typography color="text.secondary">
-              Brakuje {activity.available_slots} osób
+              {activity.available_slots > 0
+                ? `Brakuje ${activity.available_slots} osób`
+                : 'Komplet zebrany'}
             </Typography>
           </div>
         </div>

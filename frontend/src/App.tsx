@@ -77,7 +77,7 @@ function App() {
                     Aktywności w Twojej okolicy
                   </Typography>
                   <Typography color="text.secondary">
-                    Znajdź wydarzenie i dołącz do innych
+                    Znajdź aktywność i dołącz do innych
                   </Typography>
                 </div>
 
