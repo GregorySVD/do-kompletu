@@ -12,9 +12,6 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
 })
 
 function ActivityCard({ activity }: ActivityCardProps) {
-  const missingParticipants =
-    activity.max_participants - activity.participant_count
-
   return (
     <Card component="article" variant="outlined" className="activity-card">
       <CardContent>
@@ -28,7 +25,7 @@ function ActivityCard({ activity }: ActivityCardProps) {
             </Typography>
           </div>
 
-          <Chip label={activity.category} size="small" />
+          <Chip label={activity.category.name} size="small" />
         </div>
 
         <Typography className="activity-card__location">
@@ -37,9 +34,9 @@ function ActivityCard({ activity }: ActivityCardProps) {
 
         <div className="activity-card__details">
           <Chip
-            label={activity.price_type === 'free' ? 'Bezpłatna' : 'Płatna'}
+            label={activity.price_type === 'FREE' ? 'Bezpłatna' : 'Płatna'}
             size="small"
-            color={activity.price_type === 'free' ? 'success' : 'default'}
+            color={activity.price_type === 'FREE' ? 'success' : 'default'}
             variant="outlined"
           />
 
@@ -49,7 +46,7 @@ function ActivityCard({ activity }: ActivityCardProps) {
               uczestników
             </Typography>
             <Typography color="text.secondary">
-              Brakuje {missingParticipants} osób
+              Brakuje {activity.available_slots} osób
             </Typography>
           </div>
         </div>
