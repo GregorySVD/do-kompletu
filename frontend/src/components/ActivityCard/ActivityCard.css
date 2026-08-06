@@ -1,0 +1,50 @@
+.activity-card__link {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 12px;
+}
+
+.activity-card__link:focus-visible {
+  outline: 3px solid var(--brand-color);
+  outline-offset: 2px;
+}
+
+.activity-card {
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.activity-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+}
+
+.activity-card__location {
+  margin-top: 16px;
+}
+
+.activity-card__details {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.activity-card__participants {
+  text-align: right;
+}
+
+@media (max-width: 500px) {
+  .activity-card__top,
+  .activity-card__details {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .activity-card__participants {
+    text-align: left;
+  }
+}

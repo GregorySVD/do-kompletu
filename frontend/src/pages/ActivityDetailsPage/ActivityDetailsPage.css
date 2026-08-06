@@ -1,0 +1,38 @@
+.activity-details-page {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.activity-details-page__summary,
+.activity-details-page__not-found {
+  margin-top: 16px;
+}
+
+.activity-details-page__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.activity-details-page__action {
+  margin-top: 24px;
+}
+
+.activity-details-page__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 700px) {
+  .activity-details-page {
+    padding: 16px;
+  }
+
+  .activity-details-page__grid {
+    grid-template-columns: 1fr;
+  }
+}

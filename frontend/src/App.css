@@ -1,5 +1,20 @@
+:root {
+  --page-background: #f5f7fa;
+  --panel-background: #ffffff;
+  --map-background: #e8eef5;
+  --border-color: #d4dee9;
+  --brand-color: #1976d2;
+}
+
+[data-theme='dark'] {
+  --page-background: #121820;
+  --panel-background: #1b2430;
+  --map-background: #222f3d;
+  --border-color: #384656;
+  --brand-color: #90caf9;
+}
+
 .app {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
+  background-color: var(--page-background);
 }

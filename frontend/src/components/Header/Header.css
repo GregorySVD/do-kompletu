@@ -1,0 +1,29 @@
+.header {
+  width: min(1440px, 100%);
+  min-height: 72px;
+  margin: 0 auto;
+  gap: 20px;
+}
+
+.header__logo {
+  font-weight: 700;
+  color: var(--brand-color);
+}
+
+.header__search {
+  flex: 1;
+  max-width: 560px;
+}
+
+@media (max-width: 700px) {
+  .header {
+    flex-wrap: wrap;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .header__search {
+    min-width: 100%;
+    order: 3;
+  }
+}
