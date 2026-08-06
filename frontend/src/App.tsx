@@ -3,6 +3,7 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { Route, Routes } from 'react-router-dom'
 import Header from './components/Header/Header'
 import ActivityDetailsPage from './pages/ActivityDetailsPage/ActivityDetailsPage'
+import CreateActivityPage from './pages/CreateActivityPage/CreateActivityPage'
 import HomePage from './pages/HomePage/HomePage'
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage'
 import './App.css'
@@ -43,6 +44,7 @@ function App() {
 
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/activities/new" element={<CreateActivityPage />} />
           <Route
             path="/activities/:activityId"
             element={<ActivityDetailsPage />}

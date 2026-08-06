@@ -1,18 +1,8 @@
 import { Chip, Typography } from '@mui/material'
 import ActivityCard from '../../components/ActivityCard/ActivityCard'
 import { mockActivities } from '../../data/mockActivities'
+import { mockCategories } from '../../data/mockCategories'
 import './HomePage.css'
-
-const categories = [
-  'Sport zespołowy',
-  'Gry planszowe',
-  'RPG',
-  'Gaming',
-  'Wspólna nauka',
-  'Technologia',
-  'Muzyka',
-  'Kreatywne',
-]
 
 function HomePage() {
   return (
@@ -23,8 +13,8 @@ function HomePage() {
         </Typography>
 
         <div className="categories__list">
-          {categories.map((category) => (
-            <Chip key={category} label={category} variant="outlined" />
+          {mockCategories.map((category) => (
+            <Chip key={category.id} label={category.name} variant="outlined" />
           ))}
         </div>
       </section>
