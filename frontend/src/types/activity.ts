@@ -28,3 +28,42 @@ export interface Activity {
   available_slots: number
   status: ActivityStatus
 }
+
+export interface ActivityOrganizer {
+  id: string
+  display_name: string
+  avatar_url: string | null
+}
+
+export interface ActivityTag {
+  id: string
+  name: string
+  slug: string
+}
+
+export interface ActivityPermissions {
+  can_edit: boolean
+  can_delete: boolean
+  can_join: boolean
+  can_leave: boolean
+  can_confirm: boolean
+  can_check_in: boolean
+  can_view_gallery: boolean
+  can_upload_photo: boolean
+}
+
+export interface ActivityDetails extends Activity {
+  description: string
+  organizer: ActivityOrganizer
+  tags: ActivityTag[]
+  confirmation_opens_at: string
+  confirmation_deadline_at: string
+  checkin_opens_at: string
+  checkin_closes_at: string
+  checkin_radius_m: number
+  min_participants: number
+  price_amount: number | null
+  currency: string | null
+  current_user_participation: null
+  permissions: ActivityPermissions
+}

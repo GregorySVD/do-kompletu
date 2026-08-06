@@ -1,6 +1,6 @@
-import type { Activity } from '../types/activity'
+import type { ActivityDetails } from '../types/activity'
 
-export const mockActivities: Activity[] = [
+export const mockActivities: ActivityDetails[] = [
   {
     id: '17b8c751-c101-44c7-a72f-5e2c9390af45',
     title: 'Siatkówka na Orliku',
@@ -23,6 +23,44 @@ export const mockActivities: Activity[] = [
     waitlist_count: 0,
     available_slots: 4,
     status: 'PUBLISHED',
+    description:
+      'Amatorski mecz siatkówki dla osób, które chcą aktywnie spędzić wieczór. Poziom gry nie ma znaczenia.',
+    organizer: {
+      id: '91e19dad-2191-4b13-b5b7-1b858fae25ed',
+      display_name: 'Anna Kowalska',
+      avatar_url: null,
+    },
+    tags: [
+      {
+        id: '2846a93b-e7d6-4574-b70e-39380445b36f',
+        name: 'Siatkówka',
+        slug: 'siatkowka',
+      },
+      {
+        id: '32b53d62-5f95-42a9-9224-0df90e8d3b15',
+        name: 'Na świeżym powietrzu',
+        slug: 'na-swiezym-powietrzu',
+      },
+    ],
+    confirmation_opens_at: '2026-08-06T18:00:00+02:00',
+    confirmation_deadline_at: '2026-08-08T16:00:00+02:00',
+    checkin_opens_at: '2026-08-08T17:45:00+02:00',
+    checkin_closes_at: '2026-08-08T18:15:00+02:00',
+    checkin_radius_m: 200,
+    min_participants: 8,
+    price_amount: null,
+    currency: null,
+    current_user_participation: null,
+    permissions: {
+      can_edit: false,
+      can_delete: false,
+      can_join: true,
+      can_leave: false,
+      can_confirm: false,
+      can_check_in: false,
+      can_view_gallery: false,
+      can_upload_photo: false,
+    },
   },
   {
     id: '4e95e183-e1c9-4cbb-8ee6-33f3408b4e53',
@@ -46,6 +84,44 @@ export const mockActivities: Activity[] = [
     waitlist_count: 0,
     available_slots: 0,
     status: 'PUBLISHED',
+    description:
+      'Wieczór z grami planszowymi dla początkujących i doświadczonych graczy. Gry wybierzemy wspólnie na miejscu.',
+    organizer: {
+      id: '6d4b6327-6eb2-4a39-860d-ce50af4ca2e5',
+      display_name: 'Michał Nowak',
+      avatar_url: null,
+    },
+    tags: [
+      {
+        id: '5ee3adf0-c368-40d2-8871-dd8a78b33947',
+        name: 'Planszówki',
+        slug: 'planszowki',
+      },
+      {
+        id: '0f75413b-558f-45c9-b80e-8af942780d2f',
+        name: 'Spotkanie',
+        slug: 'spotkanie',
+      },
+    ],
+    confirmation_opens_at: '2026-08-07T17:30:00+02:00',
+    confirmation_deadline_at: '2026-08-09T15:30:00+02:00',
+    checkin_opens_at: '2026-08-09T17:15:00+02:00',
+    checkin_closes_at: '2026-08-09T17:45:00+02:00',
+    checkin_radius_m: 100,
+    min_participants: 4,
+    price_amount: null,
+    currency: null,
+    current_user_participation: null,
+    permissions: {
+      can_edit: false,
+      can_delete: false,
+      can_join: false,
+      can_leave: false,
+      can_confirm: false,
+      can_check_in: false,
+      can_view_gallery: false,
+      can_upload_photo: false,
+    },
   },
   {
     id: 'ba9171d3-f944-4bf2-99f5-e8fd39333f95',
@@ -69,6 +145,44 @@ export const mockActivities: Activity[] = [
     waitlist_count: 0,
     available_slots: 3,
     status: 'PUBLISHED',
+    description:
+      'Jednostrzałowa sesja fantasy przygotowana z myślą o osobach, które po raz pierwszy chcą zagrać w RPG.',
+    organizer: {
+      id: '948b6408-b95b-4479-a218-9b01c78ff3d9',
+      display_name: 'Katarzyna Zielińska',
+      avatar_url: null,
+    },
+    tags: [
+      {
+        id: 'c2fb009f-9d32-42f4-b021-bfeab017862f',
+        name: 'Fantasy',
+        slug: 'fantasy',
+      },
+      {
+        id: 'f01e81dd-c83c-45ca-a663-b946ee56097c',
+        name: 'Dla początkujących',
+        slug: 'dla-poczatkujacych',
+      },
+    ],
+    confirmation_opens_at: '2026-08-08T19:00:00+02:00',
+    confirmation_deadline_at: '2026-08-10T17:00:00+02:00',
+    checkin_opens_at: '2026-08-10T18:45:00+02:00',
+    checkin_closes_at: '2026-08-10T19:15:00+02:00',
+    checkin_radius_m: 100,
+    min_participants: 3,
+    price_amount: null,
+    currency: null,
+    current_user_participation: null,
+    permissions: {
+      can_edit: false,
+      can_delete: false,
+      can_join: true,
+      can_leave: false,
+      can_confirm: false,
+      can_check_in: false,
+      can_view_gallery: false,
+      can_upload_photo: false,
+    },
   },
   {
     id: '61361f76-dc20-41dd-939d-b58b123c7c7d',
@@ -92,6 +206,44 @@ export const mockActivities: Activity[] = [
     waitlist_count: 0,
     available_slots: 5,
     status: 'PUBLISHED',
+    description:
+      'Spokojne spotkanie do wspólnej nauki przed egzaminem. Każdy pracuje nad swoim materiałem, a w przerwach pomagamy sobie nawzajem.',
+    organizer: {
+      id: '89f0892c-b01f-4da6-89aa-8cd15ce2e837',
+      display_name: 'Piotr Wiśniewski',
+      avatar_url: null,
+    },
+    tags: [
+      {
+        id: '27b0794e-e302-476c-8eab-d7e66c3ce915',
+        name: 'Nauka',
+        slug: 'nauka',
+      },
+      {
+        id: '263306da-5b5d-40d0-a71a-760cbf721b58',
+        name: 'Studenci',
+        slug: 'studenci',
+      },
+    ],
+    confirmation_opens_at: '2026-08-09T16:00:00+02:00',
+    confirmation_deadline_at: '2026-08-11T14:00:00+02:00',
+    checkin_opens_at: '2026-08-11T15:45:00+02:00',
+    checkin_closes_at: '2026-08-11T16:15:00+02:00',
+    checkin_radius_m: 100,
+    min_participants: 2,
+    price_amount: null,
+    currency: null,
+    current_user_participation: null,
+    permissions: {
+      can_edit: false,
+      can_delete: false,
+      can_join: true,
+      can_leave: false,
+      can_confirm: false,
+      can_check_in: false,
+      can_view_gallery: false,
+      can_upload_photo: false,
+    },
   },
   {
     id: '1e6cf520-888a-4ba6-b6e3-a65536091680',
@@ -115,5 +267,43 @@ export const mockActivities: Activity[] = [
     waitlist_count: 0,
     available_slots: 2,
     status: 'PUBLISHED',
+    description:
+      'Luźne spotkanie muzyczne dla instrumentalistów i wokalistów. Zabierz swój instrument i ulubione utwory.',
+    organizer: {
+      id: '72395b23-4c02-43dd-b998-0d0e67eb9240',
+      display_name: 'Maria Lewandowska',
+      avatar_url: null,
+    },
+    tags: [
+      {
+        id: '6b90a915-5f95-4f53-a3dd-b08507e65e36',
+        name: 'Muzyka na żywo',
+        slug: 'muzyka-na-zywo',
+      },
+      {
+        id: 'a69d9db9-09bd-4e30-9d2c-c35dd238a427',
+        name: 'Improwizacja',
+        slug: 'improwizacja',
+      },
+    ],
+    confirmation_opens_at: '2026-08-10T20:00:00+02:00',
+    confirmation_deadline_at: '2026-08-12T18:00:00+02:00',
+    checkin_opens_at: '2026-08-12T19:45:00+02:00',
+    checkin_closes_at: '2026-08-12T20:15:00+02:00',
+    checkin_radius_m: 150,
+    min_participants: 4,
+    price_amount: 20,
+    currency: 'PLN',
+    current_user_participation: null,
+    permissions: {
+      can_edit: false,
+      can_delete: false,
+      can_join: true,
+      can_leave: false,
+      can_confirm: false,
+      can_check_in: false,
+      can_view_gallery: false,
+      can_upload_photo: false,
+    },
   },
 ]

@@ -1,5 +1,6 @@
 :root {
   --page-background: #f5f7fa;
+  --panel-background: #ffffff;
   --map-background: #e8eef5;
   --border-color: #d4dee9;
   --brand-color: #1976d2;
@@ -7,6 +8,7 @@
 
 [data-theme='dark'] {
   --page-background: #121820;
+  --panel-background: #1b2430;
   --map-background: #222f3d;
   --border-color: #384656;
   --brand-color: #90caf9;
@@ -15,77 +17,4 @@
 .app {
   min-height: 100vh;
   background-color: var(--page-background);
-}
-
-.app__main {
-  width: min(1440px, 100%);
-  margin: 0 auto;
-  padding: 24px;
-}
-
-.categories {
-  margin-bottom: 24px;
-}
-
-.categories__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.home-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
-  gap: 24px;
-  align-items: start;
-}
-
-.activities {
-  min-width: 0;
-}
-
-.activities__heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.activities__list {
-  display: grid;
-  gap: 12px;
-}
-
-.map-placeholder {
-  min-height: 560px;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  text-align: center;
-  background-color: var(--map-background);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-}
-
-@media (max-width: 900px) {
-  .home-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .map-placeholder {
-    min-height: 320px;
-  }
-}
-
-@media (max-width: 600px) {
-  .app__main {
-    padding: 16px;
-  }
-
-  .activities__heading {
-    align-items: start;
-    flex-direction: column;
-  }
 }

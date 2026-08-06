@@ -1,5 +1,17 @@
+.activity-card__link {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 12px;
+}
+
+.activity-card__link:focus-visible {
+  outline: 3px solid var(--brand-color);
+  outline-offset: 2px;
+}
+
 .activity-card {
   border-radius: 12px;
+  cursor: pointer;
 }
 
 .activity-card__top {
