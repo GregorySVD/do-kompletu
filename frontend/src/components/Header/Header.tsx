@@ -7,6 +7,7 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material'
+import { Link } from 'react-router-dom'
 import './Header.css'
 
 interface HeaderProps {
@@ -18,7 +19,12 @@ function Header({ mode, onToggleTheme }: HeaderProps) {
   return (
     <AppBar component="header" position="static" color="inherit">
       <Toolbar className="header">
-        <Typography className="header__logo" component="span" variant="h5">
+        <Typography
+          className="header__logo"
+          component={Link}
+          to="/"
+          variant="h5"
+        >
           DoKompletu
         </Typography>
 
@@ -37,7 +43,9 @@ function Header({ mode, onToggleTheme }: HeaderProps) {
           {mode === 'light' ? <DarkMode /> : <LightMode />}
         </IconButton>
 
-        <Button variant="contained">Dodaj aktywność</Button>
+        <Button component={Link} to="/activities/new" variant="contained">
+          Dodaj aktywność
+        </Button>
       </Toolbar>
     </AppBar>
   )

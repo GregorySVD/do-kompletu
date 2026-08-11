@@ -21,11 +21,12 @@ export interface Activity {
   longitude: number
   distance_m: number | null
   price_type: PriceType
-  max_participants: number
+  min_participants: number
+  max_participants: number | null
   participant_count: number
   checked_in_count: number
   waitlist_count: number
-  available_slots: number
+  available_slots: number | null
   status: ActivityStatus
 }
 
@@ -61,7 +62,6 @@ export interface ActivityDetails extends Activity {
   checkin_opens_at: string
   checkin_closes_at: string
   checkin_radius_m: number
-  min_participants: number
   price_amount: number | null
   currency: string | null
   current_user_participation: null
