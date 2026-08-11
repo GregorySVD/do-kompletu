@@ -64,24 +64,9 @@
   border-radius: 12px;
 }
 
-.map-placeholder {
-  min-height: 560px;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  text-align: center;
-  background-color: var(--map-background);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-}
-
 @media (max-width: 900px) {
   .home-layout {
     grid-template-columns: 1fr;
-  }
-
-  .map-placeholder {
-    min-height: 320px;
   }
 }
 

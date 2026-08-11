@@ -53,6 +53,7 @@ function App() {
             path="/"
             element={
               <HomePage
+                mode={mode}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
               />

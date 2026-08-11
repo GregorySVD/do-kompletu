@@ -9,6 +9,7 @@ import {
   Typography,
 } from '@mui/material'
 import ActivityCard from '../../components/ActivityCard/ActivityCard'
+import ActivityMap from '../../components/ActivityMap/ActivityMap'
 import { mockActivities } from '../../data/mockActivities'
 import { mockCategories } from '../../data/mockCategories'
 import './HomePage.css'
@@ -16,6 +17,7 @@ import './HomePage.css'
 type PriceFilter = 'ALL' | 'FREE' | 'PAID'
 
 interface HomePageProps {
+  mode: 'light' | 'dark'
   searchQuery: string
   onSearchChange: (query: string) => void
 }
@@ -24,7 +26,7 @@ function normalizeSearchText(value: string) {
   return value.normalize('NFC').toLowerCase()
 }
 
-function HomePage({ searchQuery, onSearchChange }: HomePageProps) {
+function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   )
@@ -178,16 +180,7 @@ function HomePage({ searchQuery, onSearchChange }: HomePageProps) {
           </div>
         </section>
 
-        <aside className="map-placeholder">
-          <div>
-            <Typography component="h2" variant="h5">
-              Mapa aktywności
-            </Typography>
-            <Typography color="text.secondary">
-              W tym miejscu pojawi się mapa.
-            </Typography>
-          </div>
-        </aside>
+        <ActivityMap activities={filteredActivities} mode={mode} />
       </div>
     </main>
   )
