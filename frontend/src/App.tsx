@@ -3,6 +3,7 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { Route, Routes } from 'react-router-dom'
 import Header from './components/Header/Header'
 import ActivityDetailsPage from './pages/ActivityDetailsPage/ActivityDetailsPage'
+import CreateActivityPage from './pages/CreateActivityPage/CreateActivityPage'
 import HomePage from './pages/HomePage/HomePage'
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage'
 import './App.css'
@@ -19,6 +20,7 @@ function getInitialThemeMode(): ThemeMode {
 
 function App() {
   const [mode, setMode] = useState<ThemeMode>(getInitialThemeMode)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const theme = createTheme({
     palette: {
@@ -39,10 +41,25 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <div className="app">
-        <Header mode={mode} onToggleTheme={toggleTheme} />
+        <Header
+          mode={mode}
+          onToggleTheme={toggleTheme}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
 
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route
+            path="/"
+            element={
+              <HomePage
+                mode={mode}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+            }
+          />
+          <Route path="/activities/new" element={<CreateActivityPage />} />
           <Route
             path="/activities/:activityId"
             element={<ActivityDetailsPage />}

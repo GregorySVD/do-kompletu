@@ -33,6 +33,12 @@ function ActivityDetailsPage() {
     )
   }
 
+  const missingToMinimum = Math.max(
+    activity.min_participants - activity.participant_count,
+    0,
+  )
+  const hasParticipantLimit = activity.max_participants !== null
+
   return (
     <main className="activity-details-page">
       <Button component={Link} to="/">
@@ -102,12 +108,30 @@ function ActivityDetailsPage() {
               Uczestnicy
             </Typography>
             <Typography>
-              {activity.participant_count} / {activity.max_participants}{' '}
-              uczestników
+              Liczba uczestników: {activity.participant_count}
             </Typography>
             <Typography color="text.secondary">
               Minimalna liczba uczestników: {activity.min_participants}
             </Typography>
+            <Typography color="text.secondary">
+              {missingToMinimum > 0
+                ? `Brakuje ${missingToMinimum} osób do kompletu`
+                : 'Komplet zebrany'}
+            </Typography>
+            <Typography color="text.secondary">
+              Maksymalna liczba uczestników:{' '}
+              {hasParticipantLimit ? activity.max_participants : 'Brak limitu'}
+            </Typography>
+            {hasParticipantLimit && (
+              <>
+                <Typography color="text.secondary">
+                  Wolne miejsca: {activity.available_slots}
+                </Typography>
+                <Typography color="text.secondary">
+                  Lista rezerwowa: {activity.waitlist_count}
+                </Typography>
+              </>
+            )}
           </CardContent>
         </Card>
 

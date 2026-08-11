@@ -8,6 +8,7 @@
 .header__logo {
   font-weight: 700;
   color: var(--brand-color);
+  text-decoration: none;
 }
 
 .header__search {
