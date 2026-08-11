@@ -20,6 +20,7 @@ function getInitialThemeMode(): ThemeMode {
 
 function App() {
   const [mode, setMode] = useState<ThemeMode>(getInitialThemeMode)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const theme = createTheme({
     palette: {
@@ -40,10 +41,23 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <div className="app">
-        <Header mode={mode} onToggleTheme={toggleTheme} />
+        <Header
+          mode={mode}
+          onToggleTheme={toggleTheme}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
 
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route
+            path="/"
+            element={
+              <HomePage
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+            }
+          />
           <Route path="/activities/new" element={<CreateActivityPage />} />
           <Route
             path="/activities/:activityId"
