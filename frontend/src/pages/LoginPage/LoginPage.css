@@ -1,0 +1,36 @@
+.login-page {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.login-page__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.login-card {
+  margin-top: 16px;
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+.login-form__navigation {
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .login-page {
+    padding: 24px 16px;
+  }
+
+  .login-page__heading {
+    flex-direction: column;
+  }
+}

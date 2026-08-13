@@ -63,6 +63,10 @@ function Header({
           {mode === 'light' ? <DarkMode /> : <LightMode />}
         </IconButton>
 
+        <Button component={Link} to="/login" variant="outlined">
+          Zaloguj się
+        </Button>
+
         <Button component={Link} to="/activities/new" variant="contained">
           Dodaj aktywność
         </Button>

@@ -1,0 +1,36 @@
+.register-page {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.register-page__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.register-card {
+  margin-top: 16px;
+}
+
+.register-form {
+  display: grid;
+  gap: 16px;
+}
+
+.register-form__navigation {
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .register-page {
+    padding: 24px 16px;
+  }
+
+  .register-page__heading {
+    flex-direction: column;
+  }
+}
