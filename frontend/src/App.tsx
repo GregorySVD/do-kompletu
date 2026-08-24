@@ -6,6 +6,7 @@ import ActivityDetailsPage from './pages/ActivityDetailsPage/ActivityDetailsPage
 import CreateActivityPage from './pages/CreateActivityPage/CreateActivityPage'
 import HomePage from './pages/HomePage/HomePage'
 import LoginPage from './pages/LoginPage/LoginPage'
+import MyActivitiesPage from './pages/MyActivitiesPage/MyActivitiesPage'
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage'
 import ProfilePage from './pages/ProfilePage/ProfilePage'
 import RegisterPage from './pages/RegisterPage/RegisterPage'
@@ -66,6 +67,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/activities" element={<MyActivitiesPage />} />
           <Route
             path="/activities/:activityId"
             element={<ActivityDetailsPage />}

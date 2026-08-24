@@ -20,6 +20,10 @@
   font-size: 2rem;
 }
 
+.profile-card__activities-link {
+  margin-top: 16px;
+}
+
 @media (max-width: 600px) {
   .profile-page {
     padding: 24px 16px;
