@@ -1,9 +1,15 @@
 [project]
 name = "backend"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastapi[standard]>=0.141.1",
+    "sqlalchemy>=2.0.52",
+    "python-jose[cryptography]>=3.5.0",
+    "cryptography>=50.0.1",
+    "email-validator>=2.3.0",
+    "psycopg[binary]>=3.2.10",
+    "alembic>=1.16.5",
     "pydantic-settings>=2.15.0",
 ]
 
@@ -12,3 +18,7 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.2",
 ]
+
+[tool.pytest.ini_options]
+cache_dir = ".tmp/pytest_cache"
+testpaths = ["tests"]
