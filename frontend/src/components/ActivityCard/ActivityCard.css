@@ -21,6 +21,13 @@
   gap: 16px;
 }
 
+.activity-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .activity-card__location {
   margin-top: 16px;
 }
@@ -46,5 +53,9 @@
 
   .activity-card__participants {
     text-align: left;
+  }
+
+  .activity-card__chips {
+    justify-content: flex-start;
   }
 }

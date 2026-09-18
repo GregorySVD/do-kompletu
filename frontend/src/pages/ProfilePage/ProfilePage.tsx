@@ -1,4 +1,5 @@
-import { Avatar, Card, CardContent, Typography } from '@mui/material'
+import { Avatar, Button, Card, CardContent, Typography } from '@mui/material'
+import { Link } from 'react-router-dom'
 import { mockCurrentUser } from '../../data/mockCurrentUser'
 import './ProfilePage.css'
 
@@ -28,6 +29,14 @@ function ProfilePage() {
             <Typography color="text.secondary">
               {mockCurrentUser.email}
             </Typography>
+            <Button
+              className="profile-card__activities-link"
+              component={Link}
+              to="/profile/activities"
+              variant="outlined"
+            >
+              Moje aktywności
+            </Button>
           </div>
         </CardContent>
       </Card>
