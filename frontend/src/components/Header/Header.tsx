@@ -8,6 +8,7 @@ import {
   Typography,
 } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/auth'
 import './Header.css'
 
 interface HeaderProps {
@@ -25,6 +26,7 @@ function Header({
 }: HeaderProps) {
   const location = useLocation()
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
 
   function handleSearchChange(query: string) {
     onSearchChange(query)
@@ -32,6 +34,11 @@ function Header({
     if (location.pathname !== '/') {
       navigate('/')
     }
+  }
+
+  function handleLogout() {
+    logout()
+    navigate('/')
   }
 
   return (
@@ -63,9 +70,18 @@ function Header({
           {mode === 'light' ? <DarkMode /> : <LightMode />}
         </IconButton>
 
-        <Button component={Link} to="/login" variant="outlined">
-          Zaloguj się
-        </Button>
+        {user ? (
+          <>
+            <Button component={Link} to="/profile" variant="outlined">
+              {user.display_name || 'Profil'}
+            </Button>
+            <Button onClick={handleLogout}>Wyloguj</Button>
+          </>
+        ) : (
+          <Button component={Link} to="/login" variant="outlined">
+            Zaloguj się
+          </Button>
+        )}
 
         <Button component={Link} to="/activities/new" variant="contained">
           Dodaj aktywność

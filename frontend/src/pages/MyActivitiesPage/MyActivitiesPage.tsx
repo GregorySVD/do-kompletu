@@ -1,8 +1,8 @@
 import { Button, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import ActivityCard from '../../components/ActivityCard/ActivityCard'
+import { useAuth } from '../../context/auth'
 import { mockActivities } from '../../data/mockActivities'
-import { mockCurrentUser } from '../../data/mockCurrentUser'
 import { mockUserActivities } from '../../data/mockUserActivities'
 import type { Activity } from '../../types/activity'
 import './MyActivitiesPage.css'
@@ -51,6 +51,7 @@ function ActivitySection({
 }
 
 function MyActivitiesPage() {
+  const { user } = useAuth()
   const now = new Date()
   const joinedActivityIds = new Set(mockUserActivities.joined_activity_ids)
   const organizedActivityIds = new Set(
@@ -78,7 +79,7 @@ function MyActivitiesPage() {
             Moje aktywności
           </Typography>
           <Typography color="text.secondary">
-            Aktywności powiązane z profilem {mockCurrentUser.display_name}.
+            Aktywności powiązane z profilem {user?.display_name}.
           </Typography>
         </div>
 

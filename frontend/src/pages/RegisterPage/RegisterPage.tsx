@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
+import axios from 'axios'
 import {
   Alert,
   Button,
@@ -10,8 +11,9 @@ import {
   Typography,
 } from '@mui/material'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import { useAuth } from '../../context/auth'
 import type { RegisterFormValues } from '../../types/auth'
 import './RegisterPage.css'
 
@@ -29,7 +31,8 @@ const registerSchema = z
     password: z
       .string()
       .min(1, 'Hasło jest wymagane')
-      .min(8, 'Hasło musi mieć co najmniej 8 znaków'),
+      .min(8, 'Hasło musi mieć co najmniej 8 znaków')
+      .max(128, 'Hasło może mieć maksymalnie 128 znaków'),
     confirm_password: z.string().min(1, 'Powtórzenie hasła jest wymagane'),
   })
   .superRefine((values, context) => {
@@ -52,19 +55,57 @@ const defaultValues: RegisterFormValues = {
   confirm_password: '',
 }
 
+interface RegistrationErrorResponse {
+  detail?: string
+}
+
 function RegisterPage() {
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+  const { register: registerUser } = useAuth()
+  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    setError,
+    formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues,
   })
 
-  function submitForm() {
-    setIsSubmitted(true)
+  async function submitForm(values: RegisterFormValues) {
+    setApiError(null)
+
+    try {
+      await registerUser(values)
+      navigate('/register/success', { replace: true })
+    } catch (error) {
+      const isApiError = axios.isAxiosError<RegistrationErrorResponse>(error)
+      const errorDetail = isApiError ? error.response?.data.detail : undefined
+
+      if (
+        isApiError &&
+        error.response?.status === 409 &&
+        errorDetail === 'Username is already taken'
+      ) {
+        setError('display_name', {
+          type: 'server',
+          message: 'Ta nazwa użytkownika jest już zajęta.',
+        })
+      } else if (
+        isApiError &&
+        error.response?.status === 409 &&
+        errorDetail === 'Email address is already registered'
+      ) {
+        setApiError('Konto z tym adresem e-mail już istnieje.')
+      } else if (isApiError && error.response?.status === 422) {
+        setApiError('Sprawdź poprawność danych formularza.')
+      } else if (isApiError && !error.response) {
+        setApiError('Nie udało się połączyć z serwerem.')
+      } else {
+        setApiError('Nie udało się utworzyć konta. Spróbuj ponownie.')
+      }
+    }
   }
 
   return (
@@ -84,12 +125,7 @@ function RegisterPage() {
         </Button>
       </div>
 
-      {isSubmitted && (
-        <Alert severity="success">
-          Formularz jest poprawny. Rejestracja zostanie uruchomiona po
-          integracji z API.
-        </Alert>
-      )}
+      {apiError && <Alert severity="error">{apiError}</Alert>}
 
       <Card variant="outlined" className="register-card">
         <CardContent>
@@ -133,8 +169,13 @@ function RegisterPage() {
               {...register('confirm_password')}
             />
 
-            <Button type="submit" variant="contained" size="large">
-              Zarejestruj się
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Rejestracja...' : 'Zarejestruj się'}
             </Button>
 
             <Typography className="register-form__navigation">
