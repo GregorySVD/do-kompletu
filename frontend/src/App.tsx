@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { Route, Routes } from 'react-router-dom'
 import Header from './components/Header/Header'
+import RequireAuth from './components/RequireAuth/RequireAuth'
 import ActivityDetailsPage from './pages/ActivityDetailsPage/ActivityDetailsPage'
 import CreateActivityPage from './pages/CreateActivityPage/CreateActivityPage'
 import HomePage from './pages/HomePage/HomePage'
@@ -10,6 +11,7 @@ import MyActivitiesPage from './pages/MyActivitiesPage/MyActivitiesPage'
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage'
 import ProfilePage from './pages/ProfilePage/ProfilePage'
 import RegisterPage from './pages/RegisterPage/RegisterPage'
+import RegisterSuccessPage from './pages/RegisterSuccessPage/RegisterSuccessPage'
 import './App.css'
 
 type ThemeMode = 'light' | 'dark'
@@ -63,11 +65,14 @@ function App() {
               />
             }
           />
-          <Route path="/activities/new" element={<CreateActivityPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/profile/activities" element={<MyActivitiesPage />} />
+          <Route path="/register/success" element={<RegisterSuccessPage />} />
+          <Route element={<RequireAuth />}>
+            <Route path="/activities/new" element={<CreateActivityPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/activities" element={<MyActivitiesPage />} />
+          </Route>
           <Route
             path="/activities/:activityId"
             element={<ActivityDetailsPage />}

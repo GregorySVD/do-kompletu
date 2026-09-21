@@ -1,0 +1,29 @@
+.register-success-page {
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: 64px 24px;
+}
+
+.register-success-card__content {
+  display: grid;
+  gap: 20px;
+  padding: 32px;
+  text-align: center;
+}
+
+.register-success-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .register-success-page {
+    padding: 40px 16px;
+  }
+
+  .register-success-card__content {
+    padding: 24px 16px;
+  }
+}
