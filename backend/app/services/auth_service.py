@@ -19,6 +19,7 @@ from app.models.user import (
     EMAIL_UNIQUE_CONSTRAINT,
     User,
 )
+from app.schemas._validators import normalize_email
 from app.schemas.auth import AccessTokenResponse, TokenPair, UserLogin, UserRegister
 from app.schemas.user import UserUpdate
 
@@ -47,6 +48,18 @@ def get_user_by_display_name(session: Session, display_name: str) -> User | None
     return session.scalar(
         select(User).where(func.lower(User.display_name) == func.lower(display_name))
     )
+
+
+def get_user_by_identifier(session: Session, identifier: str) -> User | None:
+    try:
+        normalized_email = normalize_email(identifier)
+    except ValueError:
+        normalized_email = identifier
+
+    user = get_user_by_email(session, normalized_email)
+    if user is not None:
+        return user
+    return get_user_by_display_name(session, identifier)
 
 
 def register_user(session: Session, payload: UserRegister) -> User:
@@ -80,11 +93,11 @@ def register_user(session: Session, payload: UserRegister) -> User:
 
 
 def authenticate_user(session: Session, payload: UserLogin) -> User:
-    user = get_user_by_email(session, payload.email)
+    user = get_user_by_identifier(session, payload.identifier)
     if user is None or not verify_password(payload.password, user.password_hash):
-        raise InvalidCredentialsError("Invalid email or password")
+        raise InvalidCredentialsError("Invalid credentials")
     if not user.is_active:
-        raise InvalidCredentialsError("Invalid email or password")
+        raise InvalidCredentialsError("Invalid credentials")
     return user
 
 
@@ -93,6 +106,10 @@ def issue_token_pair(user: User) -> TokenPair:
         access_token=create_access_token(user.id),
         refresh_token=create_refresh_token(user.id),
     )
+
+
+def issue_access_token(user: User) -> AccessTokenResponse:
+    return AccessTokenResponse(access_token=create_access_token(user.id))
 
 
 def resolve_user_from_token(session: Session, token: str, expected_type: str) -> User:

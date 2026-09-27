@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
+    bootstrap_user_email: str | None = None
+    bootstrap_user_display_name: str | None = None
+    bootstrap_user_password: str | None = None
     cors_allowed_origins: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

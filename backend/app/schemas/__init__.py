@@ -1,3 +1,8 @@
+from app.schemas.activity import (
+    ActivityCreate,
+    ActivityListItem,
+    ActivityRead,
+)
 from app.schemas.auth import (
     AccessTokenResponse,
     RefreshTokenRequest,
@@ -9,6 +14,9 @@ from app.schemas.user import UserRead, UserUpdate
 
 __all__ = [
     "AccessTokenResponse",
+    "ActivityCreate",
+    "ActivityListItem",
+    "ActivityRead",
     "RefreshTokenRequest",
     "TokenPair",
     "UserLogin",

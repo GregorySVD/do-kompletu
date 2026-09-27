@@ -19,3 +19,4 @@ htmlcov/
 # IDE
 .vscode/
 .idea/
+.tmp/pytest_cache/

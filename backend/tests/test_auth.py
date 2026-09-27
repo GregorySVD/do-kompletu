@@ -22,7 +22,7 @@ def register_user(client, **overrides):
 
 def login_user(client, **overrides):
     payload = {
-        "email": "tester@example.com",
+        "identifier": "tester@example.com",
         "password": "SecretPass123",
     }
     payload.update(overrides)
@@ -156,21 +156,90 @@ def test_login_success(client):
     assert body["refresh_token"]
 
 
+@pytest.mark.parametrize(
+    "identifier",
+    ["Test User", "test user", "TEST USER", "TeSt UsEr"],
+)
+def test_login_accepts_case_insensitive_display_name(client, identifier):
+    register_user(client)
+
+    response = login_user(client, identifier=identifier)
+
+    assert response.status_code == 200
+    assert response.json()["access_token"]
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    ["  Test User  ", "  tester@example.com  ", "tester@EXAMPLE.COM"],
+)
+def test_login_normalizes_identifier_whitespace_and_email_domain(client, identifier):
+    register_user(client)
+
+    response = login_user(client, identifier=identifier)
+
+    assert response.status_code == 200
+
+
 def test_login_wrong_password_returns_unauthorized(client):
     register_user(client)
 
     response = login_user(client, password="WrongPass123")
 
     assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid credentials"}
 
 
 def test_login_unknown_user_returns_unauthorized(client):
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "unknown@example.com", "password": "SecretPass123"},
+        json={"identifier": "unknown@example.com", "password": "SecretPass123"},
     )
 
     assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid credentials"}
+
+
+def test_login_rejects_old_email_only_contract(client):
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "tester@example.com", "password": "SecretPass123"},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("username", ["tester@example.com", "test user", "TEST USER"])
+def test_oauth2_token_accepts_email_or_display_name(client, username):
+    register_user(client)
+
+    response = client.post(
+        "/api/v1/auth/token",
+        data={"username": username, "password": "SecretPass123"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert body["access_token"]
+    assert "refresh_token" not in body
+
+    me_response = client.get(
+        "/api/v1/users/me",
+        headers=auth_header(body["access_token"]),
+    )
+    assert me_response.status_code == 200
+
+
+@pytest.mark.parametrize("username", ["missing-user", "   "])
+def test_oauth2_token_invalid_credentials_are_generic(client, username):
+    response = client.post(
+        "/api/v1/auth/token",
+        data={"username": username, "password": "WrongPass123"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid credentials"}
 
 
 def test_get_current_user_requires_valid_access_token(client):
@@ -272,7 +341,7 @@ def test_patch_current_user_rejects_duplicate_display_name(client):
         email="second@example.com",
         display_name="Second User",
     )
-    login_response = login_user(client, email="second@example.com")
+    login_response = login_user(client, identifier="second@example.com")
     access_token = login_response.json()["access_token"]
 
     response = client.patch(
