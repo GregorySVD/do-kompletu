@@ -1,5 +1,6 @@
 from app.services.auth_service import (
     DuplicateEmailError,
+    DuplicateUsernameError,
     InvalidCredentialsError,
     get_user_by_id,
     issue_token_pair,
@@ -11,6 +12,7 @@ from app.services.auth_service import (
 
 __all__ = [
     "DuplicateEmailError",
+    "DuplicateUsernameError",
     "InvalidCredentialsError",
     "get_user_by_id",
     "issue_token_pair",

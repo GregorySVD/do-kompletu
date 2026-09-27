@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.security import create_access_token
 from app.models.user import User
@@ -47,6 +49,88 @@ def test_register_duplicate_email_returns_conflict(client):
 
     assert first_response.status_code == 201
     assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Email address is already registered"}
+
+
+def test_register_duplicate_email_race_still_returns_conflict(client, monkeypatch):
+    first_response = register_user(client)
+    monkeypatch.setattr(
+        "app.services.auth_service.get_user_by_email",
+        lambda session, email: None,
+    )
+
+    second_response = register_user(client, display_name="Another User")
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Email address is already registered"}
+
+
+@pytest.mark.parametrize(
+    "duplicate_display_name",
+    ["GregorySVD", "gregorysvd", "GREGORYSVD", "GrEgOrYsVd"],
+)
+def test_register_duplicate_display_name_returns_conflict(client, duplicate_display_name):
+    first_response = register_user(
+        client,
+        email="first@example.com",
+        display_name="GregorySVD",
+    )
+    second_response = register_user(
+        client,
+        email="second@example.com",
+        display_name=duplicate_display_name,
+    )
+
+    assert first_response.status_code == 201
+    assert first_response.json()["display_name"] == "GregorySVD"
+    assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Username is already taken"}
+
+
+def test_register_duplicate_display_name_race_returns_conflict(client, monkeypatch):
+    first_response = register_user(
+        client,
+        email="first@example.com",
+        display_name="GregorySVD",
+    )
+    monkeypatch.setattr(
+        "app.services.auth_service.get_user_by_display_name",
+        lambda session, display_name: None,
+    )
+
+    second_response = register_user(
+        client,
+        email="second@example.com",
+        display_name="gregorysvd",
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Username is already taken"}
+
+
+def test_database_enforces_case_insensitive_display_name_uniqueness(db_session):
+    db_session.add(
+        User(
+            email="first@example.com",
+            password_hash="not-a-real-password-hash",
+            display_name="GregorySVD",
+        )
+    )
+    db_session.commit()
+    db_session.add(
+        User(
+            email="second@example.com",
+            password_hash="not-a-real-password-hash",
+            display_name="GREGORYSVD",
+        )
+    )
+
+    with pytest.raises(IntegrityError, match="uq_users_display_name_lower"):
+        db_session.commit()
+
+    db_session.rollback()
 
 
 def test_password_is_stored_hashed(db_session, client):
@@ -175,3 +259,27 @@ def test_patch_current_user_updates_allowed_profile_fields(client):
     assert response.status_code == 200
     assert response.json()["display_name"] == "Updated Name"
     assert response.json()["avatar_url"] == "https://example.com/avatar.png"
+
+
+def test_patch_current_user_rejects_duplicate_display_name(client):
+    register_user(
+        client,
+        email="first@example.com",
+        display_name="GregorySVD",
+    )
+    register_user(
+        client,
+        email="second@example.com",
+        display_name="Second User",
+    )
+    login_response = login_user(client, email="second@example.com")
+    access_token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/users/me",
+        headers=auth_header(access_token),
+        json={"display_name": "gregorysvd"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Username is already taken"}

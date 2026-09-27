@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,13 +14,21 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.models.user import User
+from app.models.user import (
+    DISPLAY_NAME_UNIQUE_INDEX,
+    EMAIL_UNIQUE_CONSTRAINT,
+    User,
+)
 from app.schemas.auth import AccessTokenResponse, TokenPair, UserLogin, UserRegister
 from app.schemas.user import UserUpdate
 
 
 class DuplicateEmailError(Exception):
     """Raised when a registration attempts to reuse an email address."""
+
+
+class DuplicateUsernameError(Exception):
+    """Raised when a display name is already used by another user."""
 
 
 class InvalidCredentialsError(Exception):
@@ -35,10 +43,20 @@ def get_user_by_id(session: Session, user_id: UUID) -> User | None:
     return session.get(User, user_id)
 
 
+def get_user_by_display_name(session: Session, display_name: str) -> User | None:
+    return session.scalar(
+        select(User).where(func.lower(User.display_name) == func.lower(display_name))
+    )
+
+
 def register_user(session: Session, payload: UserRegister) -> User:
     existing_user = get_user_by_email(session, payload.email)
     if existing_user is not None:
         raise DuplicateEmailError("Email address is already registered")
+
+    existing_user = get_user_by_display_name(session, payload.display_name)
+    if existing_user is not None:
+        raise DuplicateUsernameError("Username is already taken")
 
     user = User(
         email=payload.email,
@@ -53,6 +71,8 @@ def register_user(session: Session, payload: UserRegister) -> User:
         session.rollback()
         if _is_duplicate_email_error(exc):
             raise DuplicateEmailError("Email address is already registered") from exc
+        if _is_duplicate_username_error(exc):
+            raise DuplicateUsernameError("Username is already taken") from exc
         raise
 
     session.refresh(user)
@@ -95,15 +115,48 @@ def refresh_access_token(session: Session, refresh_token: str) -> AccessTokenRes
 
 
 def update_user_profile(session: Session, user: User, payload: UserUpdate) -> User:
+    if payload.display_name is not None:
+        existing_user = get_user_by_display_name(session, payload.display_name)
+        if existing_user is not None and existing_user.id != user.id:
+            raise DuplicateUsernameError("Username is already taken")
+
     for field_name, value in payload.model_dump(exclude_unset=True).items():
         setattr(user, field_name, value)
 
     session.add(user)
-    session.commit()
+
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        if _is_duplicate_username_error(exc):
+            raise DuplicateUsernameError("Username is already taken") from exc
+        raise
+
     session.refresh(user)
     return user
 
 
 def _is_duplicate_email_error(error: IntegrityError) -> bool:
-    message = str(error).lower()
-    return "uq_users_email" in message or "users.email" in message or "unique constraint" in message
+    constraint_name = _constraint_name(error)
+    if constraint_name is not None:
+        return constraint_name == EMAIL_UNIQUE_CONSTRAINT
+
+    message = str(error.orig).lower()
+    return (
+        EMAIL_UNIQUE_CONSTRAINT in message
+        or "unique constraint failed: users.email" in message
+    )
+
+
+def _is_duplicate_username_error(error: IntegrityError) -> bool:
+    constraint_name = _constraint_name(error)
+    if constraint_name is not None:
+        return constraint_name == DISPLAY_NAME_UNIQUE_INDEX
+
+    return DISPLAY_NAME_UNIQUE_INDEX in str(error.orig).lower()
+
+
+def _constraint_name(error: IntegrityError) -> str | None:
+    diagnostic = getattr(error.orig, "diag", None)
+    return getattr(diagnostic, "constraint_name", None)

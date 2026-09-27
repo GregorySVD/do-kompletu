@@ -16,6 +16,7 @@ from app.schemas.auth import (
 from app.schemas.user import UserRead
 from app.services.auth_service import (
     DuplicateEmailError,
+    DuplicateUsernameError,
     InvalidCredentialsError,
     authenticate_user,
     issue_token_pair,
@@ -37,6 +38,11 @@ def register(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email address is already registered",
+        ) from exc
+    except DuplicateUsernameError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username is already taken",
         ) from exc
     return UserRead.model_validate(user)
 
