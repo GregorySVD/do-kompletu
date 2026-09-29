@@ -55,6 +55,13 @@
   --touch-target-min: 2.75rem;
   --header-search-min-height: 3.25rem;
   --map-height: clamp(20rem, 55vh, 35rem);
+  --color-scrollbar-track: transparent;
+  --color-scrollbar-thumb: var(--color-border-strong);
+  --color-scrollbar-thumb-hover: var(--color-text-muted);
+  --floating-control-bg: var(--color-surface);
+  --floating-control-bg-hover: var(--color-surface-strong);
+  --floating-control-text: var(--color-text-primary);
+  --floating-control-shadow: var(--header-shadow-color);
 }
 
 :root,

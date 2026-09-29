@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import Header from './components/Header/Header'
 import RequireAuth from './components/RequireAuth/RequireAuth'
 import ActivityDetailsPage from './pages/ActivityDetailsPage/ActivityDetailsPage'
@@ -25,8 +25,10 @@ function getInitialThemeMode(): ThemeMode {
 }
 
 function App() {
+  const location = useLocation()
   const [mode, setMode] = useState<ThemeMode>(getInitialThemeMode)
   const [searchQuery, setSearchQuery] = useState('')
+  const isHomePage = location.pathname === '/'
 
   const theme = createTheme({
     cssVariables: {
@@ -123,7 +125,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="app">
+      <div className={`app${isHomePage ? ' app--home' : ''}`}>
         <Header
           mode={mode}
           onToggleTheme={toggleTheme}

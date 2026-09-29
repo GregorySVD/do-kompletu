@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { Icon } from 'leaflet'
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet'
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { Link } from 'react-router-dom'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -11,14 +12,24 @@ import './ActivityMap.css'
 interface ActivityMapProps {
   activities: Activity[]
   mode: 'light' | 'dark'
+  isVisible?: boolean
 }
 
 const poznanCenter: [number, number] = [52.4064, 16.9252]
-const lightTileUrl =
-  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
-const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-const tileAttribution =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY?.trim()
+const openStreetMapTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+const openStreetMapAttribution =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+const cartoAttribution = `${openStreetMapAttribution}, &copy; <a href="https://carto.com/attributions">CARTO</a>`
+const lightTileUrl = cartoApiKey
+  ? `https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey)}`
+  : openStreetMapTileUrl
+const darkTileUrl = cartoApiKey
+  ? `https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey)}`
+  : openStreetMapTileUrl
+const tileAttribution = cartoApiKey
+  ? cartoAttribution
+  : openStreetMapAttribution
 
 const activityMarkerIcon = new Icon({
   iconUrl: markerIcon,
@@ -36,7 +47,30 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
   hour12: false,
 })
 
-function ActivityMap({ activities, mode }: ActivityMapProps) {
+function MapResizeHandler({ isVisible }: { isVisible: boolean }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!isVisible) {
+      return
+    }
+
+    let secondFrameId = 0
+    const firstFrameId = window.requestAnimationFrame(() => {
+      map.invalidateSize()
+      secondFrameId = window.requestAnimationFrame(() => map.invalidateSize())
+    })
+
+    return () => {
+      window.cancelAnimationFrame(firstFrameId)
+      window.cancelAnimationFrame(secondFrameId)
+    }
+  }, [isVisible, map])
+
+  return null
+}
+
+function ActivityMap({ activities, mode, isVisible = true }: ActivityMapProps) {
   const tileUrl = mode === 'dark' ? darkTileUrl : lightTileUrl
 
   return (
@@ -45,7 +79,9 @@ function ActivityMap({ activities, mode }: ActivityMapProps) {
         center={poznanCenter}
         zoom={12}
         className="activity-map__map"
+        scrollWheelZoom
       >
+        <MapResizeHandler isVisible={isVisible} />
         <TileLayer attribution={tileAttribution} maxZoom={20} url={tileUrl} />
 
         {activities.map((activity) => {
