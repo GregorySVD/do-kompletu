@@ -4,6 +4,9 @@
   --map-background: #e8eef5;
   --border-color: #d4dee9;
   --brand-color: #1976d2;
+  --content-max-width: 90rem;
+  --page-gutter: clamp(1rem, 3vw, 2rem);
+  --page-space: clamp(1.5rem, 4vw, 2.5rem);
 }
 
 [data-theme='dark'] {
@@ -15,6 +18,6 @@
 }
 
 .app {
-  min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--page-background);
 }

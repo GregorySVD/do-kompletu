@@ -1,7 +1,7 @@
 .activity-card__link {
   color: inherit;
   text-decoration: none;
-  border-radius: 12px;
+  border-radius: 0.75rem;
 }
 
 .activity-card__link:focus-visible {
@@ -10,52 +10,60 @@
 }
 
 .activity-card {
-  border-radius: 12px;
+  border-radius: 0.75rem;
   cursor: pointer;
 }
 
 .activity-card__top {
   display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .activity-card__chips {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 0.5rem;
 }
 
 .activity-card__location {
-  margin-top: 16px;
+  margin-top: 1rem;
 }
 
 .activity-card__details {
   display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 16px;
-  margin-top: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1.25rem;
 }
 
 .activity-card__participants {
-  text-align: right;
+  text-align: left;
 }
 
-@media (max-width: 500px) {
+@media (min-width: 31.25rem) {
   .activity-card__top,
   .activity-card__details {
-    align-items: start;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: space-between;
   }
 
-  .activity-card__participants {
-    text-align: left;
+  .activity-card__top {
+    align-items: flex-start;
+  }
+
+  .activity-card__details {
+    align-items: flex-end;
   }
 
   .activity-card__chips {
-    justify-content: flex-start;
+    justify-content: flex-end;
+  }
+
+  .activity-card__participants {
+    text-align: right;
   }
 }

@@ -1,9 +1,9 @@
-import { DarkMode, LightMode } from '@mui/icons-material'
+import { DarkMode, LightMode, Search } from '@mui/icons-material'
 import {
   AppBar,
   Button,
   IconButton,
-  TextField,
+  InputBase,
   Toolbar,
   Typography,
 } from '@mui/material'
@@ -42,7 +42,13 @@ function Header({
   }
 
   return (
-    <AppBar component="header" position="static" color="inherit">
+    <AppBar
+      className="header-bar"
+      component="header"
+      position="static"
+      color="transparent"
+      elevation={0}
+    >
       <Toolbar className="header">
         <Typography
           className="header__logo"
@@ -50,40 +56,65 @@ function Header({
           to="/"
           variant="h5"
         >
-          DoKompletu
+          <span className="header__logo-text">DoKompletu</span>
         </Typography>
 
-        <TextField
-          className="header__search"
-          label="Szukaj aktywności"
-          value={searchQuery}
-          onChange={(event) => handleSearchChange(event.target.value)}
-          size="small"
-        />
+        <div className="header__search">
+          <Search className="header__search-icon" aria-hidden="true" />
+          <InputBase
+            className="header__search-input"
+            placeholder="Szukaj aktywności"
+            value={searchQuery}
+            onChange={(event) => handleSearchChange(event.target.value)}
+            inputProps={{ 'aria-label': 'Szukaj aktywności' }}
+          />
+        </div>
 
-        <IconButton
-          aria-label={
-            mode === 'light' ? 'Włącz ciemny motyw' : 'Włącz jasny motyw'
-          }
-          onClick={onToggleTheme}
-        >
-          {mode === 'light' ? <DarkMode /> : <LightMode />}
-        </IconButton>
+        <div className="header__actions">
+          <IconButton
+            className="header__theme-toggle"
+            aria-label={
+              mode === 'light' ? 'Włącz ciemny motyw' : 'Włącz jasny motyw'
+            }
+            onClick={onToggleTheme}
+          >
+            {mode === 'light' ? <DarkMode /> : <LightMode />}
+          </IconButton>
 
-        {user ? (
-          <>
-            <Button component={Link} to="/profile" variant="outlined">
-              {user.display_name || 'Profil'}
+          {user ? (
+            <>
+              <Button
+                className="header__button header__profile-button"
+                component={Link}
+                to="/profile"
+              >
+                <span className="header__profile-name">
+                  {user.display_name || 'Profil'}
+                </span>
+              </Button>
+              <Button
+                className="header__button header__logout-button"
+                onClick={handleLogout}
+              >
+                Wyloguj
+              </Button>
+            </>
+          ) : (
+            <Button
+              className="header__button header__auth-button"
+              component={Link}
+              to="/login"
+            >
+              Zaloguj się
             </Button>
-            <Button onClick={handleLogout}>Wyloguj</Button>
-          </>
-        ) : (
-          <Button component={Link} to="/login" variant="outlined">
-            Zaloguj się
-          </Button>
-        )}
+          )}
+        </div>
 
-        <Button component={Link} to="/activities/new" variant="contained">
+        <Button
+          className="header__button header__add-button"
+          component={Link}
+          to="/activities/new"
+        >
           Dodaj aktywność
         </Button>
       </Toolbar>

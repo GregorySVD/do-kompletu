@@ -1,40 +1,40 @@
 .home-page {
-  width: min(1440px, 100%);
-  margin: 0 auto;
-  padding: 24px;
+  width: min(100%, var(--content-max-width));
+  margin-inline: auto;
+  padding: var(--page-space) var(--page-gutter);
 }
 
 .filters {
-  margin-bottom: 24px;
+  margin-bottom: clamp(1.25rem, 3vw, 2rem);
 }
 
 .filters__heading {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .categories__list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .filters__controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 24px;
-  margin-top: 16px;
+  gap: 0.75rem clamp(0.75rem, 3vw, 1.5rem);
+  margin-top: 1rem;
 }
 
 .home-layout {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1rem, 3vw, 1.5rem);
   align-items: start;
 }
 
@@ -44,39 +44,37 @@
 
 .activities__heading {
   display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 16px;
-  margin-bottom: 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .activities__list {
   display: grid;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .activities__empty {
   display: grid;
   justify-items: start;
-  gap: 8px;
-  padding: 32px;
+  gap: 0.5rem;
+  padding: clamp(1rem, 4vw, 2rem);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 0.75rem;
 }
 
-@media (max-width: 900px) {
-  .home-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 600px) {
-  .home-page {
-    padding: 16px;
-  }
-
+@media (min-width: 30rem) {
+  .filters__heading,
   .activities__heading {
-    align-items: start;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+@media (min-width: 56.25rem) {
+  .home-layout {
+    grid-template-columns: minmax(0, 3fr) minmax(min(100%, 20rem), 2fr);
   }
 }
