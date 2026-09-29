@@ -1,23 +1,6 @@
-:root {
-  --page-background: #f5f7fa;
-  --panel-background: #ffffff;
-  --map-background: #e8eef5;
-  --border-color: #d4dee9;
-  --brand-color: #1976d2;
-  --content-max-width: 90rem;
-  --page-gutter: clamp(1rem, 3vw, 2rem);
-  --page-space: clamp(1.5rem, 4vw, 2.5rem);
-}
-
-[data-theme='dark'] {
-  --page-background: #121820;
-  --panel-background: #1b2430;
-  --map-background: #222f3d;
-  --border-color: #384656;
-  --brand-color: #90caf9;
-}
-
 .app {
   min-height: 100dvh;
-  background-color: var(--page-background);
+  color: var(--color-text-primary);
+  background-color: var(--color-page-bg);
+  font-family: var(--font-family-base);
 }

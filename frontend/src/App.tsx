@@ -29,8 +29,85 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const theme = createTheme({
+    cssVariables: {
+      nativeColor: true,
+    },
     palette: {
       mode,
+      primary: {
+        main: 'var(--color-primary)',
+        light: 'var(--color-primary)',
+        dark: 'var(--color-primary-hover)',
+        contrastText: 'var(--color-text-inverse)',
+      },
+      secondary: {
+        main: 'var(--color-accent)',
+        light: 'var(--color-accent)',
+        dark: 'var(--color-accent)',
+        contrastText: 'var(--color-text-inverse)',
+      },
+      success: {
+        main: 'var(--color-success)',
+      },
+      warning: {
+        main: 'var(--color-warning)',
+      },
+      error: {
+        main: 'var(--color-error)',
+      },
+      background: {
+        default: 'var(--color-page-bg)',
+        paper: 'var(--color-surface)',
+      },
+      text: {
+        primary: 'var(--color-text-primary)',
+        secondary: 'var(--color-text-secondary)',
+        disabled: 'var(--color-text-muted)',
+      },
+      divider: 'var(--color-border)',
+    },
+    typography: {
+      fontFamily: 'var(--font-family-base)',
+      fontWeightRegular: 'var(--font-weight-regular)',
+      fontWeightMedium: 'var(--font-weight-medium)',
+      fontWeightBold: 'var(--font-weight-bold)',
+      h1: {
+        fontSize: 'var(--font-size-h1)',
+        fontWeight: 'var(--font-weight-bold)',
+      },
+      h2: {
+        fontSize: 'var(--font-size-h2)',
+        fontWeight: 'var(--font-weight-bold)',
+      },
+      h3: {
+        fontSize: 'var(--font-size-h3)',
+        fontWeight: 'var(--font-weight-semibold)',
+      },
+      h4: {
+        fontSize: 'var(--font-size-h2)',
+        fontWeight: 'var(--font-weight-bold)',
+      },
+      h5: {
+        fontSize: 'var(--font-size-h3)',
+        fontWeight: 'var(--font-weight-semibold)',
+      },
+      h6: {
+        fontSize: 'var(--font-size-xl)',
+        fontWeight: 'var(--font-weight-semibold)',
+      },
+      body1: {
+        fontSize: 'var(--font-size-md)',
+      },
+      body2: {
+        fontSize: 'var(--font-size-sm)',
+      },
+      subtitle1: {
+        fontSize: 'var(--font-size-lg)',
+      },
+      button: {
+        fontWeight: 'var(--font-weight-semibold)',
+        textTransform: 'none',
+      },
     },
   })
 

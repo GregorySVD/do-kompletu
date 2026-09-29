@@ -1,10 +1,10 @@
 .not-found-page {
   width: min(100%, 43.75rem);
   margin-inline: auto;
-  padding: clamp(2.5rem, 7vw, 4rem) var(--page-gutter);
+  padding: clamp(var(--space-10), 7vw, var(--space-16)) var(--page-gutter);
   text-align: center;
 }
 
 .not-found-page a {
-  margin-top: 1.5rem;
+  margin-top: var(--space-6);
 }

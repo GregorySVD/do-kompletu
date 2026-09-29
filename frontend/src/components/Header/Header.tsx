@@ -70,17 +70,25 @@ function Header({
           />
         </div>
 
-        <div className="header__actions">
-          <IconButton
-            className="header__theme-toggle"
-            aria-label={
-              mode === 'light' ? 'Włącz ciemny motyw' : 'Włącz jasny motyw'
-            }
-            onClick={onToggleTheme}
-          >
-            {mode === 'light' ? <DarkMode /> : <LightMode />}
-          </IconButton>
+        <IconButton
+          className="header__theme-toggle"
+          aria-label={
+            mode === 'light' ? 'Włącz ciemny motyw' : 'Włącz jasny motyw'
+          }
+          onClick={onToggleTheme}
+        >
+          {mode === 'light' ? <DarkMode /> : <LightMode />}
+        </IconButton>
 
+        <Button
+          className="header__button header__add-button"
+          component={Link}
+          to="/activities/new"
+        >
+          Dodaj aktywność
+        </Button>
+
+        <div className="header__auth-actions">
           {user ? (
             <>
               <Button
@@ -109,14 +117,6 @@ function Header({
             </Button>
           )}
         </div>
-
-        <Button
-          className="header__button header__add-button"
-          component={Link}
-          to="/activities/new"
-        >
-          Dodaj aktywność
-        </Button>
       </Toolbar>
     </AppBar>
   )

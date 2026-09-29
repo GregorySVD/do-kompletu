@@ -1,24 +1,24 @@
 .login-page {
   width: min(100%, 35rem);
   margin-inline: auto;
-  padding: var(--page-space) var(--page-gutter);
+  padding: var(--section-gap) var(--page-gutter);
 }
 
 .login-page__heading {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: clamp(1rem, 3vw, 1.5rem);
-  margin-bottom: 1.5rem;
+  gap: var(--component-gap);
+  margin-bottom: var(--space-6);
 }
 
 .login-card {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
 .login-form {
   display: grid;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .login-form__navigation {

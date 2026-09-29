@@ -1,32 +1,32 @@
 .my-activities-page {
   width: min(100%, 60rem);
   margin-inline: auto;
-  padding: var(--page-space) var(--page-gutter);
+  padding: var(--section-gap) var(--page-gutter);
 }
 
 .my-activities-page__heading {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: clamp(1rem, 3vw, 1.5rem);
-  margin-bottom: 2rem;
+  gap: var(--component-gap);
+  margin-bottom: var(--space-8);
 }
 
 .my-activities-section + .my-activities-section {
-  margin-top: 2rem;
+  margin-top: var(--space-8);
 }
 
 .my-activities-section__list {
   display: grid;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .my-activities-section__empty {
-  margin-top: 0.75rem;
-  padding: clamp(1rem, 4vw, 1.5rem);
-  border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
+  margin-top: var(--space-3);
+  padding: clamp(var(--space-4), 4vw, var(--space-6));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 @media (min-width: 37.5rem) {

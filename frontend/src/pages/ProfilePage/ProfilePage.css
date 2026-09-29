@@ -1,17 +1,17 @@
 .profile-page {
   width: min(100%, 35rem);
   margin-inline: auto;
-  padding: var(--page-space) var(--page-gutter);
+  padding: var(--section-gap) var(--page-gutter);
 }
 
 .profile-card {
-  margin-top: 1.5rem;
+  margin-top: var(--space-6);
 }
 
 .profile-card__content {
   display: flex;
   align-items: flex-start;
-  gap: clamp(1rem, 4vw, 1.5rem);
+  gap: var(--component-gap);
 }
 
 .profile-card__content > div {
@@ -23,9 +23,9 @@
   flex: 0 0 auto;
   width: 4.5rem;
   height: 4.5rem;
-  font-size: 2rem;
+  font-size: var(--font-size-h2);
 }
 
 .profile-card__activities-link {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }

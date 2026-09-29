@@ -3,6 +3,6 @@
   align-items: center;
   justify-content: center;
   min-height: 15rem;
-  padding: var(--page-space) var(--page-gutter);
-  gap: 0.75rem;
+  padding: var(--section-gap) var(--page-gutter);
+  gap: var(--space-3);
 }
