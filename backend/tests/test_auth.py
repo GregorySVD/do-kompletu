@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.security import create_access_token
 from app.models.user import User
@@ -20,7 +22,7 @@ def register_user(client, **overrides):
 
 def login_user(client, **overrides):
     payload = {
-        "email": "tester@example.com",
+        "identifier": "tester@example.com",
         "password": "SecretPass123",
     }
     payload.update(overrides)
@@ -47,6 +49,88 @@ def test_register_duplicate_email_returns_conflict(client):
 
     assert first_response.status_code == 201
     assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Email address is already registered"}
+
+
+def test_register_duplicate_email_race_still_returns_conflict(client, monkeypatch):
+    first_response = register_user(client)
+    monkeypatch.setattr(
+        "app.services.auth_service.get_user_by_email",
+        lambda session, email: None,
+    )
+
+    second_response = register_user(client, display_name="Another User")
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Email address is already registered"}
+
+
+@pytest.mark.parametrize(
+    "duplicate_display_name",
+    ["GregorySVD", "gregorysvd", "GREGORYSVD", "GrEgOrYsVd"],
+)
+def test_register_duplicate_display_name_returns_conflict(client, duplicate_display_name):
+    first_response = register_user(
+        client,
+        email="first@example.com",
+        display_name="GregorySVD",
+    )
+    second_response = register_user(
+        client,
+        email="second@example.com",
+        display_name=duplicate_display_name,
+    )
+
+    assert first_response.status_code == 201
+    assert first_response.json()["display_name"] == "GregorySVD"
+    assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Username is already taken"}
+
+
+def test_register_duplicate_display_name_race_returns_conflict(client, monkeypatch):
+    first_response = register_user(
+        client,
+        email="first@example.com",
+        display_name="GregorySVD",
+    )
+    monkeypatch.setattr(
+        "app.services.auth_service.get_user_by_display_name",
+        lambda session, display_name: None,
+    )
+
+    second_response = register_user(
+        client,
+        email="second@example.com",
+        display_name="gregorysvd",
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json() == {"detail": "Username is already taken"}
+
+
+def test_database_enforces_case_insensitive_display_name_uniqueness(db_session):
+    db_session.add(
+        User(
+            email="first@example.com",
+            password_hash="not-a-real-password-hash",
+            display_name="GregorySVD",
+        )
+    )
+    db_session.commit()
+    db_session.add(
+        User(
+            email="second@example.com",
+            password_hash="not-a-real-password-hash",
+            display_name="GREGORYSVD",
+        )
+    )
+
+    with pytest.raises(IntegrityError, match="uq_users_display_name_lower"):
+        db_session.commit()
+
+    db_session.rollback()
 
 
 def test_password_is_stored_hashed(db_session, client):
@@ -72,21 +156,90 @@ def test_login_success(client):
     assert body["refresh_token"]
 
 
+@pytest.mark.parametrize(
+    "identifier",
+    ["Test User", "test user", "TEST USER", "TeSt UsEr"],
+)
+def test_login_accepts_case_insensitive_display_name(client, identifier):
+    register_user(client)
+
+    response = login_user(client, identifier=identifier)
+
+    assert response.status_code == 200
+    assert response.json()["access_token"]
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    ["  Test User  ", "  tester@example.com  ", "tester@EXAMPLE.COM"],
+)
+def test_login_normalizes_identifier_whitespace_and_email_domain(client, identifier):
+    register_user(client)
+
+    response = login_user(client, identifier=identifier)
+
+    assert response.status_code == 200
+
+
 def test_login_wrong_password_returns_unauthorized(client):
     register_user(client)
 
     response = login_user(client, password="WrongPass123")
 
     assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid credentials"}
 
 
 def test_login_unknown_user_returns_unauthorized(client):
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "unknown@example.com", "password": "SecretPass123"},
+        json={"identifier": "unknown@example.com", "password": "SecretPass123"},
     )
 
     assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid credentials"}
+
+
+def test_login_rejects_old_email_only_contract(client):
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "tester@example.com", "password": "SecretPass123"},
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("username", ["tester@example.com", "test user", "TEST USER"])
+def test_oauth2_token_accepts_email_or_display_name(client, username):
+    register_user(client)
+
+    response = client.post(
+        "/api/v1/auth/token",
+        data={"username": username, "password": "SecretPass123"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert body["access_token"]
+    assert "refresh_token" not in body
+
+    me_response = client.get(
+        "/api/v1/users/me",
+        headers=auth_header(body["access_token"]),
+    )
+    assert me_response.status_code == 200
+
+
+@pytest.mark.parametrize("username", ["missing-user", "   "])
+def test_oauth2_token_invalid_credentials_are_generic(client, username):
+    response = client.post(
+        "/api/v1/auth/token",
+        data={"username": username, "password": "WrongPass123"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid credentials"}
 
 
 def test_get_current_user_requires_valid_access_token(client):
@@ -175,3 +328,27 @@ def test_patch_current_user_updates_allowed_profile_fields(client):
     assert response.status_code == 200
     assert response.json()["display_name"] == "Updated Name"
     assert response.json()["avatar_url"] == "https://example.com/avatar.png"
+
+
+def test_patch_current_user_rejects_duplicate_display_name(client):
+    register_user(
+        client,
+        email="first@example.com",
+        display_name="GregorySVD",
+    )
+    register_user(
+        client,
+        email="second@example.com",
+        display_name="Second User",
+    )
+    login_response = login_user(client, identifier="second@example.com")
+    access_token = login_response.json()["access_token"]
+
+    response = client.patch(
+        "/api/v1/users/me",
+        headers=auth_header(access_token),
+        json={"display_name": "gregorysvd"},
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Username is already taken"}
