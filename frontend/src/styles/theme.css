@@ -55,6 +55,8 @@
   --touch-target-min: 2.75rem;
   --header-search-min-height: 3.25rem;
   --map-height: clamp(20rem, 55vh, 35rem);
+  --offers-only-max-width: 80rem;
+  --map-hidden-rail: clamp(12rem, 18vw, 26rem);
   --color-scrollbar-track: transparent;
   --color-scrollbar-thumb: var(--color-border-strong);
   --color-scrollbar-thumb-hover: var(--color-text-muted);
