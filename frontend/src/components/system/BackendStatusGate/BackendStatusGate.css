@@ -1,0 +1,19 @@
+.backend-status-gate__checking {
+  display: grid;
+  min-height: 100dvh;
+  place-content: center;
+  justify-items: center;
+  padding: var(--section-gap) var(--page-gutter);
+  gap: var(--space-4);
+  color: var(--color-text-secondary);
+  background: var(--color-page-bg);
+  text-align: center;
+}
+
+.backend-status-gate__spinner.MuiCircularProgress-root {
+  color: var(--color-primary);
+}
+
+.backend-status-gate__checking .MuiTypography-root {
+  font-family: var(--font-family-base);
+}
