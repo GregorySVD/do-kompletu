@@ -1,5 +1,5 @@
 export interface LoginFormValues {
-  email: string
+  identifier: string
   password: string
 }
 
