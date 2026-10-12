@@ -242,6 +242,8 @@
 
   .home-workspace--map-hidden {
     grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    padding-inline-end: var(--map-hidden-rail);
   }
 
   .activities,
@@ -305,9 +307,30 @@
     outline: 3px solid var(--color-primary);
     outline-offset: 3px;
   }
+
+  .home-page__map-toggle--map-hidden.MuiButton-root {
+    inset-inline-end: calc(var(--map-hidden-rail) / 2);
+    min-height: calc(var(--touch-target-min) + var(--space-1));
+    padding-inline: var(--space-5);
+    font-weight: var(--font-weight-semibold);
+    border-color: var(--color-primary);
+    box-shadow: 0 var(--space-2) var(--space-6) var(--floating-control-shadow);
+    transform: translate(50%, -50%);
+  }
 }
 
 @media (min-width: 90rem) {
+  .home-workspace--map-hidden .activities {
+    width: min(100%, var(--offers-only-max-width));
+  }
+
+  .home-page__map-toggle--map-hidden.MuiButton-root {
+    inset-inline-end: max(
+      calc(var(--map-hidden-rail) / 2),
+      calc((100% - var(--offers-only-max-width)) / 2)
+    );
+  }
+
   .filters__controls {
     grid-template-columns: auto minmax(12rem, 1fr);
     align-items: end;

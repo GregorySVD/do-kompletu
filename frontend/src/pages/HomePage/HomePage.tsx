@@ -335,7 +335,10 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
       </div>
 
       <Button
-        className="home-page__map-toggle"
+        className={`home-page__map-toggle${
+          isDesktopMapVisible ? '' : ' home-page__map-toggle--map-hidden'
+        }`}
+        aria-pressed={isDesktopMapVisible}
         startIcon={<MapOutlined />}
         variant="contained"
         onClick={() => setIsDesktopMapVisible((isVisible) => !isVisible)}
