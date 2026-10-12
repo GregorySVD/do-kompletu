@@ -1,50 +1,69 @@
 .activity-card__link {
   color: inherit;
   text-decoration: none;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
 }
 
 .activity-card__link:focus-visible {
-  outline: 3px solid var(--brand-color);
+  outline: 3px solid var(--color-primary);
   outline-offset: 2px;
 }
 
 .activity-card {
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
 .activity-card__top {
   display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.activity-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--space-2);
 }
 
 .activity-card__location {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 .activity-card__details {
   display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 16px;
-  margin-top: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
 }
 
 .activity-card__participants {
-  text-align: right;
+  text-align: left;
 }
 
-@media (max-width: 500px) {
+@media (min-width: 31.25rem) {
   .activity-card__top,
   .activity-card__details {
-    align-items: start;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .activity-card__top {
+    align-items: flex-start;
+  }
+
+  .activity-card__details {
+    align-items: flex-end;
+  }
+
+  .activity-card__chips {
+    justify-content: flex-end;
   }
 
   .activity-card__participants {
-    text-align: left;
+    text-align: right;
   }
 }

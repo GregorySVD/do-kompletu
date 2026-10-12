@@ -1,0 +1,8 @@
+.auth-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 15rem;
+  padding: var(--section-gap) var(--page-gutter);
+  gap: var(--space-3);
+}

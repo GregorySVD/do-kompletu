@@ -1,0 +1,19 @@
+.register-success-page {
+  width: min(100%, 40rem);
+  margin-inline: auto;
+  padding: clamp(var(--space-10), 7vw, var(--space-16)) var(--page-gutter);
+}
+
+.register-success-card__content {
+  display: grid;
+  gap: clamp(var(--space-4), 3vw, var(--space-5));
+  padding: clamp(var(--space-4), 5vw, var(--space-8));
+  text-align: center;
+}
+
+.register-success-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}

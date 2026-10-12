@@ -5,6 +5,7 @@ import './ActivityCard.css'
 
 interface ActivityCardProps {
   activity: Activity
+  statusLabel?: string
 }
 
 const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
@@ -12,7 +13,7 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
   timeStyle: 'short',
 })
 
-function ActivityCard({ activity }: ActivityCardProps) {
+function ActivityCard({ activity, statusLabel }: ActivityCardProps) {
   const missingToMinimum = Math.max(
     activity.min_participants - activity.participant_count,
     0,
@@ -37,7 +38,17 @@ function ActivityCard({ activity }: ActivityCardProps) {
               </Typography>
             </div>
 
-            <Chip label={activity.category.name} size="small" />
+            <div className="activity-card__chips">
+              <Chip label={activity.category.name} size="small" />
+              {statusLabel && (
+                <Chip
+                  label={statusLabel}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+              )}
+            </div>
           </div>
 
           <Typography className="activity-card__location">
