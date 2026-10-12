@@ -1,40 +1,37 @@
 .my-activities-page {
-  width: min(960px, 100%);
-  margin: 0 auto;
-  padding: 40px 24px;
+  width: min(100%, 60rem);
+  margin-inline: auto;
+  padding: var(--section-gap) var(--page-gutter);
 }
 
 .my-activities-page__heading {
   display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: 24px;
-  margin-bottom: 32px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--component-gap);
+  margin-bottom: var(--space-8);
 }
 
 .my-activities-section + .my-activities-section {
-  margin-top: 32px;
+  margin-top: var(--space-8);
 }
 
 .my-activities-section__list {
   display: grid;
-  gap: 12px;
-  margin-top: 16px;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .my-activities-section__empty {
-  margin-top: 12px;
-  padding: 24px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  margin-top: var(--space-3);
+  padding: clamp(var(--space-4), 4vw, var(--space-6));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
-@media (max-width: 600px) {
-  .my-activities-page {
-    padding: 24px 16px;
-  }
-
+@media (min-width: 37.5rem) {
   .my-activities-page__heading {
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: space-between;
   }
 }
