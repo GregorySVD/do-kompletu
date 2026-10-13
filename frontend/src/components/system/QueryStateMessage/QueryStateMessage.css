@@ -1,0 +1,9 @@
+.query-state-message {
+  display: grid;
+  min-height: 12rem;
+  place-content: center;
+  justify-items: center;
+  padding: var(--section-gap) var(--page-gutter);
+  gap: var(--space-4);
+  text-align: center;
+}

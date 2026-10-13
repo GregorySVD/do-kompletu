@@ -57,11 +57,11 @@ export interface ActivityDetails extends Activity {
   description: string
   organizer: ActivityOrganizer
   tags: ActivityTag[]
-  confirmation_opens_at: string
-  confirmation_deadline_at: string
-  checkin_opens_at: string
-  checkin_closes_at: string
-  checkin_radius_m: number
+  confirmation_opens_at: string | null
+  confirmation_deadline_at: string | null
+  checkin_opens_at: string | null
+  checkin_closes_at: string | null
+  checkin_radius_m: number | null
   price_amount: number | null
   currency: string | null
   current_user_participation: null

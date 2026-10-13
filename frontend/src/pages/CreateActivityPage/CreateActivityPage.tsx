@@ -22,7 +22,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
-import { mockCategories } from '../../data/mockCategories'
+import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
 import type { CreateActivityFormValues } from '../../types/createActivityForm'
 import './CreateActivityPage.css'
 
@@ -145,6 +145,7 @@ const defaultValues: CreateActivityFormValues = {
 
 function CreateActivityPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const categoriesQuery = useActivityCategoriesQuery()
 
   const {
     control,
@@ -215,6 +216,28 @@ function CreateActivityPage() {
         </Alert>
       )}
 
+      {categoriesQuery.isError && (
+        <Alert
+          action={
+            <Button
+              color="inherit"
+              disabled={categoriesQuery.isFetching}
+              size="small"
+              onClick={() => {
+                void categoriesQuery.refetch()
+              }}
+            >
+              {categoriesQuery.isFetching
+                ? 'Ponawianie...'
+                : 'Spróbuj ponownie'}
+            </Button>
+          }
+          severity="error"
+        >
+          Nie udało się pobrać kategorii.
+        </Alert>
+      )}
+
       <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pl">
         <form
           className="create-activity-form"
@@ -251,11 +274,21 @@ function CreateActivityPage() {
                     <TextField
                       {...field}
                       select
+                      disabled={
+                        categoriesQuery.isPending || categoriesQuery.isError
+                      }
                       label="Kategoria"
                       error={Boolean(errors.category_id)}
-                      helperText={errors.category_id?.message}
+                      helperText={
+                        errors.category_id?.message ??
+                        (categoriesQuery.isPending
+                          ? 'Ładowanie kategorii...'
+                          : categoriesQuery.isError
+                            ? 'Kategorie są obecnie niedostępne.'
+                            : undefined)
+                      }
                     >
-                      {mockCategories.map((category) => (
+                      {(categoriesQuery.data ?? []).map((category) => (
                         <MenuItem key={category.id} value={category.id}>
                           {category.name}
                         </MenuItem>
