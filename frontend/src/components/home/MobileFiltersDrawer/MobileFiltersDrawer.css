@@ -1,0 +1,35 @@
+.filters-drawer__paper.MuiDrawer-paper {
+  max-height: min(85dvh, 42rem);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+.filters-drawer__handle {
+  flex: 0 0 auto;
+  width: var(--space-10);
+  height: var(--space-1);
+  margin: var(--space-3) auto var(--space-1);
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.filters-drawer__content {
+  display: grid;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3) var(--page-gutter) var(--space-5);
+  gap: var(--space-5);
+  overscroll-behavior: contain;
+}
+
+.filters-drawer__actions {
+  flex: 0 0 auto;
+  padding: var(--space-4) var(--page-gutter);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+.filters-drawer__actions .MuiButton-root {
+  border-radius: var(--radius-pill);
+}

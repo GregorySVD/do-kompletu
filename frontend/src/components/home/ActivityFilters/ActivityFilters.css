@@ -1,0 +1,39 @@
+.filters__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.filters__group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.filters__group .MuiTypography-subtitle1 {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.categories__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filters__controls {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.filters__availability.MuiFormControlLabel-root {
+  align-items: center;
+  margin: 0;
+}
+
+@media (min-width: 90rem) {
+  .filters__controls {
+    grid-template-columns: auto minmax(12rem, 1fr);
+    align-items: end;
+  }
+}
