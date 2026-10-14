@@ -1,7 +1,8 @@
 export type ActivityStatus =
   'DRAFT' | 'PUBLISHED' | 'ONGOING' | 'ENDED' | 'CANCELLED'
 
-export type PriceType = 'FREE' | 'PAID'
+export const priceTypes = ['FREE', 'PAID'] as const
+export type PriceType = (typeof priceTypes)[number]
 
 export interface ActivityCategory {
   id: string
