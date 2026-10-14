@@ -19,29 +19,27 @@
   grid-template-rows: minmax(0, 1fr);
 }
 
-@media (min-width: 64rem) {
+@media (min-width: 75rem) {
   .home-page {
     grid-template-rows: minmax(0, 1fr);
+    padding: var(--space-4) var(--page-gutter);
   }
 
   .home-workspace {
     display: grid;
+    width: 100%;
+    max-width: var(--page-max-width);
+    margin-inline: auto;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   .home-workspace--map-hidden {
     grid-template-columns: minmax(0, 1fr);
-    justify-items: start;
-    padding-inline-end: var(--map-hidden-rail);
   }
 
   .home-workspace--map-hidden .activities {
     border-inline-end: 0;
-  }
-}
-
-@media (min-width: 90rem) {
-  .home-workspace--map-hidden .activities {
-    width: min(100%, var(--offers-only-max-width));
   }
 }

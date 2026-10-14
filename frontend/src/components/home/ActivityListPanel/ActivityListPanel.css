@@ -80,27 +80,51 @@
   }
 }
 
-@media (min-width: 64rem) {
+@media (min-width: 75rem) {
   .activities,
   .activities--mobile-hidden {
     display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'filters heading'
+      'filters list';
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     border-inline-end: 1px solid var(--color-border);
   }
 
   .activities__heading {
+    grid-area: heading;
     padding: var(--space-4) var(--space-5);
   }
 
   .filters--desktop {
     display: grid;
-    padding: var(--space-3) var(--space-5);
-    gap: var(--space-3);
+    grid-area: filters;
+    align-content: start;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-4);
+    gap: var(--space-5);
     background: var(--color-surface-soft);
-    border-bottom: 1px solid var(--color-border);
+    border-inline-end: 1px solid var(--color-border);
+  }
+
+  .filters--desktop .filters__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .filters--desktop .filters__controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filters--desktop .MuiToggleButtonGroup-root {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .activities__scroll {
+    grid-area: list;
     padding: var(--space-4);
     padding-inline-start: var(--space-5);
   }

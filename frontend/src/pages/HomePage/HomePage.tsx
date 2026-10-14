@@ -25,7 +25,7 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [isDesktopMapVisible, setIsDesktopMapVisible] = useState(true)
   const activitiesListRef = useRef<HTMLDivElement>(null)
-  const isDesktopLayout = useMediaQuery('(min-width: 64rem)')
+  const isDesktopLayout = useMediaQuery('(min-width: 75rem)')
   const activitiesQuery = useActivitiesQuery()
   const categoriesQuery = useActivityCategoriesQuery()
   const {
@@ -52,7 +52,6 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   const isMapVisible = isDesktopLayout
     ? isDesktopMapVisible
     : viewMode === 'map'
-  const shouldRenderMap = !isDesktopLayout || isDesktopMapVisible
   const filterProps = {
     categories: categoriesQuery.data ?? [],
     selectedCategoryId,
@@ -115,20 +114,19 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
           scrollContainerRef={activitiesListRef}
         />
 
-        {shouldRenderMap && (
-          <HomeMapPanel
-            activities={filteredActivities}
-            isMobileHidden={viewMode === 'list'}
-            isVisible={isMapVisible}
-            mode={mode}
-          />
-        )}
+        <HomeMapPanel
+          activities={filteredActivities}
+          isDesktopHidden={!isDesktopMapVisible}
+          isMobileHidden={viewMode === 'list'}
+          isVisible={isMapVisible}
+          mode={mode}
+          onHideMap={() => setIsDesktopMapVisible(false)}
+        />
       </div>
 
-      <MapVisibilityToggle
-        isMapVisible={isDesktopMapVisible}
-        onToggle={() => setIsDesktopMapVisible((isVisible) => !isVisible)}
-      />
+      {!isDesktopMapVisible && (
+        <MapVisibilityToggle onShow={() => setIsDesktopMapVisible(true)} />
+      )}
 
       <MobileFiltersDrawer
         filterProps={filterProps}
