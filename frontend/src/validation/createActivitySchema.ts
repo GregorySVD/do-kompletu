@@ -91,6 +91,14 @@ export const createActivitySchema = z
       })
     }
 
+    if (!values.has_participant_limit && values.max_participants !== null) {
+      context.addIssue({
+        code: 'custom',
+        path: ['max_participants'],
+        message: 'Brak limitu uczestników wymaga pustej wartości maksymalnej',
+      })
+    }
+
     if (values.max_participants !== null) {
       if (!Number.isInteger(values.max_participants)) {
         context.addIssue({
