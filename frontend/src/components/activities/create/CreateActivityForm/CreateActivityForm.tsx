@@ -128,7 +128,7 @@ function CreateActivityForm({
 
         <div className="create-activity-form__actions">
           <Button disabled={formDisabled} type="submit" variant="contained">
-            Sprawdź formularz
+            {formDisabled ? 'Tworzenie...' : 'Utwórz aktywność'}
           </Button>
         </div>
       </form>

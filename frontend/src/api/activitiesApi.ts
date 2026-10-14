@@ -2,6 +2,7 @@ import type {
   Activity,
   ActivityCategory,
   ActivityDetails,
+  CreateActivityPayload,
 } from '../types/activity'
 import apiClient from './apiClient'
 
@@ -25,6 +26,17 @@ export async function getActivityById(
 ): Promise<ActivityDetails> {
   const response = await apiClient.get<ActivityDetails>(
     `/api/v1/activities/${activityId}`,
+  )
+
+  return response.data
+}
+
+export async function createActivity(
+  payload: CreateActivityPayload,
+): Promise<ActivityDetails> {
+  const response = await apiClient.post<ActivityDetails>(
+    '/api/v1/activities',
+    payload,
   )
 
   return response.data
