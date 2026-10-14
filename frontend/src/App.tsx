@@ -12,17 +12,12 @@ import NotFoundPage from './pages/NotFoundPage/NotFoundPage'
 import ProfilePage from './pages/ProfilePage/ProfilePage'
 import RegisterPage from './pages/RegisterPage/RegisterPage'
 import RegisterSuccessPage from './pages/RegisterSuccessPage/RegisterSuccessPage'
+import {
+  applyThemeMode,
+  getInitialThemeMode,
+  type ThemeMode,
+} from './utils/themeMode'
 import './App.css'
-
-type ThemeMode = 'light' | 'dark'
-
-const themeStorageKey = 'do-kompletu-theme'
-
-function getInitialThemeMode(): ThemeMode {
-  const savedMode = localStorage.getItem(themeStorageKey)
-
-  return savedMode === 'light' || savedMode === 'dark' ? savedMode : 'light'
-}
 
 function App() {
   const location = useLocation()
@@ -114,8 +109,7 @@ function App() {
   })
 
   useEffect(() => {
-    localStorage.setItem(themeStorageKey, mode)
-    document.documentElement.dataset.theme = mode
+    applyThemeMode(mode)
   }, [mode])
 
   function toggleTheme() {

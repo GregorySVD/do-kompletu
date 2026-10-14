@@ -1,0 +1,29 @@
+.create-activity-form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.create-activity-form__fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.create-activity-form__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.create-activity-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+@media (min-width: 43.75rem) {
+  .create-activity-form__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

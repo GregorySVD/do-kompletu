@@ -12,19 +12,6 @@
   margin-bottom: var(--space-6);
 }
 
-.login-card {
-  margin-top: var(--space-4);
-}
-
-.login-form {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.login-form__navigation {
-  text-align: center;
-}
-
 @media (min-width: 37.5rem) {
   .login-page__heading {
     flex-direction: row;

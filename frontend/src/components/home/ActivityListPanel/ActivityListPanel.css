@@ -1,0 +1,107 @@
+.activities {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.activities--mobile-hidden {
+  display: none;
+}
+
+.activities__heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--space-4) var(--page-gutter);
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.activities__count {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.activities__scroll {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--space-4) var(--page-gutter);
+  overscroll-behavior: contain;
+  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+  scrollbar-width: thin;
+}
+
+.activities__scroll::-webkit-scrollbar {
+  width: var(--space-2);
+}
+
+.activities__scroll::-webkit-scrollbar-track {
+  background: var(--color-scrollbar-track);
+}
+
+.activities__scroll::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border-radius: var(--radius-pill);
+}
+
+.activities__scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
+}
+
+.activities__list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.activities__empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  padding: clamp(var(--space-4), 4vw, var(--space-8));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.filters--desktop {
+  display: none;
+}
+
+@media (min-width: 30rem) {
+  .activities__heading {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+@media (min-width: 64rem) {
+  .activities,
+  .activities--mobile-hidden {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    border-inline-end: 1px solid var(--color-border);
+  }
+
+  .activities__heading {
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .filters--desktop {
+    display: grid;
+    padding: var(--space-3) var(--space-5);
+    gap: var(--space-3);
+    background: var(--color-surface-soft);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .activities__scroll {
+    padding: var(--space-4);
+    padding-inline-start: var(--space-5);
+  }
+}

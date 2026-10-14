@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { Icon } from 'leaflet'
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import { Link } from 'react-router-dom'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import type { Activity } from '../../types/activity'
+import {
+  getMapTileConfig,
+  mapMarkerIcon,
+  poznanMapCenter,
+} from '../../utils/mapConfig'
 import 'leaflet/dist/leaflet.css'
 import './ActivityMap.css'
 
@@ -14,32 +15,6 @@ interface ActivityMapProps {
   mode: 'light' | 'dark'
   isVisible?: boolean
 }
-
-const poznanCenter: [number, number] = [52.4064, 16.9252]
-const cartoApiKey = import.meta.env.VITE_CARTO_API_KEY?.trim()
-const openStreetMapTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-const openStreetMapAttribution =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-const cartoAttribution = `${openStreetMapAttribution}, &copy; <a href="https://carto.com/attributions">CARTO</a>`
-const lightTileUrl = cartoApiKey
-  ? `https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey)}`
-  : openStreetMapTileUrl
-const darkTileUrl = cartoApiKey
-  ? `https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoApiKey)}`
-  : openStreetMapTileUrl
-const tileAttribution = cartoApiKey
-  ? cartoAttribution
-  : openStreetMapAttribution
-
-const activityMarkerIcon = new Icon({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
 
 const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
   dateStyle: 'medium',
@@ -71,18 +46,22 @@ function MapResizeHandler({ isVisible }: { isVisible: boolean }) {
 }
 
 function ActivityMap({ activities, mode, isVisible = true }: ActivityMapProps) {
-  const tileUrl = mode === 'dark' ? darkTileUrl : lightTileUrl
+  const tileConfig = getMapTileConfig(mode)
 
   return (
     <aside className="activity-map" aria-label="Mapa aktywności">
       <MapContainer
-        center={poznanCenter}
+        center={poznanMapCenter}
         zoom={12}
         className="activity-map__map"
         scrollWheelZoom
       >
         <MapResizeHandler isVisible={isVisible} />
-        <TileLayer attribution={tileAttribution} maxZoom={20} url={tileUrl} />
+        <TileLayer
+          attribution={tileConfig.attribution}
+          maxZoom={20}
+          url={tileConfig.url}
+        />
 
         {activities.map((activity) => {
           const missingToMinimum = Math.max(
@@ -95,7 +74,7 @@ function ActivityMap({ activities, mode, isVisible = true }: ActivityMapProps) {
             <Marker
               key={activity.id}
               position={[activity.latitude, activity.longitude]}
-              icon={activityMarkerIcon}
+              icon={mapMarkerIcon}
             >
               <Popup>
                 <div className="activity-map__popup">
