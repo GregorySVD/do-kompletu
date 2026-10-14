@@ -1,0 +1,170 @@
+.activity-category-bar {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.activity-category-bar__scroller {
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin-inline: auto;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.activity-category-bar__scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.activity-category-bar__list {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  padding: var(--space-3) var(--page-gutter);
+  gap: clamp(var(--space-3), 2vw, var(--space-6));
+}
+
+.activity-category-bar__item {
+  --category-color: var(--category-fallback-color);
+  --category-soft-bg: var(--category-fallback-bg);
+
+  display: grid;
+  flex: 1 0 6.5rem;
+  min-width: 6.5rem;
+  justify-items: center;
+  padding: var(--space-2);
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.activity-category-bar__item:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-soft);
+  transform: translateY(-2px);
+}
+
+.activity-category-bar__item:focus-visible {
+  outline: 3px solid var(--category-color);
+  outline-offset: -1px;
+}
+
+.activity-category-bar__item--selected {
+  color: var(--color-text-primary);
+  background: var(--color-surface-soft);
+}
+
+.activity-category-bar__icon-wrap {
+  position: relative;
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  color: var(--category-color);
+  background: var(--category-soft-bg);
+  border: 1px solid color-mix(in srgb, var(--category-color) 35%, transparent);
+  border-radius: 50%;
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.activity-category-bar__item--selected .activity-category-bar__icon-wrap {
+  box-shadow:
+    0 0 0 3px var(--color-surface),
+    0 0 0 5px var(--category-color);
+  transform: scale(1.04);
+}
+
+.activity-category-bar__icon.MuiSvgIcon-root {
+  font-size: 1.65rem;
+}
+
+.activity-category-bar__badge {
+  position: absolute;
+  inset-block-start: -0.35rem;
+  inset-inline-end: -0.45rem;
+  display: grid;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding-inline: 0.3rem;
+  place-items: center;
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  background: var(--category-color);
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-pill);
+}
+
+.activity-category-bar__name {
+  max-width: 7.5rem;
+  overflow: hidden;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-category-bar__item--team-sport {
+  --category-color: var(--category-team-sport-color);
+  --category-soft-bg: var(--category-team-sport-bg);
+}
+
+.activity-category-bar__item--board-games {
+  --category-color: var(--category-board-games-color);
+  --category-soft-bg: var(--category-board-games-bg);
+}
+
+.activity-category-bar__item--rpg {
+  --category-color: var(--category-rpg-color);
+  --category-soft-bg: var(--category-rpg-bg);
+}
+
+.activity-category-bar__item--gaming {
+  --category-color: var(--category-gaming-color);
+  --category-soft-bg: var(--category-gaming-bg);
+}
+
+.activity-category-bar__item--study {
+  --category-color: var(--category-study-color);
+  --category-soft-bg: var(--category-study-bg);
+}
+
+.activity-category-bar__item--technology {
+  --category-color: var(--category-technology-color);
+  --category-soft-bg: var(--category-technology-bg);
+}
+
+.activity-category-bar__item--music {
+  --category-color: var(--category-music-color);
+  --category-soft-bg: var(--category-music-bg);
+}
+
+.activity-category-bar__item--creative {
+  --category-color: var(--category-creative-color);
+  --category-soft-bg: var(--category-creative-bg);
+}
+
+@media (min-width: 75rem) {
+  .activity-category-bar__list {
+    padding-block: var(--space-3);
+  }
+
+  .activity-category-bar__item {
+    min-width: 7.25rem;
+  }
+}

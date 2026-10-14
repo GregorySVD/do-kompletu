@@ -1,5 +1,6 @@
 import { useMediaQuery } from '@mui/material'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import ActivityCategoryBar from '../../components/home/ActivityCategoryBar/ActivityCategoryBar'
 import ActivityListPanel from '../../components/home/ActivityListPanel/ActivityListPanel'
 import HomeMapPanel from '../../components/home/HomeMapPanel/HomeMapPanel'
 import MapVisibilityToggle from '../../components/home/MapVisibilityToggle/MapVisibilityToggle'
@@ -31,11 +32,13 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   const {
     selectedCategoryId,
     priceFilter,
+    timeFilter,
     availabilityOnly,
     filteredActivities,
     hasActiveFilters,
     toggleCategory,
     setPriceFilter,
+    setTimeFilter,
     setAvailabilityOnly,
     clearFilters,
   } = useActivityFilters({
@@ -52,14 +55,28 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   const isMapVisible = isDesktopLayout
     ? isDesktopMapVisible
     : viewMode === 'map'
+  const categoryBarItems = useMemo(() => {
+    const categoryCounts = new Map<string, number>()
+
+    for (const activity of activitiesQuery.data ?? []) {
+      categoryCounts.set(
+        activity.category.id,
+        (categoryCounts.get(activity.category.id) ?? 0) + 1,
+      )
+    }
+
+    return (categoriesQuery.data ?? []).map((category) => ({
+      ...category,
+      count: categoryCounts.get(category.id) ?? 0,
+    }))
+  }, [activitiesQuery.data, categoriesQuery.data])
   const filterProps = {
-    categories: categoriesQuery.data ?? [],
-    selectedCategoryId,
     priceFilter,
+    timeFilter,
     availabilityOnly,
     hasActiveFilters,
-    onToggleCategory: toggleCategory,
     onPriceFilterChange: setPriceFilter,
+    onTimeFilterChange: setTimeFilter,
     onAvailabilityChange: setAvailabilityOnly,
     onClearFilters: clearFilters,
   }
@@ -98,6 +115,12 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
 
   return (
     <main className="home-page">
+      <ActivityCategoryBar
+        categories={categoryBarItems}
+        selectedCategoryId={selectedCategoryId}
+        onToggleCategory={toggleCategory}
+      />
+
       <MobileHomeControls
         viewMode={viewMode}
         onViewModeChange={setViewMode}

@@ -91,6 +91,25 @@
   --color-warning: #b97712;
   --color-error: #c93636;
 
+  --category-team-sport-color: #d85f32;
+  --category-team-sport-bg: #fff0e9;
+  --category-board-games-color: #b77905;
+  --category-board-games-bg: #fff6d9;
+  --category-rpg-color: #7652c7;
+  --category-rpg-bg: #f1ebff;
+  --category-gaming-color: #c43d86;
+  --category-gaming-bg: #ffeaf5;
+  --category-study-color: #168c79;
+  --category-study-bg: #e3f7f1;
+  --category-technology-color: #147fb5;
+  --category-technology-bg: #e4f4fb;
+  --category-music-color: #cf4747;
+  --category-music-bg: #ffebeb;
+  --category-creative-color: #a142a8;
+  --category-creative-bg: #f8eafa;
+  --category-fallback-color: #65736b;
+  --category-fallback-bg: #e9efeb;
+
   --header-gradient-start: #35493b;
   --header-gradient-middle: #3b3c42;
   --header-gradient-end: #584653;
@@ -143,6 +162,25 @@
   --color-success: #49d489;
   --color-warning: #e2aa4c;
   --color-error: #ff6b6b;
+
+  --category-team-sport-color: #ff9267;
+  --category-team-sport-bg: #4a2b21;
+  --category-board-games-color: #f3c45d;
+  --category-board-games-bg: #45381e;
+  --category-rpg-color: #b99aff;
+  --category-rpg-bg: #352b4f;
+  --category-gaming-color: #f27dbb;
+  --category-gaming-bg: #48283b;
+  --category-study-color: #63d6bd;
+  --category-study-bg: #1f4038;
+  --category-technology-color: #65c7f2;
+  --category-technology-bg: #203c49;
+  --category-music-color: #ff8383;
+  --category-music-bg: #48292a;
+  --category-creative-color: #dd86e3;
+  --category-creative-bg: #442c48;
+  --category-fallback-color: #a8b8af;
+  --category-fallback-bg: #2b3931;
 
   --header-gradient-start: #18372b;
   --header-gradient-middle: #292d33;

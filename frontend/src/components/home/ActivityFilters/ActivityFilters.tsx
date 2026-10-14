@@ -1,25 +1,22 @@
 import {
   Button,
-  Chip,
   FormControlLabel,
   Switch,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
-import type { PriceFilter } from '../../../hooks/useActivityFilters'
-import type { ActivityCategory } from '../../../types/activity'
+import type { PriceFilter, TimeFilter } from '../../../hooks/useActivityFilters'
 import './ActivityFilters.css'
 
 export interface ActivityFiltersProps {
   titleId: string
-  categories: ActivityCategory[]
-  selectedCategoryId: string | null
   priceFilter: PriceFilter
+  timeFilter: TimeFilter
   availabilityOnly: boolean
   hasActiveFilters: boolean
-  onToggleCategory: (categoryId: string) => void
   onPriceFilterChange: (value: PriceFilter) => void
+  onTimeFilterChange: (value: TimeFilter) => void
   onAvailabilityChange: (value: boolean) => void
   onClearFilters: () => void
 }
@@ -28,13 +25,12 @@ export type ActivityFilterProps = Omit<ActivityFiltersProps, 'titleId'>
 
 function ActivityFilters({
   titleId,
-  categories,
-  selectedCategoryId,
   priceFilter,
+  timeFilter,
   availabilityOnly,
   hasActiveFilters,
-  onToggleCategory,
   onPriceFilterChange,
+  onTimeFilterChange,
   onAvailabilityChange,
   onClearFilters,
 }: ActivityFiltersProps) {
@@ -54,29 +50,6 @@ function ActivityFilters({
         </Button>
       </div>
 
-      <div className="filters__group">
-        <Typography component="h3" variant="subtitle1">
-          Kategorie
-        </Typography>
-
-        <div className="categories__list">
-          {categories.map((category) => {
-            const isSelected = selectedCategoryId === category.id
-
-            return (
-              <Chip
-                key={category.id}
-                label={category.name}
-                color={isSelected ? 'primary' : 'default'}
-                size="small"
-                variant={isSelected ? 'filled' : 'outlined'}
-                onClick={() => onToggleCategory(category.id)}
-              />
-            )
-          })}
-        </div>
-      </div>
-
       <div className="filters__controls">
         <div className="filters__group">
           <Typography component="h3" variant="subtitle1">
@@ -84,6 +57,7 @@ function ActivityFilters({
           </Typography>
 
           <ToggleButtonGroup
+            className="filters__options"
             aria-label="Rodzaj ceny"
             exclusive
             size="small"
@@ -100,16 +74,47 @@ function ActivityFilters({
           </ToggleButtonGroup>
         </div>
 
-        <FormControlLabel
-          className="filters__availability"
-          control={
-            <Switch
-              checked={availabilityOnly}
-              onChange={(event) => onAvailabilityChange(event.target.checked)}
-            />
-          }
-          label="Tylko aktywności z dostępnymi miejscami"
-        />
+        <div className="filters__group">
+          <Typography component="h3" variant="subtitle1">
+            Termin
+          </Typography>
+
+          <ToggleButtonGroup
+            className="filters__options"
+            aria-label="Termin aktywności"
+            exclusive
+            size="small"
+            value={timeFilter}
+            onChange={(_, value: TimeFilter | null) => {
+              if (value !== null) {
+                onTimeFilterChange(value)
+              }
+            }}
+          >
+            <ToggleButton value="ALL">Wszystkie terminy</ToggleButton>
+            <ToggleButton value="TODAY">Dzisiaj</ToggleButton>
+            <ToggleButton value="TOMORROW">Jutro</ToggleButton>
+            <ToggleButton value="NEXT_7_DAYS">Najbliższe 7 dni</ToggleButton>
+            <ToggleButton value="NEXT_30_DAYS">Najbliższe 30 dni</ToggleButton>
+          </ToggleButtonGroup>
+        </div>
+
+        <div className="filters__group">
+          <Typography component="h3" variant="subtitle1">
+            Dostępność
+          </Typography>
+
+          <FormControlLabel
+            className="filters__availability"
+            control={
+              <Switch
+                checked={availabilityOnly}
+                onChange={(event) => onAvailabilityChange(event.target.checked)}
+              />
+            }
+            label="Tylko aktywności z dostępnymi miejscami"
+          />
+        </div>
       </div>
     </>
   )
