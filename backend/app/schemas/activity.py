@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -169,7 +169,9 @@ class ActivityCreate(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
-            "examples": [example["value"] for example in ACTIVITY_CREATE_EXAMPLES.values()]
+            "examples": [
+                example["value"] for example in ACTIVITY_CREATE_EXAMPLES.values()
+            ]
         },
     )
 
@@ -299,7 +301,9 @@ class ActivityCategoryRead(BaseModel):
 
 class ActivityOrganizerRead(BaseModel):
     id: UUID = Field(description="Public identifier of the activity organizer.")
-    display_name: str = Field(description="Organizer display name safe for public display.")
+    display_name: str = Field(
+        description="Organizer display name safe for public display."
+    )
     avatar_url: str | None = Field(description="Organizer avatar URL, when configured.")
 
 
@@ -320,11 +324,14 @@ class ActivityPermissionsRead(BaseModel):
     )
     can_join: bool = Field(
         default=False,
-        description="Whether the current user may join the activity; currently always false.",
+        description=(
+            "True for authenticated non-organizers who have not joined, while the "
+            "activity has not ended and capacity remains."
+        ),
     )
     can_leave: bool = Field(
         default=False,
-        description="Whether the current user may leave the activity; currently always false.",
+        description="True for a joined non-organizer before the activity ends.",
     )
     can_confirm: bool = Field(
         default=False,
@@ -365,7 +372,7 @@ class ActivityListItem(BaseModel):
     min_participants: int
     max_participants: int | None
     participant_count: int = Field(
-        description="Confirmed participant count; currently 0 until participation is implemented."
+        description="Persisted active membership count, excluding the organizer."
     )
     checked_in_count: int = Field(
         description="Checked-in count; currently 0 until check-in is implemented."
@@ -385,6 +392,14 @@ class ActivityListItem(BaseModel):
             "until end_at, and ENDED afterward."
         )
     )
+
+
+class ActivityParticipationRead(BaseModel):
+    status: Literal["JOINED"] = Field(
+        default="JOINED",
+        description="Active membership only; does not imply attendance confirmation.",
+    )
+    joined_at: datetime = Field(description="UTC time the current user joined.")
 
 
 class ActivityRead(ActivityListItem):
@@ -422,11 +437,64 @@ class ActivityRead(ActivityListItem):
     currency: str | None = Field(
         description="Currency code for paid activities (`PLN`), otherwise null."
     )
-    current_user_participation: None = Field(
+    current_user_participation: ActivityParticipationRead | None = Field(
         default=None,
-        description="Reserved participation state for the current user; currently null.",
+        description=(
+            "The authenticated caller's active membership, or null for anonymous "
+            "users, organizers, and non-members. Never another user's membership."
+        ),
     )
     permissions: ActivityPermissionsRead = Field(
         default_factory=ActivityPermissionsRead,
-        description="Current user's permissions; all values are currently false.",
+        description=(
+            "Caller-specific join/leave permissions. Unimplemented actions remain false."
+        ),
     )
+
+
+# Complete valid response examples; both endpoints return the existing detail shape.
+ACTIVITY_JOIN_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        "id": "d54112d9-43cf-4986-8679-b6c236ac522c",
+        "title": ACTIVITY_CREATE_EXAMPLE["title"],
+        "description": ACTIVITY_CREATE_EXAMPLE["description"],
+        "category": {
+            "id": ActivityCategoryId.TEAM_SPORT.value,
+            "name": ACTIVITY_CATEGORIES[ActivityCategoryId.TEAM_SPORT].name,
+            "slug": ACTIVITY_CATEGORIES[ActivityCategoryId.TEAM_SPORT].slug,
+        },
+        "start_at": ACTIVITY_CREATE_EXAMPLE["start_at"],
+        "end_at": ACTIVITY_CREATE_EXAMPLE["end_at"],
+        "location_name": ACTIVITY_CREATE_EXAMPLE["location_name"],
+        "address": ACTIVITY_CREATE_EXAMPLE["address"],
+        "latitude": 52.4232,
+        "longitude": 16.9461,
+        "price_type": "FREE",
+        "price_amount": None,
+        "currency": None,
+        "min_participants": 4,
+        "max_participants": 12,
+        "participant_count": 1,
+        "checked_in_count": 0,
+        "waitlist_count": 0,
+        "available_slots": 11,
+        "status": "PUBLISHED",
+        "organizer": {
+            "id": "bb1aedb3-54f4-45c4-ab10-2fb0a07b53ca",
+            "display_name": "Organizer",
+            "avatar_url": None,
+        },
+        "current_user_participation": {
+            "status": "JOINED",
+            "joined_at": "2030-08-01T12:00:00Z",
+        },
+        "permissions": {"can_leave": True},
+    }
+).model_dump(mode="json")
+ACTIVITY_LEAVE_RESPONSE_EXAMPLE = {
+    **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+    "participant_count": 0,
+    "available_slots": 12,
+    "current_user_participation": None,
+    "permissions": ActivityPermissionsRead(can_join=True).model_dump(),
+}

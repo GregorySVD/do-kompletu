@@ -5,8 +5,8 @@
 Do Kompletu is an API-first application for creating and discovering real-world
 group activities. The repository currently contains a FastAPI backend and a frontend
 workspace. This document describes the backend contract and local development flow.
-Users can already create and discover location-based activities. Joining activities
-is planned for a future milestone, followed later by points, ranks, and reviews.
+Users can create and discover location-based activities, join them, and leave them.
+Points, ranks, attendance workflows, and reviews remain future milestones.
 
 ## Technology stack
 
@@ -28,14 +28,14 @@ Implemented:
 - authenticated profile read/update;
 - canonical activity categories;
 - authenticated activity creation plus public activity list and detail endpoints;
-- PostGIS point storage, activity filtering, pagination, and time-derived status.
+- PostGIS point storage, activity filtering, pagination, and time-derived status;
+- authenticated joining/leaving with persisted membership, real participant counts,
+  remaining capacity, and caller-specific detail permissions;
+- PostgreSQL row locking for concurrent capacity enforcement.
 
 In progress / next:
 
-- connect the frontend to the real backend API and migrate its login payload to
-  `identifier`;
-- joining/leaving activities and participant membership;
-- capacity enforcement based on participant membership;
+- connect frontend join/leave actions and replace the My Activities mocks;
 - attendance confirmation and location-based check-in;
 - activity editing, cancellation, and deletion;
 
@@ -76,19 +76,9 @@ list (or a JSON list) of trusted frontend origins.
 
 ## Frontend integration note
 
-**Frontend action required:** `POST /api/v1/auth/login` must send `identifier`, not
-`email`. This documentation task does not modify frontend source code.
-
-Old payload:
-
-```json
-{
-  "email": "user@example.com",
-  "password": "..."
-}
-```
-
-Current payload, using either email or display name:
+The current frontend already sends `identifier` for login and uses real APIs for
+registration, current profile, categories, discovery, details, and activity creation.
+Login accepts either email or display name:
 
 ```json
 {
@@ -103,6 +93,18 @@ Current payload, using either email or display name:
   "password": "..."
 }
 ```
+
+Participation still needs frontend integration: the detail join button has no
+handler, no leave action exists, and `current_user_participation` is typed as only
+`null`. My Activities still reads static activity/user fixtures, so this milestone
+does not introduce a speculative My Activities API. Detail query caches must be
+scoped to the current user or invalidated on authentication changes, and refreshed
+after join/leave along with list counts. An expired supplied access token now yields
+401 on detail reads; refresh/retry or clear credentials before anonymous browsing.
+
+The inspected contract, complete join/leave examples, and remaining integration
+work are documented in [the participation contract](backend/docs/activity-participation.md).
+Frontend source files are unchanged.
 
 ## Authentication
 
@@ -147,11 +149,48 @@ unique index on `lower(display_name)`.
 | `GET` | `/api/v1/categories` | No | List canonical activity categories |
 | `POST` | `/api/v1/activities` | Access token | Create an activity for the current user |
 | `GET` | `/api/v1/activities` | No | List/filter activity projections |
-| `GET` | `/api/v1/activities/{activity_id}` | No | Read public activity details |
+| `GET` | `/api/v1/activities/{activity_id}` | Optional access token | Read details and caller-specific membership/permissions |
+| `POST` | `/api/v1/activities/{activity_id}/join` | Access token | Join; return updated details (201) |
+| `DELETE` | `/api/v1/activities/{activity_id}/join` | Access token | Leave; return updated details (200) |
 
 For the complete request rules, selectable examples, category UUIDs, responses, and
 error shapes, use Swagger UI. The create-activity operation documents participant,
 time, location, category, and `FREE`/`PAID` consistency rules.
+
+## Activity participation
+
+Join and leave accept no request body. Use a different account from the organizer
+and send `Authorization: Bearer <access_token>`. Both return `ActivityRead`, including
+updated counts and `current_user_participation` (`{"status":"JOINED","joined_at":"..."}`
+after joining, `null` after leaving).
+
+- Organizers are separate from membership: they cannot join/leave their own event
+  and do not consume a participant place. Creation still starts with zero participants.
+- Non-organizers can join before/during an activity, strictly before `end_at`.
+- A finite `max_participants` limits persisted membership; `null` is unlimited.
+- Leaving removes membership and frees a place. Rejoining is allowed while eligible.
+- Ended membership is preserved for history; joining/leaving after the end is rejected.
+- Missing credentials return 401; unknown activities return 404. Duplicate joining,
+  full capacity, organizer actions, ended activities, and leaving without membership
+  return 409 with the normal `{"detail":"..."}` error body. Repeated DELETE returns
+  409; state remains unchanged.
+- `participant_count` counts persisted membership rows, excluding the organizer.
+  `available_slots` is `max_participants - participant_count`, or `null` if unlimited.
+  Checked-in/waitlist counts remain zero; membership does not confirm attendance.
+- Anonymous detail reads return null membership and false permissions. Authenticated
+  details expose only the caller's membership. Supplied invalid credentials return
+  401; omit Authorization for anonymous browsing. Detail responses use
+  `Cache-Control: private, no-store` and `Vary: Authorization`.
+- `can_join` and `can_leave` reflect these rules. All unimplemented permissions,
+  including organizer edit/delete, remain false.
+
+Every join/leave transaction locks the parent activity using `SELECT ... FOR UPDATE`
+before reading membership/capacity, and holds that lock through insertion/deletion,
+the updated response snapshot, and commit. The application explicitly uses PostgreSQL
+READ COMMITTED isolation, so a waiting writer counts the preceding writer's committed
+rows. A composite primary key also prevents duplicate membership. All future membership/capacity
+writers must follow the same locking protocol; direct SQL writes bypass business rules.
+Counts are queried from rows instead of maintained as mutable counters.
 
 ## Optional bootstrap user
 
@@ -185,7 +224,11 @@ The migration history is append-only:
 - `20260927_0002` adds the PostgreSQL unique functional index on
   `lower(display_name)`;
 - `20260927_0003` creates activities, PostGIS geography storage, constraints, and
-  indexes.
+  indexes;
+- `20261018_0004` adds `activity_participations`: UUID activity/user foreign keys with
+  cascading cleanup, composite primary key, `joined_at` timestamptz defaulting to
+  `now()`, and an index on user ID. A row represents active membership. No speculative
+  status/history/reward columns are added; later migrations can extend the relation.
 
 Apply and inspect migrations with:
 
@@ -203,7 +246,9 @@ uv run alembic upgrade head
 ```
 
 Do not run a downgrade against production without a reviewed rollback plan and a
-backup.
+backup. Downgrading `0004` drops membership data while preserving users and activities.
+Prefer validating rollback in a temporary database. A new database must have the
+PostGIS extension enabled before applying the existing activity migration.
 
 ## Testing and quality checks
 
@@ -216,26 +261,35 @@ uv run python -m compileall app
 uv lock --check
 ```
 
-Most tests use an isolated SQLite setup. PostgreSQL/PostGIS-specific behavior has a
-separate integration test and is skipped unless `POSTGRES_TEST_DATABASE_URL` is set
+Most tests use an isolated SQLite setup with foreign keys enabled. PostgreSQL/PostGIS
+tests are skipped unless `POSTGRES_TEST_DATABASE_URL` is set
 to a migrated PostgreSQL database:
 
 ```powershell
 $env:POSTGRES_TEST_DATABASE_URL = "postgresql+psycopg://USER:PASSWORD@HOST:PORT/DATABASE"
-uv run pytest -v tests/test_activities_postgres.py
+uv run pytest -v tests/test_activities_postgres.py tests/test_participation_postgres.py
 ```
 
-Do not point the integration test at production data.
+Do not point integration tests at production data. Membership integration fixtures
+commit only generated test UUIDs, exercise independent connections, and delete only
+their own records afterward. They test schema constraints/defaults, cascades, API
+projections, and concurrent final-place joins, duplicate joins, and join/leave races.
+The concurrency test holds the activity lock until both workers visibly wait in
+`pg_stat_activity`, then checks serial outcomes and capacity. SQLite tests do not
+claim to validate PostgreSQL locking. The final-place scenario uses capacity two
+with one existing member because the established creation contract requires at least two.
 
 ## Known limitations
 
-- Participant, waitlist, confirmation, check-in, gallery, and upload permissions are
-  placeholders and currently return `false`.
-- Participant, checked-in, and waitlist counts currently return `0`.
+- Waitlist, confirmation, check-in, gallery, upload, and organizer edit/delete
+  permissions remain `false`; corresponding workflows are not implemented.
+- Checked-in and waitlist counts remain `0`. Membership is not attendance confirmation.
 - `distance_m` is currently `null`; nearby search is not implemented.
 - Categories are fixed application reference data rather than database-managed rows.
 - Activity status is derived from the current time and the stored start/end times.
-- Activity operations currently cover create, public list, and public detail only.
+- My Activities is still a frontend mock; its authenticated API is a future milestone.
+- Leaving removes the membership row; leave/rejoin audit history is not stored.
+- Capacity is enforced by the service locking protocol, not by a database count trigger.
 - Role-based administrator authorization is not implemented.
 
 ## Security notes

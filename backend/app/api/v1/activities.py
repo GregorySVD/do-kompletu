@@ -3,15 +3,26 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    Response,
+    status,
+)
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, get_optional_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.activity import (
     ACTIVITY_CATEGORY_MARKDOWN_TABLE,
     ACTIVITY_CREATE_EXAMPLES,
+    ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+    ACTIVITY_LEAVE_RESPONSE_EXAMPLE,
     ActivityCategoryId,
     ActivityCreate,
     ActivityListItem,
@@ -24,6 +35,11 @@ from app.services.activity_service import (
     create_activity,
     get_activity_by_id,
     list_activities,
+)
+from app.services.participation_service import (
+    ParticipationError,
+    join_activity,
+    leave_activity,
 )
 
 router = APIRouter(prefix="/activities", tags=["Activities"])
@@ -75,10 +91,10 @@ name.
 
 ## CURRENT LIMITATIONS
 
-This milestone supports create, list, and detail operations. Participation,
-waitlists, confirmations, check-in, galleries, and nearby-distance calculation are
-not implemented. Related response counters and permissions are documented
-placeholders.
+Create, list, detail, join, and leave are implemented. The organizer is separate
+from membership and does not consume a participant place. Counts reflect persisted
+memberships. Waitlists, confirmations, check-in, galleries, and nearby-distance
+calculation are not implemented; their related fields remain placeholders.
 """
 
 
@@ -109,9 +125,7 @@ placeholders.
 def create(
     payload: Annotated[
         ActivityCreate,
-        Body(
-            openapi_examples=ACTIVITY_CREATE_EXAMPLES
-        ),
+        Body(openapi_examples=ACTIVITY_CREATE_EXAMPLES),
     ],
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_db)],
@@ -173,12 +187,19 @@ def list_all(
     "/{activity_id}",
     response_model=ActivityRead,
     summary="Get activity details",
+    # FastAPI merges this anonymous alternative with the generated bearer scheme.
+    openapi_extra={"security": [{}]},
     description=(
         "Return public details and the organizer's safe public identity. Password "
-        "hashes and other internal user fields are never exposed."
+        "hashes and other internal user fields are never exposed. Authentication "
+        "is optional: omit Authorization for anonymous browsing, or send an access "
+        "bearer token for your own membership and join/leave permissions. Supplied "
+        "invalid/expired credentials return 401. Membership counts are public; "
+        "other users' memberships are never returned. Responses must not be cached."
     ),
     response_description="The requested activity details.",
     responses={
+        401: {"description": "Supplied bearer credentials are invalid or expired."},
         404: {
             "description": "No activity exists for the supplied UUID.",
             "content": {
@@ -191,11 +212,149 @@ def list_all(
 def read(
     activity_id: Annotated[UUID, Path(description="Activity UUID.")],
     session: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(get_optional_current_user)],
+    response: Response,
 ) -> ActivityRead:
-    result = get_activity_by_id(session, activity_id)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Vary"] = "Authorization"
+    result = get_activity_by_id(
+        session,
+        activity_id,
+        current_user_id=current_user.id if current_user is not None else None,
+    )
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Activity not found",
         )
     return activity_to_read(result)
+
+
+def _membership_responses(*conflicts: str) -> dict:
+    return {
+        401: {
+            "description": "Authentication required: use an access JWT, not a refresh JWT.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Could not validate credentials"}
+                }
+            },
+        },
+        404: {
+            "description": "No activity exists for this UUID.",
+            "content": {
+                "application/json": {"example": {"detail": "Activity not found"}}
+            },
+        },
+        409: {
+            "description": "Membership change conflicts with current activity state.",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        f"conflict_{index}": {
+                            "summary": detail,
+                            "value": {"detail": detail},
+                        }
+                        for index, detail in enumerate(conflicts)
+                    }
+                }
+            },
+        },
+        422: {"description": "The activity_id path parameter is not a valid UUID."},
+    }
+
+
+@router.post(
+    "/{activity_id}/join",
+    response_model=ActivityRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Join an activity",
+    description="""
+Create active membership for the authenticated caller. No request body is needed.
+
+In Swagger, register/login as a user other than the organizer, select **Authorize**
+(email or display name in `username`), and paste a real activity UUID into
+`activity_id`. Public `GET /api/v1/activities` supplies activity IDs.
+
+Send `Authorization: Bearer <access_token>`; refresh tokens are not accepted.
+The organizer cannot join and is excluded from participant counts and capacity.
+Joining is allowed before and during the activity, strictly before `end_at`.
+Duplicate joins return 409, including when the activity is full. Full activities
+return 409; `max_participants: null` means unlimited places.
+
+PostgreSQL serializes join/leave transactions using a lock on the activity row.
+The 201 response contains updated activity details, counts, your `JOINED` state,
+and permissions. `JOINED` does not mean confirmed attendance or check-in.
+Waitlist and check-in counts remain zero. Retry after an uncertain network result
+by reading details; another POST after a successful join returns 409.
+""",
+    response_description="Updated activity details including your new active membership.",
+    responses={
+        201: {
+            "content": {"application/json": {"example": ACTIVITY_JOIN_RESPONSE_EXAMPLE}}
+        },
+        **_membership_responses(
+            "Already joined this activity",
+            "Activity is full",
+            "Activity has ended",
+            "Organizer cannot join or leave their own activity",
+        ),
+    },
+)
+def join(
+    activity_id: Annotated[UUID, Path(description="UUID from an existing activity.")],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_db)],
+    response: Response,
+) -> ActivityRead:
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        return activity_to_read(join_activity(session, activity_id, current_user.id))
+    except ParticipationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.delete(
+    "/{activity_id}/join",
+    response_model=ActivityRead,
+    summary="Leave an activity",
+    description="""
+Remove the authenticated caller's active membership. No request body is needed.
+Send an access JWT using **Authorize** or `Authorization: Bearer <access_token>`.
+First join as a non-organizer with POST on this same path, then try DELETE.
+
+The 200 response is the updated activity detail: participant count decreases,
+capacity becomes available, and `current_user_participation` becomes null.
+The organizer cannot leave because organizers are separate from membership.
+Leaving is allowed before and during an activity, strictly before `end_at`.
+Ended membership is preserved for history; leaving after the end returns 409.
+
+A user without membership receives 409 (including a repeated DELETE); the stored
+state is unchanged. Membership may be created again by joining while eligible.
+Join and leave use the same PostgreSQL activity-row lock, preventing counter races.
+""",
+    response_description="Updated activity details after removing your membership.",
+    responses={
+        200: {
+            "content": {
+                "application/json": {"example": ACTIVITY_LEAVE_RESPONSE_EXAMPLE}
+            }
+        },
+        **_membership_responses(
+            "Not participating in this activity",
+            "Activity has ended",
+            "Organizer cannot join or leave their own activity",
+        ),
+    },
+)
+def leave(
+    activity_id: Annotated[UUID, Path(description="UUID of the joined activity.")],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_db)],
+    response: Response,
+) -> ActivityRead:
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        return activity_to_read(leave_activity(session, activity_id, current_user.id))
+    except ParticipationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc

@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from app.schemas.activity import ACTIVITY_CATEGORIES, ActivityCreate, PriceType
+from app.schemas.activity import (
+    ACTIVITY_CATEGORIES,
+    ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+    ACTIVITY_LEAVE_RESPONSE_EXAMPLE,
+    ActivityCreate,
+    ActivityRead,
+    PriceType,
+)
 
 
 def test_categories_endpoint_returns_canonical_activity_categories(client):
@@ -50,9 +57,9 @@ def test_openapi_token_docs_explain_swagger_credentials(client):
 
 def test_openapi_activity_create_uses_valid_request_example(client):
     schema = client.get("/openapi.json").json()
-    example = schema["paths"]["/api/v1/activities"]["post"]["requestBody"][
-        "content"
-    ]["application/json"]["examples"]["valid_free_activity"]["value"]
+    example = schema["paths"]["/api/v1/activities"]["post"]["requestBody"]["content"][
+        "application/json"
+    ]["examples"]["valid_free_activity"]["value"]
 
     validated_example = ActivityCreate.model_validate(example)
 
@@ -63,9 +70,9 @@ def test_openapi_activity_create_uses_valid_request_example(client):
 
 def test_openapi_activity_create_has_three_valid_selectable_examples(client):
     schema = client.get("/openapi.json").json()
-    examples = schema["paths"]["/api/v1/activities"]["post"]["requestBody"][
-        "content"
-    ]["application/json"]["examples"]
+    examples = schema["paths"]["/api/v1/activities"]["post"]["requestBody"]["content"][
+        "application/json"
+    ]["examples"]
 
     assert set(examples) == {
         "valid_free_activity",
@@ -74,8 +81,7 @@ def test_openapi_activity_create_has_three_valid_selectable_examples(client):
     }
 
     validated = [
-        ActivityCreate.model_validate(example["value"])
-        for example in examples.values()
+        ActivityCreate.model_validate(example["value"]) for example in examples.values()
     ]
     assert all(item.end_at > item.start_at for item in validated)
     assert any(
@@ -104,9 +110,7 @@ def test_openapi_activity_create_docs_list_every_canonical_category(client):
 
 def test_openapi_activity_create_docs_explain_price_and_participant_rules(client):
     schema = client.get("/openapi.json").json()
-    create_docs = schema["paths"]["/api/v1/activities"]["post"][
-        "description"
-    ].lower()
+    create_docs = schema["paths"]["/api/v1/activities"]["post"]["description"].lower()
 
     assert "## participants" in create_docs
     assert "has_participant_limit" in create_docs
@@ -149,3 +153,45 @@ def test_openapi_has_documented_tags_and_endpoint_summaries(client):
     assert schema["paths"]["/api/v1/activities"]["post"]["summary"]
     assert schema["paths"]["/api/v1/activities"]["get"]["summary"]
     assert schema["paths"]["/api/v1/activities/{activity_id}"]["get"]["summary"]
+
+
+def test_openapi_membership_endpoints_document_auth_conflicts_and_valid_examples(
+    client,
+):
+    schema = client.get("/openapi.json").json()
+    path = schema["paths"]["/api/v1/activities/{activity_id}/join"]
+    for method, success in [("post", "201"), ("delete", "200")]:
+        operation = path[method]
+        assert operation["summary"]
+        assert operation["security"] == [{"OAuth2PasswordBearer": []}]
+        assert {success, "401", "404", "409", "422"} <= operation["responses"].keys()
+        assert "requestBody" not in operation
+        example = operation["responses"][success]["content"]["application/json"][
+            "example"
+        ]
+        activity = ActivityRead.model_validate(example)
+        assert example == (
+            ACTIVITY_JOIN_RESPONSE_EXAMPLE
+            if method == "post"
+            else ACTIVITY_LEAVE_RESPONSE_EXAMPLE
+        )
+        assert activity.participant_count == (1 if method == "post" else 0)
+        assert activity.permissions.can_leave is (method == "post")
+        assert activity.permissions.can_join is (method == "delete")
+        conflicts = operation["responses"]["409"]["content"]["application/json"][
+            "examples"
+        ]
+        details = {example["value"]["detail"] for example in conflicts.values()}
+        assert "Activity has ended" in details
+        assert "Organizer cannot join or leave their own activity" in details
+
+
+def test_openapi_detail_documents_optional_auth_and_membership_shape(client):
+    schema = client.get("/openapi.json").json()
+    operation = schema["paths"]["/api/v1/activities/{activity_id}"]["get"]
+    assert "optional" in operation["description"].lower()
+    assert operation["security"] == [{"OAuth2PasswordBearer": []}, {}]
+    assert "401" in operation["responses"]
+    membership = schema["components"]["schemas"]["ActivityParticipationRead"]
+    assert membership["properties"]["status"]["const"] == "JOINED"
+    assert membership["properties"]["joined_at"]["format"] == "date-time"
