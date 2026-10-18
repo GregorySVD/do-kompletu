@@ -193,7 +193,11 @@ def test_openapi_detail_documents_optional_auth_and_membership_shape(client):
     assert operation["security"] == [{"OAuth2PasswordBearer": []}, {}]
     assert "401" in operation["responses"]
     membership = schema["components"]["schemas"]["ActivityParticipationRead"]
-    assert membership["properties"]["status"]["const"] == "JOINED"
+    assert membership["properties"]["status"]["enum"] == [
+        "JOINED",
+        "CONFIRMED",
+        "CHECKED_IN",
+    ]
     assert membership["properties"]["joined_at"]["format"] == "date-time"
 
 

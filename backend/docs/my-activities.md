@@ -3,6 +3,10 @@
 Organizer editing and cancellation are now implemented by the subsequent
 [management milestone](activity-management.md). Cancelled rows remain in both
 relations and keep the end-time scopes described here; discovery excludes them.
+The [participation lifecycle](activity-participation.md) now retains LEFT records
+internally; joined lists include active JOINED/CONFIRMED/CHECKED_IN records.
+The [check-in contract](activity-check-in.md) describes live counts, timing, proximity,
+and checked_in_at privacy; no separate attendance-history endpoint is introduced.
 Current combined verification and the migration chain are in the
 [root README](../../README.md#testing). Earlier verification below is explicitly historical.
 
@@ -29,7 +33,11 @@ No existing My Activities API function or React Query hook constrains the URL.
 The API client sends the sessionStorage access token. Existing query keys lack
 user identity, so personalized caches need explicit handling during integration.
 The TypeScript detail type still declares `current_user_participation: null`, which
-must become `{ status: 'JOINED'; joined_at: string } | null`.
+must become an active JOINED/CONFIRMED/CHECKED_IN object/null union with joined_at
+and nullable confirmed_at/checked_in_at. Existing checkin_* metadata and can_check_in
+types/panel can be reused; browser geolocation and actions still need integration.
+The existing confirmation_opens_at/confirmation_deadline_at and can_confirm fields
+now carry real backend behavior; API functions, mutation hooks, and UI are still absent.
 
 ## API design
 
@@ -56,9 +64,13 @@ the frontend's existing all-organized section without merging the two relations.
 | Historia | `relation=joined&scope=history` |
 
 Organized selects `organizer_id == current_user.id`. Joined selects persisted
-membership for the caller and excludes the caller's organized activities.
-Leaving an uncancelled activity before end removes an item from joined lists;
-ended and cancelled memberships remain persisted. Cancellation blocks leaving.
+JOINED/CONFIRMED/CHECKED_IN membership for the caller and excludes LEFT and the caller's
+organized activities. Leaving an uncancelled activity before end marks its row
+LEFT and removes the item from joined lists without deleting the record. Eligible
+rejoin reactivates the row. Ended/cancelled active memberships remain listed;
+cancellation blocks all participation actions. CHECKED_IN cannot leave even before
+end. A separate list of left activities
+is not implemented, including in history scope.
 No other user's membership is returned.
 
 A single timezone-aware UTC cutoff is captured after authentication and used for
@@ -117,6 +129,7 @@ Authorization: Bearer <access_token>
     "waitlist_count": 0,
     "available_slots": 11,
     "status": "PUBLISHED",
+    "cancelled_at": null,
     "description": "Amatorski mecz siatkówki dla każdego chętnego.",
     "organizer": {
       "id": "bb1aedb3-54f4-45c4-ab10-2fb0a07b53ca",
@@ -124,18 +137,19 @@ Authorization: Bearer <access_token>
       "avatar_url": null
     },
     "tags": [],
-    "confirmation_opens_at": null,
-    "confirmation_deadline_at": null,
-    "checkin_opens_at": null,
-    "checkin_closes_at": null,
-    "checkin_radius_m": null,
+    "confirmation_opens_at": "2030-08-07T16:00:00Z",
+    "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+    "checkin_opens_at": "2030-08-08T15:30:00Z",
+    "checkin_closes_at": "2030-08-08T17:00:00Z",
+    "checkin_radius_m": 150,
     "price_amount": null,
     "currency": null,
     "current_user_participation": {
       "status": "JOINED",
-      "joined_at": "2030-08-01T12:00:00Z"
+      "joined_at": "2030-08-01T12:00:00Z",
+      "confirmed_at": null,
+      "checked_in_at": null
     },
-    "cancelled_at": null,
     "permissions": {
       "can_edit": false,
       "can_cancel": false,
@@ -154,10 +168,13 @@ Authorization: Bearer <access_token>
 Example IDs/timestamps are illustrative. Swagger also includes complete selectable
 organized, joined-history, and empty-array examples. Organized responses use the
 same schema with normally null membership and organizer can_edit/can_cancel based
-on lifecycle; history keeps JOINED membership but disables leaving. Cancelled
+on lifecycle; history keeps active JOINED/CONFIRMED/CHECKED_IN but disables all participant actions. Cancelled
 activities retain membership with all permissions false. Unlimited capacity returns null for both
 `max_participants` and `available_slots`. Participant counts exclude the organizer;
-checked-in and waitlist counts stay zero.
+checked_in_count counts only CHECKED_IN and waitlist_count stays zero.
+Current participation includes nullable confirmed_at/checked_in_at belonging only to the caller.
+LEFT returns null current participation. Public confirmation timing is derived in
+ActivityRead, with can_confirm true only for eligible JOINED users in the window.
 
 No matches or an offset beyond the result set returns exactly:
 
@@ -190,8 +207,11 @@ of page size. No formal benchmark or additional index is justified for this mile
 
 The My Activities milestone needed no migration or schema change. Its historical
 migration-file/database head was `20261018_0004`, using `localhost:5433`.
-The subsequent management migration adds cancelled_at; the current head is
-`20261018_0005`. The relation/scope query contract is unchanged.
+The subsequent management migration adds cancelled_at, and lifecycle migration
+`20261018_0006` adds status/left_at/confirmed_at; 0007 adds checked_in_at and CHECKED_IN.
+Current head is `20261018_0007`.
+The relation/scope query contract is unchanged; membership predicates/projections
+now explicitly filter active states in SQL.
 
 ## Tests and integration work
 
@@ -243,14 +263,17 @@ Frontend work still required:
    browser-clock classification and keep section labels/empty states.
 3. Add loading, retry/error, and pagination/load-more handling. Fetch after auth
    restoration and handle token refresh/re-authentication on 401.
-4. Update the membership TypeScript union and add cancelled_at/can_cancel. Invalidate
-   personal lists after create, join, leave, edit, and cancel, and clear/remove them
+4. Update the membership TypeScript union/timestamps and add cancelled_at/can_cancel.
+   Add confirmation API/hooks/UI using existing timing/can_confirm fields. Invalidate
+   personal lists after create, join, leave, confirm, check-in, edit, and cancel, and clear/remove them
    on logout/account changes.
 5. Add edit/cancel actions using can_edit/can_cancel and the management endpoints;
    display CANCELLED/cancelled_at while retaining membership context.
 
 No edit/cancel/delete controls currently exist in the frontend. The new
 [management contract](activity-management.md) supplies organizer editing/cancellation;
-hard deletion remains unimplemented. Attendance confirmation is a later milestone.
-Waitlist, confirmation, check-in, reviews, XP, rewards, ranks, achievements, chat,
+hard deletion remains unimplemented. Timed attendance confirmation is implemented
+by the participation contract, with PostGIS check-in described separately.
+Waitlist, completed attendance/no-show,
+reviews, XP, rewards, ranks, achievements, chat,
 notifications, and gallery features remain outside this milestone.

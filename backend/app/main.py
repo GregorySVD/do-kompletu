@@ -27,7 +27,7 @@ OPENAPI_TAGS = [
     {
         "name": "Activities",
         "description": (
-            "Create, edit, cancel, and browse activities; join or leave with an access JWT. "
+            "Create, edit, cancel, and browse activities; join, leave, confirm, or check in with an access JWT. "
             "Detail authentication is optional for caller-specific membership."
         ),
     },

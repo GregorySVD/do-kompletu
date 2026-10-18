@@ -31,8 +31,8 @@ rejected with 422. This endpoint never exposes another caller's membership.
 ## RELATION
 
 `relation=organized` selects activities you organize, without treating you as a
-participant. `relation=joined` selects your persisted memberships, excluding
-organizer activities. Relation is required; there is no combined/all relation.
+participant. `relation=joined` selects active JOINED/CONFIRMED/CHECKED_IN memberships,
+excluding LEFT records and organizer activities. Relation is required; there is no combined/all relation.
 
 ## TIME AND SORTING
 
@@ -60,13 +60,15 @@ shift offsets; pagination does not freeze the dataset.
 
 ## STATE AND LIMITATIONS
 
-Joined items include your `JOINED` state and joined_at; organized items normally
-have null membership. Counts/capacity come from persisted memberships; organizers
+Joined items include your actual JOINED/CONFIRMED/CHECKED_IN state, joined_at, and
+nullable confirmed_at/checked_in_at; LEFT is inactive and excluded. Organized items
+normally have null membership. Counts/capacity use active states; organizers
 do not consume places, and unlimited activities have available_slots=null.
 Cancelled activities remain in both relations and retain the same end-time scope;
 their status remains CANCELLED. can_edit/can_cancel follow organizer lifecycle rules;
-ended or cancelled memberships cannot leave. Checked-in/waitlist counts stay zero;
-deletion and future attendance/reward actions are not implemented. Responses are private and must not
+ended/cancelled/checked-in memberships cannot leave. checked_in_count counts only
+CHECKED_IN; waitlist stays zero. Confirmation and PostGIS check-in use their published
+windows. completed attendance, no-show, deletion, and rewards are not implemented. Responses are private and must not
 be cached by shared intermediaries. Scope client query caches to the current user.
 """,
     response_description="A page of your activity details with your own state and permissions.",

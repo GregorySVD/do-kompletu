@@ -6,11 +6,17 @@ from typing import Any
 from uuid import UUID
 
 from geoalchemy2 import Geometry, WKTElement
-from sqlalchemy import DateTime, Select, case, cast, func, literal, or_, select
+from sqlalchemy import DateTime, Select, String, case, cast, func, literal, or_, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.config import get_settings
 from app.models.activity import Activity
-from app.models.activity_participation import ActivityParticipation
+from app.models.activity_participation import (
+    ACTIVE_PARTICIPATION_STATUSES,
+    SCHEDULE_PROTECTED_PARTICIPATION_STATUSES,
+    ActivityParticipation,
+    ParticipationStatus,
+)
 from app.models.user import User
 from app.schemas.activity import (
     ACTIVITY_CATEGORIES,
@@ -27,6 +33,12 @@ from app.schemas.activity import (
     PriceType,
 )
 from app.schemas.my_activities import ActivityRelation, ActivityScope
+from app.services.participation_rules import (
+    check_in_window,
+    confirmation_window,
+    is_check_in_window_open,
+    is_confirmation_window_open,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +50,11 @@ class ActivityResult:
     current_user_joined_at: datetime | None = None
     current_user_id: UUID | None = None
     as_of: datetime | None = None
+    current_user_participation_status: str | None = None
+    current_user_confirmed_at: datetime | None = None
+    schedule_protected_participant_count: int = 0
+    checked_in_count: int = 0
+    current_user_checked_in_at: datetime | None = None
 
 
 def create_activity(
@@ -148,6 +165,7 @@ def list_user_activities(
             .where(
                 ActivityParticipation.activity_id == Activity.id,
                 ActivityParticipation.user_id == current_user_id,
+                ActivityParticipation.status.in_(ACTIVE_PARTICIPATION_STATUSES),
             )
             .exists()
         )
@@ -243,7 +261,7 @@ def activity_to_list_item(result: ActivityResult) -> ActivityListItem:
         min_participants=activity.min_participants,
         max_participants=activity.max_participants,
         participant_count=participant_count,
-        checked_in_count=0,
+        checked_in_count=result.checked_in_count,
         waitlist_count=0,
         available_slots=available_slots,
         status=_activity_status(
@@ -255,19 +273,32 @@ def activity_to_list_item(result: ActivityResult) -> ActivityListItem:
 def activity_to_read(result: ActivityResult) -> ActivityRead:
     activity = result.activity
     list_item = activity_to_list_item(result)
-    is_participant = result.current_user_joined_at is not None
+    is_participant = (
+        result.current_user_participation_status in ACTIVE_PARTICIPATION_STATUSES
+    )
     eligible_user = (
         result.current_user_id is not None
         and result.current_user_id != activity.organizer_id
     )
     is_open = list_item.status in {ActivityStatus.PUBLISHED, ActivityStatus.ONGOING}
     is_organizer = result.current_user_id == activity.organizer_id
+    start_at = _as_aware_utc(activity.start_at)
+    confirmation_opens_at, confirmation_deadline_at = confirmation_window(start_at)
+    checkin_opens_at, checkin_closes_at = check_in_window(
+        start_at, _as_aware_utc(activity.end_at)
+    )
+    now = result.as_of if result.as_of is not None else datetime.now(UTC)
     return ActivityRead(
         **list_item.model_dump(),
         cancelled_at=_as_aware_utc(activity.cancelled_at)
         if activity.cancelled_at is not None
         else None,
         description=activity.description,
+        confirmation_opens_at=confirmation_opens_at,
+        confirmation_deadline_at=confirmation_deadline_at,
+        checkin_opens_at=checkin_opens_at,
+        checkin_closes_at=checkin_closes_at,
+        checkin_radius_m=get_settings().activity_check_in_radius_meters,
         organizer=ActivityOrganizerRead(
             id=activity.organizer.id,
             display_name=activity.organizer.display_name,
@@ -279,9 +310,16 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
         currency="PLN" if activity.price_type == PriceType.PAID.value else None,
         current_user_participation=(
             ActivityParticipationRead(
-                joined_at=_as_aware_utc(result.current_user_joined_at)
+                status=result.current_user_participation_status,
+                joined_at=_as_aware_utc(result.current_user_joined_at),
+                confirmed_at=_as_aware_utc(result.current_user_confirmed_at)
+                if result.current_user_confirmed_at is not None
+                else None,
+                checked_in_at=_as_aware_utc(result.current_user_checked_in_at)
+                if result.current_user_checked_in_at is not None
+                else None,
             )
-            if result.current_user_joined_at is not None
+            if is_participant
             else None
         ),
         permissions=ActivityPermissionsRead(
@@ -293,7 +331,27 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
                 and not is_participant
                 and (list_item.available_slots is None or list_item.available_slots > 0)
             ),
-            can_leave=eligible_user and is_open and is_participant,
+            can_leave=eligible_user
+            and is_open
+            and is_participant
+            and result.current_user_participation_status
+            != ParticipationStatus.CHECKED_IN,
+            can_confirm=(
+                eligible_user
+                and is_open
+                and result.current_user_participation_status
+                == ParticipationStatus.JOINED
+                and is_confirmation_window_open(start_at, now)
+            ),
+            can_check_in=(
+                eligible_user
+                and is_open
+                and result.current_user_participation_status
+                == ParticipationStatus.CONFIRMED
+                and is_check_in_window_open(
+                    start_at, _as_aware_utc(activity.end_at), now
+                )
+            ),
         ),
     )
 
@@ -309,23 +367,63 @@ def _activity_results(
     # without loading participant lists or issuing one query per activity.
     participant_count = (
         select(func.count(ActivityParticipation.user_id))
-        .where(ActivityParticipation.activity_id == Activity.id)
-        .correlate(Activity)
-        .scalar_subquery()
-    )
-    joined_at = (
-        select(ActivityParticipation.joined_at)
         .where(
             ActivityParticipation.activity_id == Activity.id,
-            ActivityParticipation.user_id == current_user_id,
+            ActivityParticipation.status.in_(ACTIVE_PARTICIPATION_STATUSES),
         )
         .correlate(Activity)
         .scalar_subquery()
-        if current_user_id is not None
-        else literal(None, type_=DateTime(timezone=True))
     )
+    schedule_protected_count = (
+        select(func.count(ActivityParticipation.user_id))
+        .where(
+            ActivityParticipation.activity_id == Activity.id,
+            ActivityParticipation.status.in_(SCHEDULE_PROTECTED_PARTICIPATION_STATUSES),
+        )
+        .correlate(Activity)
+        .scalar_subquery()
+    )
+
+    checked_in_count = (
+        select(func.count(ActivityParticipation.user_id))
+        .where(
+            ActivityParticipation.activity_id == Activity.id,
+            ActivityParticipation.status == ParticipationStatus.CHECKED_IN,
+        )
+        .correlate(Activity)
+        .scalar_subquery()
+    )
+
+    def caller_value(column, type_):
+        if current_user_id is None:
+            return literal(None, type_=type_)
+        return (
+            select(column)
+            .where(
+                ActivityParticipation.activity_id == Activity.id,
+                ActivityParticipation.user_id == current_user_id,
+                ActivityParticipation.status.in_(ACTIVE_PARTICIPATION_STATUSES),
+            )
+            .correlate(Activity)
+            .scalar_subquery()
+        )
+
     statement = statement.add_columns(
-        participant_count.label("participant_count"), joined_at.label("joined_at")
+        participant_count.label("participant_count"),
+        schedule_protected_count.label("schedule_protected_count"),
+        checked_in_count.label("checked_in_count"),
+        caller_value(ActivityParticipation.joined_at, DateTime(timezone=True)).label(
+            "joined_at"
+        ),
+        caller_value(ActivityParticipation.status, String(16)).label(
+            "participation_status"
+        ),
+        caller_value(ActivityParticipation.confirmed_at, DateTime(timezone=True)).label(
+            "confirmed_at"
+        ),
+        caller_value(
+            ActivityParticipation.checked_in_at, DateTime(timezone=True)
+        ).label("checked_in_at"),
     )
     if _is_postgresql(session):
         point_geometry = cast(
@@ -345,6 +443,11 @@ def _activity_results(
                 longitude=float(row.longitude),
                 participant_count=row.participant_count,
                 current_user_joined_at=row.joined_at,
+                current_user_participation_status=row.participation_status,
+                current_user_confirmed_at=row.confirmed_at,
+                schedule_protected_participant_count=row.schedule_protected_count,
+                checked_in_count=row.checked_in_count,
+                current_user_checked_in_at=row.checked_in_at,
                 current_user_id=current_user_id,
                 as_of=as_of,
             )
@@ -358,6 +461,11 @@ def _activity_results(
             **_parse_test_location(row[0].location),
             participant_count=row.participant_count,
             current_user_joined_at=row.joined_at,
+            current_user_participation_status=row.participation_status,
+            current_user_confirmed_at=row.confirmed_at,
+            schedule_protected_participant_count=row.schedule_protected_count,
+            checked_in_count=row.checked_in_count,
+            current_user_checked_in_at=row.checked_in_at,
             current_user_id=current_user_id,
             as_of=as_of,
         )

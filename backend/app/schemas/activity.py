@@ -4,10 +4,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+Latitude = Annotated[float, Field(ge=-90, le=90, allow_inf_nan=False)]
+Longitude = Annotated[float, Field(ge=-180, le=180, allow_inf_nan=False)]
 
 
 class ActivityCategoryId(StrEnum):
@@ -208,14 +211,10 @@ class ActivityCreate(BaseModel):
         max_length=300,
         description="Human-readable street or venue address.",
     )
-    latitude: float = Field(
-        ge=-90,
-        le=90,
+    latitude: Latitude = Field(
         description="WGS 84 latitude in the inclusive range -90 to 90.",
     )
-    longitude: float = Field(
-        ge=-180,
-        le=180,
+    longitude: Longitude = Field(
         description="WGS 84 longitude in the inclusive range -180 to 180.",
     )
     min_participants: int = Field(
@@ -330,21 +329,21 @@ class ActivityPermissionsRead(BaseModel):
     can_join: bool = Field(
         default=False,
         description=(
-            "True for authenticated non-organizers who have not joined, while the "
+            "True for authenticated non-organizers without active JOINED/CONFIRMED/CHECKED_IN membership (including LEFT), while the "
             "activity is PUBLISHED/ONGOING and capacity remains."
         ),
     )
     can_leave: bool = Field(
         default=False,
-        description="True for a joined non-organizer before end_at, unless cancelled.",
+        description="True for a JOINED/CONFIRMED non-organizer before end_at, unless cancelled.",
     )
     can_confirm: bool = Field(
         default=False,
-        description="Whether the current user may confirm attendance; currently always false.",
+        description="True only for a JOINED non-organizer inside the confirmation window, unless cancelled. False after confirmation or leaving.",
     )
     can_check_in: bool = Field(
         default=False,
-        description="Whether the current user may check in; currently always false.",
+        description="True for a CONFIRMED non-organizer inside the check-in window unless cancelled/ended. Allows attempting check-in; submitted coordinates must still pass PostGIS proximity validation.",
     )
     can_view_gallery: bool = Field(
         default=False,
@@ -377,10 +376,10 @@ class ActivityListItem(BaseModel):
     min_participants: int
     max_participants: int | None
     participant_count: int = Field(
-        description="Persisted active membership count, excluding the organizer."
+        description="Persisted JOINED + CONFIRMED + CHECKED_IN membership count; LEFT and organizer excluded."
     )
     checked_in_count: int = Field(
-        description="Checked-in count; currently 0 until check-in is implemented."
+        description="Persisted CHECKED_IN count only; CONFIRMED is not checked in."
     )
     waitlist_count: int = Field(
         description="Waitlist count; currently 0 until waitlists are implemented."
@@ -400,11 +399,21 @@ class ActivityListItem(BaseModel):
 
 
 class ActivityParticipationRead(BaseModel):
-    status: Literal["JOINED"] = Field(
+    status: Literal["JOINED", "CONFIRMED", "CHECKED_IN"] = Field(
         default="JOINED",
-        description="Active membership only; does not imply attendance confirmation.",
+        description="Active lifecycle status. JOINED is unconfirmed; CONFIRMED expresses attendance intention; CHECKED_IN passed server time/PostGIS checks. LEFT is null current participation.",
     )
-    joined_at: datetime = Field(description="UTC time the current user joined.")
+    joined_at: datetime = Field(
+        description="UTC time the current user's latest active join cycle began."
+    )
+    confirmed_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC confirmation time for this cycle, or null.",
+    )
+    checked_in_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC time of successful check-in, or null. No participant coordinates are returned.",
+    )
 
 
 class ActivityRead(ActivityListItem):
@@ -422,23 +431,23 @@ class ActivityRead(ActivityListItem):
     )
     confirmation_opens_at: datetime | None = Field(
         default=None,
-        description="Reserved confirmation-window start; currently null.",
+        description="Derived UTC opening: start_at minus configured confirmation window (default 24 hours), inclusive.",
     )
     confirmation_deadline_at: datetime | None = Field(
         default=None,
-        description="Reserved confirmation deadline; currently null.",
+        description="Derived UTC confirmation deadline equal to start_at, exclusive. Nominal timing remains visible after cancellation/end.",
     )
     checkin_opens_at: datetime | None = Field(
         default=None,
-        description="Reserved check-in-window start; currently null.",
+        description="Derived inclusive UTC opening: start_at minus configured minutes (default 30).",
     )
     checkin_closes_at: datetime | None = Field(
         default=None,
-        description="Reserved check-in-window end; currently null.",
+        description="Derived exclusive UTC deadline: earlier of start_at plus configured minutes (default 60) and end_at.",
     )
     checkin_radius_m: int | None = Field(
         default=None,
-        description="Reserved geographic check-in radius; currently null.",
+        description="Public configured proximity radius in meters (default 150), enforced by PostGIS ST_DWithin.",
     )
     price_amount: float | None = Field(
         description="Price in PLN for PAID activities, otherwise null."
@@ -450,18 +459,18 @@ class ActivityRead(ActivityListItem):
         default=None,
         description=(
             "The authenticated caller's active membership, or null for anonymous "
-            "users, organizers, and non-members. Never another user's membership."
+            "users, organizers, non-members, and inactive LEFT records. Never another user's membership."
         ),
     )
     permissions: ActivityPermissionsRead = Field(
         default_factory=ActivityPermissionsRead,
         description=(
-            "Caller-specific edit/cancel/join/leave permissions. Unimplemented actions remain false."
+            "Caller-specific edit/cancel/join/leave/confirm/check-in permissions. Check-in eligibility still requires location validation on POST; unsupported actions remain false."
         ),
     )
 
 
-# Complete valid response examples; both endpoints return the existing detail shape.
+# Complete valid response examples; all participation mutations return ActivityRead.
 ACTIVITY_JOIN_RESPONSE_EXAMPLE = ActivityRead.model_validate(
     {
         "id": "d54112d9-43cf-4986-8679-b6c236ac522c",
@@ -497,6 +506,11 @@ ACTIVITY_JOIN_RESPONSE_EXAMPLE = ActivityRead.model_validate(
             "status": "JOINED",
             "joined_at": "2030-08-01T12:00:00Z",
         },
+        "confirmation_opens_at": "2030-08-07T16:00:00Z",
+        "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+        "checkin_opens_at": "2030-08-08T15:30:00Z",
+        "checkin_closes_at": "2030-08-08T17:00:00Z",
+        "checkin_radius_m": 150,
         "permissions": {"can_leave": True},
     }
 ).model_dump(mode="json")
@@ -506,4 +520,24 @@ ACTIVITY_LEAVE_RESPONSE_EXAMPLE = {
     "available_slots": 12,
     "current_user_participation": None,
     "permissions": ActivityPermissionsRead(can_join=True).model_dump(),
+}
+ACTIVITY_CONFIRM_RESPONSE_EXAMPLE = {
+    **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+    "current_user_participation": {
+        "status": "CONFIRMED",
+        "joined_at": "2030-08-01T12:00:00Z",
+        "confirmed_at": "2030-08-07T16:00:00Z",
+        "checked_in_at": None,
+    },
+    "permissions": ActivityPermissionsRead(can_leave=True).model_dump(),
+}
+ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE = {
+    **ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
+    "checked_in_count": 1,
+    "current_user_participation": {
+        **ACTIVITY_CONFIRM_RESPONSE_EXAMPLE["current_user_participation"],
+        "status": "CHECKED_IN",
+        "checked_in_at": "2030-08-08T15:45:00Z",
+    },
+    "permissions": ActivityPermissionsRead().model_dump(),
 }

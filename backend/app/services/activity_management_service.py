@@ -83,6 +83,23 @@ def update_activity(
             raise ActivityManagementError(
                 "start_at must remain strictly in the future", 422
             )
+        schedule_changed = validated.start_at != _as_aware_utc(
+            activity.start_at
+        ) or validated.end_at != _as_aware_utc(activity.end_at)
+        if schedule_changed and before.schedule_protected_participant_count:
+            raise ActivityManagementError(
+                "Cannot change schedule while participants are confirmed"
+            )
+        location_changed = (
+            validated.latitude != before.latitude
+            or validated.longitude != before.longitude
+            or validated.location_name != activity.location_name
+            or validated.address != activity.address
+        )
+        if location_changed and before.checked_in_count:
+            raise ActivityManagementError(
+                "Cannot change location after participants have checked in"
+            )
         if (
             validated.max_participants is not None
             and validated.max_participants < before.participant_count

@@ -16,7 +16,10 @@ from app.core.security import create_access_token
 from app.db.session import get_db
 from app.main import app
 from app.models.activity import Activity
-from app.models.activity_participation import ActivityParticipation
+from app.models.activity_participation import (
+    ACTIVE_PARTICIPATION_STATUSES,
+    ActivityParticipation,
+)
 from app.models.user import User
 from app.schemas.activity import ACTIVITY_CREATE_EXAMPLE, ActivityCreate
 from app.services.activity_service import (
@@ -103,8 +106,21 @@ def test_postgres_membership_schema(pg_engine):
         column["name"]: column
         for column in inspector.get_columns("activity_participations")
     }
-    assert set(columns) == {"activity_id", "user_id", "joined_at"}
-    assert all(not column["nullable"] for column in columns.values())
+    assert set(columns) == {
+        "activity_id",
+        "user_id",
+        "joined_at",
+        "status",
+        "left_at",
+        "confirmed_at",
+        "checked_in_at",
+    }
+    assert all(
+        not columns[name]["nullable"]
+        for name in ("activity_id", "user_id", "joined_at", "status")
+    )
+    assert columns["left_at"]["nullable"] and columns["confirmed_at"]["nullable"]
+    assert "JOINED" in columns["status"]["default"]
     assert columns["joined_at"]["type"].timezone is True
     assert columns["joined_at"]["default"] is not None
     foreign_keys = inspector.get_foreign_keys("activity_participations")
@@ -286,7 +302,10 @@ def test_postgres_concurrent_membership_serializes_on_activity(
         count = session.scalar(
             select(func.count())
             .select_from(ActivityParticipation)
-            .where(ActivityParticipation.activity_id == activity_id)
+            .where(
+                ActivityParticipation.activity_id == activity_id,
+                ActivityParticipation.status.in_(ACTIVE_PARTICIPATION_STATUSES),
+            )
         )
         assert result.participant_count == count <= 2
         assert result.available_slots == 2 - count
@@ -294,7 +313,10 @@ def test_postgres_concurrent_membership_serializes_on_activity(
             assert outcomes[0] == 200
             assert outcomes[1] in [201, (409, "Activity is full")]
             assert count == (2 if outcomes[1] == 201 else 1)
-            assert session.get(ActivityParticipation, (activity_id, users[1])) is None
+            assert (
+                session.get(ActivityParticipation, (activity_id, users[1])).status
+                == "LEFT"
+            )
         else:
             expected_error = (
                 "Already joined this activity"

@@ -10,12 +10,12 @@ API and a React web application with a map-based discovery view.
 
 The backend supports registration/login, profiles, canonical categories, activity
 creation/discovery/details, persisted participation, My Activities, organizer
-editing, and soft cancellation. PostgreSQL/PostGIS is the development database.
-The organizer editing/cancellation milestone is implemented; attendance workflows
-are the recommended next backend milestone.
+editing, soft cancellation, persistent participation, timed confirmation, and
+geographic check-in for confirmed participants. PostgreSQL/PostGIS is authoritative
+for proximity validation. Completed attendance and no-show remain future milestones.
 
 Frontend authentication, profile display, discovery, details, categories, and
-creation use real APIs. My Activities still uses fixtures, and join/leave and
+creation use real APIs. My Activities still uses fixtures, and join/leave/confirm/check-in and
 organizer edit/cancel actions still need integration. See
 [Frontend integration status](#frontend-integration-status) for the verified gaps.
 
@@ -65,11 +65,12 @@ complete category UUID table and request examples.
 
 ### Concurrency and data integrity
 
-Join, leave, edit, and cancel share an activity-row `SELECT ... FOR UPDATE` lock
+Join, leave, confirm, check-in, edit, and cancel share an activity-row `SELECT ... FOR UPDATE` lock
 under explicit PostgreSQL READ COMMITTED isolation. Writers refresh activity
 state and check membership/time/capacity after acquiring that lock. This serializes
 join vs join, join vs capacity reduction, join vs cancellation, concurrent
-organizer updates, and edit vs cancel. The response snapshot is read before commit;
+organizer updates, edit vs cancel, confirm vs leave/cancel, and confirm vs schedule
+edit. Membership state is refreshed after waiting as well. The response snapshot is read before commit;
 another transaction can change the activity afterward.
 
 Membership uniqueness and foreign keys are database-enforced. Capacity and
@@ -146,19 +147,71 @@ body, and return updated `ActivityRead`.
 
 - The organizer is separate from participants, cannot join/leave their own
   activity, and never consumes a participant place.
-- Membership persists in `activity_participations`, uniquely keyed by activity
-  and user. `participant_count` is derived from these rows; finite
+- One participation row persists per activity/user, with `status`, `joined_at`,
+  `left_at`, `confirmed_at`, and `checked_in_at`. JOINED, CONFIRMED, and CHECKED_IN
+  consume places; LEFT is inactive.
+  `participant_count` counts only active rows; finite
   `available_slots` reflects remaining capacity, while unlimited capacity is null.
 - Non-organizers can join/leave before or during an uncancelled activity, strictly
   before `end_at`. Full activities reject new joins. Duplicate joins return 409,
   including when full; leaving without membership, including repeated DELETE, is 409.
-- Leaving deletes membership; rejoining creates a new `joined_at`. Ended and
-  cancelled memberships remain persisted. Cancellation blocks both join and leave
+- Leaving transitions JOINED/CONFIRMED to LEFT and sets `left_at`; the row,
+  `joined_at`, and previous `confirmed_at` remain. Eligible rejoin reuses that row,
+  resets status to JOINED, updates `joined_at`, and clears all three lifecycle timestamps.
+  CHECKED_IN cannot leave. Duplicate active-state joins remain 409. Ended and
+  cancelled records remain persisted. Cancellation blocks join, leave, confirm, and check-in
   with 409, preserving that history. Organizer join/leave is always a 409 conflict.
 
-`current_user_participation` is null or `{status: "JOINED", joined_at: ...}`.
-JOINED records membership, not attendance confirmation or check-in. No waitlist
-exists. See the [full participation contract](backend/docs/activity-participation.md).
+`current_user_participation` is null for anonymous/non-member/LEFT callers, or
+`{status: "JOINED" | "CONFIRMED" | "CHECKED_IN", joined_at: ..., confirmed_at: ... | null, checked_in_at: ... | null}` for
+the caller's active state. No waitlist exists. The retained row captures the latest
+cycle, not an immutable audit of every join/leave. See the
+[full participation contract](backend/docs/activity-participation.md).
+
+### Attendance confirmation
+
+POST `/api/v1/activities/{activity_id}/confirm` requires an access JWT and no body.
+A non-organizer with JOINED membership may transition to CONFIRMED (200), recording
+`confirmed_at` without consuming another seat. The configurable
+`ACTIVITY_CONFIRMATION_WINDOW_HOURS` defaults to 24 (integer 1–8760): confirmation
+opens that many hours before start, inclusively, and closes exactly at start,
+exclusively. Existing detail fields `confirmation_opens_at` and
+`confirmation_deadline_at` now contain derived UTC timing, including in My Activities.
+
+Outside the window, after cancellation/end, for non-members/LEFT callers, or after
+already confirming, the endpoint returns 409. `can_confirm` is true only for
+eligible JOINED callers inside the window. There is no unconfirm or automatic
+expiry/removal. A CONFIRMED participant may still leave before end unless cancelled;
+rejoin requires a fresh confirmation. Confirmation does not implement check-in,
+completed attendance, no-show, or rewards.
+
+### Check-in
+
+POST `/api/v1/activities/{activity_id}/check-in` requires an access token and JSON
+`{"latitude":52.4232,"longitude":16.9461}`. Only CONFIRMED non-organizers may
+transition to CHECKED_IN (200); JOINED is not implicitly confirmed. Successful
+check-in sets checked_in_at, preserves joined_at/confirmed_at, and consumes the
+same existing place. Duplicate check-in, leave after check-in, and confirmation
+after check-in return 409. There is no undo check-in.
+
+The default window opens 30 minutes before start and closes at the earlier of
+60 minutes after start or activity end: opening inclusive, deadline exclusive.
+Configure `ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE` and
+`ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER` (integers 0–525600), and
+`ACTIVITY_CHECK_IN_RADIUS_METERS` (integer 1–100000, default 150).
+Existing public detail fields `checkin_opens_at`, `checkin_closes_at`, and
+`checkin_radius_m` now carry this metadata.
+
+PostgreSQL/PostGIS `ST_DWithin` checks the submitted point as `(longitude, latitude)`
+against the stored activity geography, using meters and the spheroid. The allowed
+radius is inclusive, subject to geospatial floating-point precision. Outside the
+radius, wrong state, closed window, cancellation, or end returns 409. Invalid
+coordinates/body return 422. `can_check_in` means state/time permit an attempt;
+POST must still validate proximity. No SQLite/Python fallback can authorize check-in.
+
+Only checked_in_at is stored; submitted coordinates and distance are neither
+persisted nor returned. Coordinates can be spoofed: server proximity validation
+does not attest device GPS. See the [check-in contract](backend/docs/activity-check-in.md).
 
 ### My Activities
 
@@ -167,7 +220,7 @@ that user; no client user ID is accepted.
 
 | Parameter | Behavior |
 | --- | --- |
-| `relation` | Required: `organized` (caller owns activity) or `joined` (caller has membership; owned activities excluded) |
+| `relation` | Required: `organized` (caller owns activity) or `joined` (active JOINED/CONFIRMED/CHECKED_IN; LEFT and owned activities excluded) |
 | `scope` | Optional: `upcoming` or `history`; omit for all times, including all organized activities |
 | `limit`, `offset` | Default 20/0; limit 1–100, offset ≥ 0 |
 
@@ -191,7 +244,12 @@ fields, internal fields, and explicit nulls other than `max_participants` and
 rules. Both the existing and proposed start must be strictly in the future:
 ongoing, ended, or cancelled activities cannot be edited.
 
-Capacity cannot be reduced below persisted membership (409). Removing the limit
+Capacity cannot be reduced below active membership (409), including CHECKED_IN; LEFT rows do
+not count. Actual changes to `start_at` or `end_at` return 409 while any participant
+is CONFIRMED or CHECKED_IN. Once anyone is CHECKED_IN, latitude, longitude,
+location_name, and address changes also return 409. Unchanged values and other allowed fields can still be submitted;
+historical confirmations on LEFT rows do not block schedule edits. Confirmations
+are never silently cleared by editing. Removing the limit
 requires `{"has_participant_limit":false,"max_participants":null}`; switching
 to FREE requires `{"price_type":"FREE","price_amount":null}`. Enabling a
 limit or switching to PAID requires a consistent maximum or price. Omitted values
@@ -200,7 +258,9 @@ are not silently cleared.
 POST `/api/v1/activities/{activity_id}/cancel` takes no body and allows the
 organizer to cancel strictly before `end_at`, including ONGOING activities. It sets
 `cancelled_at` once and returns 200 with `ActivityRead`. The activity and all
-memberships/counts are preserved. Repeated cancellation and cancellation at/after
+participation statuses/timestamps are preserved, including CHECKED_IN/checked_in_at;
+counts still use all three active states,
+excluding LEFT. Repeated cancellation and cancellation at/after
 end return 409; another user's management attempt returns 403, and an unknown
 activity returns 404. Invalid payloads return 422; missing/invalid access tokens
 return 401. PATCH also returns 200 on success.
@@ -252,6 +312,8 @@ generated contract is at `/openapi.json`.
 | POST | `/api/v1/activities/{activity_id}/cancel` | Organizer access JWT | Soft-cancel before end |
 | POST | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Join membership |
 | DELETE | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Leave membership |
+| POST | `/api/v1/activities/{activity_id}/confirm` | Access JWT; JOINED non-organizer | Confirm attendance inside the window |
+| POST | `/api/v1/activities/{activity_id}/check-in` | Access JWT; CONFIRMED non-organizer | Time- and PostGIS-validated check-in |
 
 ## Local development
 
@@ -273,6 +335,10 @@ Edit your local `.env`, keeping it out of version control. The example contains:
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5433/do_kompletu
 JWT_SECRET=replace-me-with-a-long-random-secret
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+ACTIVITY_CONFIRMATION_WINDOW_HOURS=24
+ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE=30
+ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER=60
+ACTIVITY_CHECK_IN_RADIUS_METERS=150
 ```
 
 Replace the JWT placeholder with a long random secret. Settings always load
@@ -348,10 +414,16 @@ this root document describes the current project setup.
 5. As organizer, PATCH the title and inspect `relation=organized` in My Activities.
 6. Register a second account, log out in **Authorize**, and authorize as that user.
    Join the activity, read detail and `relation=joined&scope=upcoming`, leave, and
-   rejoin. Check real counts and caller-specific permissions at each step.
+   rejoin. Check real counts and caller-specific permissions at each step. For
+   confirmation testing, create the activity less than 24 hours ahead and call
+   `/confirm`; check CONFIRMED/confirmed_at and that schedule changes now return 409.
+   For check-in, create within 30 minutes of start, confirm first, and POST your
+   coordinates to `/check-in`. Check CHECKED_IN/checked_in_at, checked_in_count,
+   blocked leave, and protected location edits. Swagger examples use an illustrative
+   venue; submitted coordinates must be within the actual activity's radius.
 7. Reauthorize as organizer and cancel. Verify discovery omits the activity,
    direct detail shows CANCELLED, and both users' relevant My Activities lists
-   retain it. Repeated cancel, or participant join/leave after cancel, returns 409.
+   retain it. Repeated cancel, or participant join/leave/confirm/check-in after cancel, returns 409.
 
 Executing JSON `/auth/login` alone does not authorize Swagger's other operations;
 use **Authorize** for that. JSON login uses `identifier`, whereas the OAuth2 form
@@ -402,7 +474,7 @@ For the repository's local Compose development database:
 
 ```powershell
 $env:POSTGRES_TEST_DATABASE_URL = 'postgresql+psycopg://postgres:postgres@localhost:5433/do_kompletu'
-uv run pytest -v tests/test_activities_postgres.py tests/test_participation_postgres.py tests/test_my_activities_postgres.py tests/test_activity_management_postgres.py
+uv run pytest -v tests/test_activities_postgres.py tests/test_participation_postgres.py tests/test_my_activities_postgres.py tests/test_activity_management_postgres.py tests/test_participation_lifecycle_postgres.py tests/test_participation_lifecycle_migration_postgres.py tests/test_check_in_postgres.py tests/test_check_in_migration_postgres.py
 Remove-Item Env:POSTGRES_TEST_DATABASE_URL
 ```
 
@@ -412,21 +484,28 @@ constraints, timestamps, ordering, counts/privacy, query counts, and actual row
 lock contention. Use a local development/test database. Coverage includes auth,
 bootstrap, categories, creation/discovery/detail, participation, My Activities,
 management/cancellation, and OpenAPI contracts.
+The lifecycle migration test creates/drops only a generated temporary database;
+its database account needs CREATEDB permission and permission to install PostGIS.
+The lifecycle and check-in migration tests exercise `0005 → 0006 → 0005 → 0006`
+and `0006 → 0007 → 0006 → 0007`; neither downgrades the normal database. Isolated
+check-in tests stub proximity explicitly; only real PostGIS tests validate geography.
 
-Verified on 2026-10-18 after the documentation update:
+Verified on 2026-10-18 after the check-in milestone:
 
 | Check | Current result |
 | --- | --- |
-| Default `uv run pytest -v` without integration URL | 246 passed, 32 PostgreSQL tests skipped |
-| Separate four-module PostgreSQL run | 32 passed |
+| Default `uv run pytest -v` without integration URL | 355 passed, 81 PostgreSQL tests skipped |
+| Separate eight-module PostgreSQL run | 81 passed |
 | Ruff, compileall, `uv lock --check` | Passed |
-| Migration files and development database | `20261018_0005` is head |
+| Migration files and development database | `20261018_0007` is head |
 | `git diff --check` | Passed |
 | `git diff -- frontend` | Empty |
 
 The tests report an existing Starlette TestClient/httpx deprecation warning and
 local pytest-cache permission warnings. Git may also report an unreadable root
 `.pytest_cache/` directory and LF/CRLF notices; these do not change the test results.
+The temporary-database migration test also reports the existing Alembic
+path_separator configuration deprecation; no warnings were suppressed.
 
 ## Database migrations
 
@@ -438,23 +517,32 @@ The verified linear chain and current head are:
 | `20260927_0002` | `20260927_0002_add_case_insensitive_display_name_unique_index.py` | Case-insensitive display-name uniqueness |
 | `20260927_0003` | `20260927_0003_create_activities_table.py` | Activities, PostGIS geography column/index, validation constraints |
 | `20261018_0004` | `20261018_0004_create_activity_participations.py` | Unique user/activity memberships, FKs, joined_at, user index |
-| `20261018_0005` | `20261018_0005_add_activity_cancellation.py` | Nullable activity cancelled_at; **current head** |
+| `20261018_0005` | `20261018_0005_add_activity_cancellation.py` | Nullable activity cancelled_at |
+| `20261018_0006` | `20261018_0006_add_participation_lifecycle.py` | Backfilled JOINED status, left_at/confirmed_at, lifecycle CHECK constraints |
+| `20261018_0007` | `20261018_0007_add_participation_check_in.py` | Nullable checked_in_at, CHECKED_IN status and updated timestamp CHECKs; **current head** |
 
 Check file history with `uv run alembic history` and file heads with
 `uv run alembic heads`. `uv run alembic current` checks the configured database.
 Migration `0005` is additive and preserves activities/memberships. Its downgrade
-discards cancellation metadata; `0004` downgrade removes memberships. Historical
-upgrade/downgrade probes are recorded in the contracts; normal onboarding uses
+discards cancellation metadata. `0006` backfills existing rows as JOINED, preserving
+joined_at with null new timestamps. Its downgrade deletes LEFT rows to avoid
+reactivating them in the old row-existence model, retains active rows, and loses
+confirmation/lifecycle metadata. `0004` downgrade removes memberships.
+Check-in migration 0007 preserves existing states; its downgrade maps CHECKED_IN
+back to CONFIRMED, drops checked_in_at, and retains every participation row.
+Historical upgrade/downgrade probes are recorded in the contracts; normal onboarding uses
 `upgrade head`.
 
 ## Backend documentation
 
 - [Activity participation contract](backend/docs/activity-participation.md):
-  membership storage, join/leave rules, full responses, privacy, and concurrency.
+  retained lifecycle, join/leave/rejoin/confirm, timing, full responses, privacy, and concurrency.
 - [My Activities contract](backend/docs/my-activities.md): relation/scope semantics,
   sorting/pagination, full responses, query strategy, and frontend integration.
 - [Activity management/cancellation contract](backend/docs/activity-management.md):
   partial editing, cancellation visibility/permissions, locks, errors, and migration validation.
+- [Activity check-in contract](backend/docs/activity-check-in.md): time/proximity
+  rules, PostGIS, privacy, leave/edit restrictions, and check-in migration validation.
 
 These are the detailed contracts. Their earlier milestone verification tables
 are explicitly historical; the current combined verification is listed above.
@@ -469,22 +557,27 @@ this documentation update.
 | Authentication | Registration, JSON login with correct `identifier` key, access/refresh storage in sessionStorage, session restoration, route protection | Refresh/retry on API 401 beyond session restoration |
 | Profile | Real `/users/me` profile displayed through auth context | Profile editing UI for the existing PATCH endpoint |
 | Discovery/map/cards | Real activity/category APIs, coordinates, membership counts | Server filtering and pagination beyond the first `limit=100, offset=0` page; lifecycle-aware availability |
-| Details | Real optional-auth detail, organizer display, button disabled via `can_join` | Join button has no click handler; no leave or organizer actions |
+| Details | Real optional-auth detail, organizer display, can_join-based button, passive checkin window/radius display; timing/can_confirm/can_check_in types exist | Wire join/leave/confirm/check-in and organizer actions; geolocation permission/coordinates, mutation pending/error/success states, live window eligibility |
 | Creation | Real form, category/location/time/price/capacity validation, POST, activity-query invalidation, navigation to new detail | Extend mutation/cache coverage for the actions below |
 | My Activities | Protected page and three sections exist | Replace mock activities/static membership IDs with authenticated relation/scope queries, loading/errors, and pagination |
 | Organizer management | Backend edit/cancel API ready | Edit form/actions, API functions/hooks, cancellation confirmation/error handling, status/cancelled_at rendering |
-| Types and caching | Activity status union includes CANCELLED | Membership object/null union, `can_cancel`, `cancelled_at`; user-scoped detail/personal query keys and invalidation/removal on auth changes and mutations |
+| Types and caching | Activity status union includes CANCELLED; check-in counts/timing/radius/can_check_in already declared | Membership JOINED/CONFIRMED/CHECKED_IN object/null union with joined_at/confirmed_at/checked_in_at, `can_cancel`, `cancelled_at`; user-scoped query keys and invalidation/removal on auth changes and mutations |
 
 Current detail queries use activity ID without user identity and stay fresh for
 60 seconds; auth changes do not clear query caches. Account changes therefore
 need explicit cache handling before exposing personalized membership/actions.
-After join/leave/edit/cancel, refresh discovery, detail, and relevant personal lists.
+Add a confirm API function, mutation hook, and permission-aware button with pending,
+error, and already-confirmed states. LEFT is null current participation and may
+rejoin; it must not appear in joined lists. Add check-in API/mutation and browser
+geolocation permission/error handling. CHECKED_IN cannot leave and no longer offers
+confirm/check-in actions. Handle outside-radius and expired-window errors.
+After join/leave/confirm/check-in/edit/cancel, refresh discovery, detail, and relevant personal lists.
 My Activities currently splits fixtures using browser time; integration should use
 the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled rows.
 
 ## Current limitations / not implemented yet
 
-- Waitlists, attendance confirmation, geographic check-in, and verified/completed attendance.
+- Waitlists, completed attendance, automatic completion, and no-show handling.
 - Reviews, ratings, XP/points progression, ranks, and achievements.
 - Notifications, chat, photo galleries/uploads, and media workflows.
 - Cancellation reasons, uncancel, activity edit history/audit trail, hard deletion,
@@ -495,18 +588,20 @@ the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled 
   not implement these features. Administrator role-based authorization is absent.
 
 Placeholder fields do not imply implemented features: `tags` is empty,
-`distance_m` and confirmation/check-in windows/radius are null,
-`checked_in_count`/`waitlist_count` are zero, and future-action permissions are false.
+`distance_m` is null, `waitlist_count` is zero, and unsupported gallery/photo/delete
+permissions remain false. Check-in timing/radius and checked_in_count are now real.
 My Activities has no total-count wrapper or cross-page snapshot guarantee.
+There is no unconfirm, undo check-in, automatic confirmation expiry, immutable participation event
+log, or schedule-edit notification. Confirmation is a self-declared intent to attend.
 
 ## Roadmap
 
 | State | Milestone |
 | --- | --- |
-| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive username uniqueness; activity creation/discovery/details; canonical categories; participation; My Activities; organizer editing; soft cancellation |
-| Next frontend integration | Real My Activities; join/leave; organizer edit/cancel; cancellation rendering; identity-aware caching and mutation invalidation |
-| Recommended next backend milestone | Participation lifecycle / attendance confirmation with explicit states and time-window rules |
-| Potential later sequence | Geographic check-in → completed/verified attendance → reviews/ratings → XP/points → ranks/achievements |
+| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in |
+| Next frontend integration | Real My Activities; join/leave/rejoin/confirm/check-in; geolocation flow; organizer edit/cancel; state/window UI; identity-aware caching and invalidation |
+| Recommended next backend milestone | Define COMPLETED/NO_SHOW transitions and cancelled-event policy using preserved check-in evidence |
+| Potential later sequence | Reviews/ratings → XP/points → ranks/achievements, after attendance policies are defined |
 | Later product work | Waitlists, notifications/chat, galleries, nearby search; payment handling if required |
 
 Future sequencing is a proposal, not an implemented contract or fixed architecture.
@@ -525,3 +620,6 @@ avatar, never email/password hashes. Personalized detail/My Activities responses
 use `Cache-Control: private, no-store` and `Vary: Authorization`; mutation responses
 also use `private, no-store`. JWT refresh is stateless: no token revocation/logout
 endpoint or refresh-token rotation is currently implemented.
+
+Check-in validates submitted coordinates, not the authenticity of a device GPS
+reading. No anti-spoofing, device attestation, or location history is implemented.

@@ -19,7 +19,7 @@ The management implementation started from a clean `backend` branch with
 migration-file/database head `20261018_0004`. Its historical baseline verification
 was 164 default tests and 20 separate PostgreSQL tests, with Ruff and lock validation
 passing. That describes the start of implementation, not the current working-tree
-status. Current migration-file/database head is `20261018_0005`; Compose uses host
+status. Current migration-file/database head is `20261018_0007`; Compose uses host
 port 5433. See the [README](../../README.md#testing) for the current combined checks.
 
 ## Persistent lifecycle and schema
@@ -33,6 +33,10 @@ ALTER TABLE activities ADD COLUMN cancelled_at timestamptz NULL;
 No old migrations, indexes, constraints, or membership columns change. Existing
 rows start uncancelled. A nullable timestamp records the one new persistent fact
 without duplicating time-derived state in an arbitrary status column.
+That describes migration 0005. The subsequent [participation lifecycle](activity-participation.md)
+adds status/left_at/confirmed_at in 0006 and the schedule/active-count rules below.
+The [check-in contract](activity-check-in.md) adds 0007, CHECKED_IN/checked_in_at,
+and stronger location protections without changing cancellation identity.
 
 Status priority is deterministic:
 
@@ -67,6 +71,12 @@ Only the JWT-authenticated organizer may edit. Both the existing activity start 
 the merged proposed start must be strictly in the future. Existing ongoing/ended
 or cancelled activities cannot be edited; moving their dates cannot reactivate them.
 This conservative policy avoids changing schedules, venue, or price during an event.
+Additionally, actual changes to start_at or end_at return 409 while any
+participation status is CONFIRMED or CHECKED_IN. Once anyone is CHECKED_IN, actual
+latitude, longitude, location_name, and address changes also return 409. This keeps
+the venue against which attendance was validated. Equivalent unchanged values are allowed,
+as are other fields under normal management rules. LEFT rows with historical
+confirmed_at do not block schedule changes. Editing never silently clears confirmations.
 
 | Editable fields | Rules |
 | --- | --- |
@@ -75,7 +85,7 @@ This conservative policy avoids changing schedules, venue, or price during an ev
 | start_at, end_at | Timezone-aware, normalized to UTC; end > start; merged start remains future |
 | latitude, longitude | WGS 84 ranges; changing one preserves the other |
 | min_participants | 2-100, no greater than finite maximum |
-| has_participant_limit, max_participants | Finite max 2-100, at least minimum and persisted member count; null maximum for unlimited |
+| has_participant_limit, max_participants | Finite max 2-100, at least minimum and active JOINED + CONFIRMED + CHECKED_IN count; LEFT excluded; null maximum for unlimited |
 | price_type, price_amount | FREE/null or PAID/positive PLN amount with at most two decimal places |
 
 Omitted fields stay unchanged. Unknown fields, organizer_id, status, cancelled_at,
@@ -86,19 +96,31 @@ ActivityCreate, so partial requests cannot bypass existing cross-field rules.
 Transitions must explicitly supply consistent values:
 
 ```json
-{"has_participant_limit": false, "max_participants": null}
+{
+  "has_participant_limit": false,
+  "max_participants": null
+}
 ```
 
 ```json
-{"has_participant_limit": true, "max_participants": 9}
+{
+  "has_participant_limit": true,
+  "max_participants": 9
+}
 ```
 
 ```json
-{"price_type": "PAID", "price_amount": 25.5}
+{
+  "price_type": "PAID",
+  "price_amount": 25.5
+}
 ```
 
 ```json
-{"price_type": "FREE", "price_amount": null}
+{
+  "price_type": "FREE",
+  "price_amount": null
+}
 ```
 
 The API does not implicitly clear omitted amounts/limits. Invalid merged price,
@@ -151,11 +173,11 @@ another user, because the organizer is separate from membership.
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": null,
-  "confirmation_deadline_at": null,
-  "checkin_opens_at": null,
-  "checkin_closes_at": null,
-  "checkin_radius_m": null,
+  "confirmation_opens_at": "2030-08-07T16:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "checkin_opens_at": "2030-08-08T15:30:00Z",
+  "checkin_closes_at": "2030-08-08T17:00:00Z",
+  "checkin_radius_m": 150,
   "price_amount": null,
   "currency": null,
   "current_user_participation": null,
@@ -180,14 +202,15 @@ another user, because the organizer is separate from membership.
 | Public discovery | Excluded before sorting/pagination, including filtered requests |
 | Direct detail | Still available; CANCELLED and cancelled_at are public |
 | Organized My Activities | Retained, with null organizer membership |
-| Joined My Activities | Retained with the caller's JOINED state |
+| Joined My Activities | Retained for caller's JOINED/CONFIRMED/CHECKED_IN state; LEFT excluded |
 | Upcoming/history | Still split strictly by end_at; future cancelled activities remain upcoming; after end they are history with CANCELLED status |
-| Counts/capacity | Reflect preserved membership, not bookable places; checked-in/waitlist stay zero |
-| Join and leave | Both return 409 after cancellation, preserving history |
+| Counts/capacity | Reflect all active membership including CHECKED_IN, excluding LEFT; checked_in_count is real, waitlist stays zero; cancelled places are not bookable |
+| Join, leave, confirm, and check-in | All return 409 after cancellation, preserving every status/timestamp including checked_in_at |
 | Private state | Anonymous/unrelated callers receive null membership, never someone else's state |
 
 For uncancelled activities, organizer can_edit is true before start and can_cancel
-is true before end. Participant can_join/can_leave keep their existing rules.
+is true before end. Participant can_join/can_leave follow active state and lifecycle;
+CHECKED_IN cannot leave. can_check_in permits an attempt, still requiring PostGIS validation.
 Every cancelled permission is false. can_delete and all future permissions remain
 false. The UI must render status rather than infer bookability from remaining slots.
 
@@ -200,6 +223,8 @@ false. The UI must render status rather than infer bookability from remaining sl
 | 409 | `{"detail":"Activity can only be edited before it starts"}` |
 | 409 | `{"detail":"Activity has ended"}` for cancellation at/after end |
 | 409 | `{"detail":"Participant limit cannot be below current participant count"}` |
+| 409 | `{"detail":"Cannot change schedule while participants are confirmed"}` |
+| 409 | `{"detail":"Cannot change location after participants have checked in"}` |
 | 422 | Standard validation details for input/merged configuration; `{"detail":"start_at must remain strictly in the future"}` for a proposed nonfuture start |
 
 Normal validation can reject malformed input before ownership lookup. After valid
@@ -209,7 +234,7 @@ Management responses use Cache-Control: private, no-store.
 
 ## Transactions, query efficiency, and migration validation
 
-Management, join, and leave all use get_activity_for_update: a parent-only SELECT
+Management, join, leave, confirm, and check-in all use get_activity_for_update: a parent-only SELECT
 FOR UPDATE with populate_existing, under explicit PostgreSQL READ COMMITTED.
 Lifecycle checks use a UTC cutoff captured after waiting for the lock. PATCH reads
 the locked activity projection, merges only supplied fields, validates merged state
@@ -279,10 +304,14 @@ It still needs edit/cancel API functions and mutation hooks, lifecycle/cancelled
 honor permissions, and invalidate discovery/detail/personal caches after mutations.
 My Activities still needs its previously documented replacement of mock arrays.
 Access-token refresh and authentication-specific query keys remain frontend work.
+Confirmation needs frontend API/hooks/UI as well, reusing existing can_confirm and
+confirmation timing fields. Check-in needs browser geolocation, API/hooks, state/
+error handling, and cache refresh too; its passive timing panel already exists.
 
 There is no hard deletion, DRAFT, uncancel, cancellation reason, edit audit/version
 token, notifications, or payment/refund processing. Writes to the same field use
 the last successful writer. Editing a field does not notify participants. Attendance,
-waitlist, confirmation, check-in, reviews, XP, ranks, achievements, chat, and media
-remain unimplemented. The next backend milestone can focus on attendance
-confirmation with explicit participation states and time-window rules.
+waitlist, completed attendance/no-show, reviews, XP, ranks, achievements,
+chat, and media remain unimplemented. Timed attendance confirmation and retained
+JOINED/CONFIRMED/CHECKED_IN/LEFT and timed PostGIS check-in are implemented. The next
+backend milestone can define completed attendance/no-show and cancelled-event policies.

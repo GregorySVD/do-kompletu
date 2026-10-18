@@ -180,7 +180,14 @@ def test_title_patch_is_truly_partial_and_keeps_membership(client, db_session, c
                 "start_at": "2030-08-09T18:00:00+02:00",
                 "end_at": "2030-08-09T20:00:00+02:00",
             },
-            {"start_at": "2030-08-09T16:00:00Z", "end_at": "2030-08-09T18:00:00Z"},
+            {
+                "start_at": "2030-08-09T16:00:00Z",
+                "end_at": "2030-08-09T18:00:00Z",
+                "confirmation_opens_at": "2030-08-08T16:00:00Z",
+                "confirmation_deadline_at": "2030-08-09T16:00:00Z",
+                "checkin_opens_at": "2030-08-09T15:30:00Z",
+                "checkin_closes_at": "2030-08-09T17:00:00Z",
+            },
         ),
         ({"end_at": "2030-08-08T19:00:00Z"}, {"end_at": "2030-08-08T19:00:00Z"}),
         (

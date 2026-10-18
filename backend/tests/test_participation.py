@@ -154,7 +154,7 @@ def test_unlimited_activity_has_no_capacity_ceiling(
     assert client.get("/api/v1/activities").json()[0]["available_slots"] is None
 
 
-def test_leave_removes_membership_repeat_is_conflict_and_rejoin_works(
+def test_leave_retains_inactive_membership_repeat_is_conflict_and_rejoin_works(
     client, db_session, activity_context
 ):
     assert join(client, activity_context).status_code == 201
@@ -170,8 +170,8 @@ def test_leave_removes_membership_repeat_is_conflict_and_rejoin_works(
     assert (
         db_session.get(
             ActivityParticipation, (UUID(body["id"]), activity_context[1][1].id)
-        )
-        is None
+        ).status
+        == "LEFT"
     )
     repeat = leave(client, activity_context)
     assert repeat.status_code == 409

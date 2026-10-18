@@ -22,6 +22,8 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.activity import (
     ACTIVITY_CATEGORY_MARKDOWN_TABLE,
+    ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE,
+    ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
     ACTIVITY_CREATE_EXAMPLES,
     ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     ACTIVITY_LEAVE_RESPONSE_EXAMPLE,
@@ -30,6 +32,10 @@ from app.schemas.activity import (
     ActivityListItem,
     ActivityRead,
     PriceType,
+)
+from app.schemas.activity_check_in import (
+    ACTIVITY_CHECK_IN_REQUEST_EXAMPLE,
+    ActivityCheckIn,
 )
 from app.schemas.activity_management import (
     ACTIVITY_CANCEL_RESPONSE_EXAMPLE,
@@ -51,6 +57,8 @@ from app.services.activity_service import (
 )
 from app.services.participation_service import (
     ParticipationError,
+    check_in_activity,
+    confirm_activity,
     join_activity,
     leave_activity,
 )
@@ -104,9 +112,9 @@ name.
 
 ## CURRENT LIMITATIONS
 
-Create, list, detail, edit, cancel, join, and leave are implemented. The organizer is separate
+Create, list, detail, edit, cancel, join, leave, attendance confirmation, and PostGIS check-in are implemented. The organizer is separate
 from membership and does not consume a participant place. Counts reflect persisted
-memberships. Waitlists, confirmations, check-in, galleries, and nearby-distance
+JOINED/CONFIRMED/CHECKED_IN memberships; LEFT records do not count. Waitlists, galleries, and nearby-distance
 calculation are not implemented; their related fields remain placeholders.
 """
 
@@ -212,6 +220,10 @@ Finite capacity must be at least min_participants and the current membership
 count; a limit below membership returns 409. Set PAID together with a positive
 PLN price_amount (at most two decimal places); switching to FREE requires explicit
 price_amount=null. Omission does not silently clear a price or maximum.
+Only active states consume capacity. Changing start_at or end_at while any
+participant is CONFIRMED or CHECKED_IN returns 409. Once anyone is CHECKED_IN,
+actual latitude/longitude/location_name/address changes also return 409. Unchanged
+values and other allowed edits remain valid. LEFT records do not block edits.
 
 The activity-row lock is shared with join, leave, and cancellation. Counts are
 checked after the lock and held through the update and response snapshot. The
@@ -229,6 +241,8 @@ capacity. No participant rows are removed or notifications sent.
             "Activity is cancelled",
             "Activity can only be edited before it starts",
             "Participant limit cannot be below current participant count",
+            "Cannot change schedule while participants are confirmed",
+            "Cannot change location after participants have checked in",
         ),
     },
 )
@@ -279,7 +293,10 @@ They do not mean cancelled places are bookable.
 
 New joins and leaving are blocked with 409 after cancellation, preserving membership
 history. All cancelled activity permissions are false, including can_edit,
-can_cancel, can_join, and can_leave. There is no hard deletion, uncancel, cancellation
+can_cancel, can_join, can_leave, and can_confirm. Confirmation is also blocked.
+JOINED, CONFIRMED, CHECKED_IN, and LEFT retain their statuses/timestamps. Only active
+states count; CHECKED_IN and checked_in_at survive cancellation. Check-in is blocked
+after cancellation too. There is no hard deletion, uncancel, cancellation
 reason, notification, refund, or payment processing in this milestone.
 """,
     response_description="Cancelled activity details; the activity and memberships are preserved.",
@@ -444,7 +461,9 @@ def _membership_responses(*conflicts: str) -> dict:
     status_code=status.HTTP_201_CREATED,
     summary="Join an activity",
     description="""
-Create active membership for the authenticated caller. No request body is needed.
+Create JOINED membership for the authenticated caller, or reactivate an existing
+LEFT row. No request body is needed. Rejoin updates joined_at and clears left_at
+and confirmed_at/checked_in_at; it never inserts a second user/activity row.
 
 In Swagger, register/login as a user other than the organizer, select **Authorize**
 (email or display name in `username`), and paste a real activity UUID into
@@ -454,13 +473,13 @@ Send `Authorization: Bearer <access_token>`; refresh tokens are not accepted.
 The organizer cannot join and is excluded from participant counts and capacity.
 Joining is allowed before and during the activity, strictly before `end_at`.
 Cancelled activities reject joining with 409.
-Duplicate joins return 409, including when the activity is full. Full activities
+Duplicate active-state joins return 409, including when the activity is full. Full activities
 return 409; `max_participants: null` means unlimited places.
 
 PostgreSQL serializes join/leave transactions using a lock on the activity row.
 The 201 response contains updated activity details, counts, your `JOINED` state,
 and permissions. `JOINED` does not mean confirmed attendance or check-in.
-Waitlist and check-in counts remain zero. Retry after an uncertain network result
+Waitlist remains zero; checked_in_count counts CHECKED_IN only. Retry after an uncertain network result
 by reading details; another POST after a successful join returns 409.
 """,
     response_description="Updated activity details including your new active membership.",
@@ -495,7 +514,10 @@ def join(
     response_model=ActivityRead,
     summary="Leave an activity",
     description="""
-Remove the authenticated caller's active membership. No request body is needed.
+Transition the authenticated caller's JOINED or CONFIRMED membership to LEFT.
+The row remains stored; left_at is set, joined_at/confirmed_at are preserved.
+CHECKED_IN participants cannot leave (409); there is no undo check-in.
+No request body is needed.
 Send an access JWT using **Authorize** or `Authorization: Bearer <access_token>`.
 First join as a non-organizer with POST on this same path, then try DELETE.
 
@@ -507,10 +529,10 @@ Ended membership is preserved for history; leaving after the end returns 409.
 Cancelled membership is also preserved; leaving after cancellation returns 409.
 
 A user without membership receives 409 (including a repeated DELETE); the stored
-state is unchanged. Membership may be created again by joining while eligible.
+state is unchanged. A LEFT user may rejoin using the same row while eligible.
 Join and leave use the same PostgreSQL activity-row lock, preventing counter races.
 """,
-    response_description="Updated activity details after removing your membership.",
+    response_description="Updated activity details after marking your retained membership LEFT.",
     responses={
         200: {
             "content": {
@@ -519,6 +541,7 @@ Join and leave use the same PostgreSQL activity-row lock, preventing counter rac
         },
         **_membership_responses(
             "Not participating in this activity",
+            "Checked-in participants cannot leave",
             "Activity has ended",
             "Activity is cancelled",
             "Organizer cannot join or leave their own activity",
@@ -534,5 +557,141 @@ def leave(
     response.headers["Cache-Control"] = "private, no-store"
     try:
         return activity_to_read(leave_activity(session, activity_id, current_user.id))
+    except ParticipationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.post(
+    "/{activity_id}/confirm",
+    response_model=ActivityRead,
+    summary="Confirm attendance as a joined participant",
+    description="""
+Send an access JWT using **Authorize** or Authorization: Bearer <access_token>.
+No body is required. Only a non-organizer with JOINED membership may confirm.
+Successful confirmation transitions JOINED to CONFIRMED, persists confirmed_at,
+and returns the full ActivityRead with the caller's actual status. It consumes no
+additional place: JOINED, CONFIRMED, and CHECKED_IN count toward capacity; LEFT does not.
+
+The configured ACTIVITY_CONFIRMATION_WINDOW_HOURS (default 24) defines the window:
+confirmation_opens_at <= current UTC time < confirmation_deadline_at. Opening is
+start_at minus the window; the exclusive deadline is start_at. Checks run after
+the same activity-row lock as join/leave/edit/cancel. Cancelled or ended activities,
+non-members/LEFT users, repeated confirmation, and requests outside the window
+return 409. An organizer cannot confirm their own activity. There is no unconfirm.
+
+A confirmed participant may leave before end unless cancelled. Leaving preserves
+confirmed_at as last-cycle evidence; rejoining clears it and starts JOINED again.
+Activity schedule changes are blocked while any participant remains CONFIRMED.
+CHECKED_IN users cannot confirm again (409). Check-in is a separate POST with
+time and PostGIS validation; attendance completion, no-show, and rewards remain unimplemented.
+""",
+    responses={
+        200: {
+            "content": {
+                "application/json": {"example": ACTIVITY_CONFIRM_RESPONSE_EXAMPLE}
+            }
+        },
+        **_membership_responses(
+            "Organizer cannot confirm their own activity",
+            "Not participating in this activity",
+            "Already confirmed attendance",
+            "Already checked in",
+            "Activity is cancelled",
+            "Activity has ended",
+            "Confirmation window has not opened",
+            "Confirmation window has closed",
+        ),
+    },
+)
+def confirm(
+    activity_id: Annotated[UUID, Path(description="UUID of the joined activity.")],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_db)],
+    response: Response,
+) -> ActivityRead:
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        return activity_to_read(confirm_activity(session, activity_id, current_user.id))
+    except ParticipationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
+@router.post(
+    "/{activity_id}/check-in",
+    response_model=ActivityRead,
+    summary="Check in as a confirmed participant near the activity",
+    description="""
+Use **Authorize** or Authorization: Bearer <access_token>. Submit WGS 84 latitude
+(-90..90) and longitude (-180..180). Only a CONFIRMED non-organizer may check in;
+JOINED is not implicitly confirmed, LEFT is inactive, duplicate CHECKED_IN is 409.
+
+The shared UTC check-in window is inclusive at checkin_opens_at and exclusive at
+checkin_closes_at: start minus ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE (default 30),
+through the earlier of start plus ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER (default
+60) or activity end. Cancelled/ended activities cannot check in.
+
+Under the shared activity-row lock, PostgreSQL/PostGIS ST_DWithin compares the
+stored Geography(Point,4326) with Point(longitude,latitude), in meters using the
+spheroid. Distance <= ACTIVITY_CHECK_IN_RADIUS_METERS (default 150) is accepted;
+outside returns 409. No Python/SQLite geographic fallback authorizes attendance.
+
+Success transitions CONFIRMED to CHECKED_IN, sets checked_in_at once, preserves
+joined_at/confirmed_at, and returns ActivityRead with real checked_in_count.
+Coordinates and distance are used transiently and are not stored or returned.
+The caller's timestamps are private; public timing/radius/counts are safe metadata.
+can_check_in means state/time allow an attempt; POST still validates proximity.
+
+CHECKED_IN remains active and consumes capacity; it cannot leave or confirm again.
+Schedule/location edits are protected, and cancellation preserves check-in evidence.
+Submitted coordinates can be spoofed: this is not device attestation or fraud-proof
+GPS verification. No completed attendance, no-show, rewards, or undo check-in exists.
+""",
+    responses={
+        200: {
+            "content": {
+                "application/json": {"example": ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE}
+            }
+        },
+        **_membership_responses(
+            "Organizer cannot check in to their own activity",
+            "Not participating in this activity",
+            "Attendance must be confirmed before check-in",
+            "Already checked in",
+            "Activity is cancelled",
+            "Activity has ended",
+            "Check-in window has not opened",
+            "Check-in window has closed",
+            "Outside check-in radius",
+        ),
+        503: {
+            "description": "Check-in requires PostgreSQL/PostGIS; there is no approximate fallback."
+        },
+        422: {
+            "description": "Invalid activity UUID or coordinate body; latitude/longitude are required, finite, and range-checked. Unknown fields are rejected."
+        },
+    },
+)
+def check_in(
+    activity_id: Annotated[UUID, Path(description="UUID of the confirmed activity.")],
+    payload: Annotated[
+        ActivityCheckIn,
+        Body(
+            openapi_examples={
+                "at_venue": {
+                    "summary": "Coordinates at the example venue",
+                    "value": ACTIVITY_CHECK_IN_REQUEST_EXAMPLE,
+                }
+            }
+        ),
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_db)],
+    response: Response,
+) -> ActivityRead:
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        return activity_to_read(
+            check_in_activity(session, activity_id, current_user.id, payload)
+        )
     except ParticipationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
