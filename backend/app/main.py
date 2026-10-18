@@ -22,7 +22,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "Users",
-        "description": "Authenticated current-user profile operations.",
+        "description": "Authenticated current-user profile and organized/joined activity lists.",
     },
     {
         "name": "Activities",

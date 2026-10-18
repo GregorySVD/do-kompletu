@@ -195,3 +195,30 @@ def test_openapi_detail_documents_optional_auth_and_membership_shape(client):
     membership = schema["components"]["schemas"]["ActivityParticipationRead"]
     assert membership["properties"]["status"]["const"] == "JOINED"
     assert membership["properties"]["joined_at"]["format"] == "date-time"
+
+
+def test_openapi_my_activities_filters_auth_array_and_complete_examples(client):
+    from app.schemas.my_activities import MY_ACTIVITIES_RESPONSE_EXAMPLES
+
+    schema = client.get("/openapi.json").json()
+    operation = schema["paths"]["/api/v1/users/me/activities"]["get"]
+    assert operation["security"] == [{"OAuth2PasswordBearer": []}]
+    assert {"200", "401", "422"} <= operation["responses"].keys()
+    assert "requestBody" not in operation
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert set(parameters) == {"relation", "scope", "limit", "offset"}
+    assert all(parameter["in"] == "query" for parameter in parameters.values())
+    assert parameters["relation"]["required"] is True
+    assert parameters["scope"]["required"] is False
+    assert parameters["limit"]["schema"]["default"] == 20
+    assert parameters["limit"]["schema"]["minimum"] == 1
+    assert parameters["limit"]["schema"]["maximum"] == 100
+    assert parameters["offset"]["schema"]["default"] == 0
+    assert parameters["offset"]["schema"]["minimum"] == 0
+    media = operation["responses"]["200"]["content"]["application/json"]
+    assert media["schema"]["type"] == "array"
+    assert media["schema"]["items"] == {"$ref": "#/components/schemas/ActivityRead"}
+    assert media["examples"] == MY_ACTIVITIES_RESPONSE_EXAMPLES
+    for example in media["examples"].values():
+        for item in example["value"]:
+            ActivityRead.model_validate(item)

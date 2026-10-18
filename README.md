@@ -31,7 +31,9 @@ Implemented:
 - PostGIS point storage, activity filtering, pagination, and time-derived status;
 - authenticated joining/leaving with persisted membership, real participant counts,
   remaining capacity, and caller-specific detail permissions;
-- PostgreSQL row locking for concurrent capacity enforcement.
+- PostgreSQL row locking for concurrent capacity enforcement;
+- authenticated organized/joined activity lists with upcoming/history filters,
+  deterministic sorting, limit/offset pagination, and caller-specific state.
 
 In progress / next:
 
@@ -96,14 +98,16 @@ Login accepts either email or display name:
 
 Participation still needs frontend integration: the detail join button has no
 handler, no leave action exists, and `current_user_participation` is typed as only
-`null`. My Activities still reads static activity/user fixtures, so this milestone
-does not introduce a speculative My Activities API. Detail query caches must be
-scoped to the current user or invalidated on authentication changes, and refreshed
+`null`. My Activities still reads static activity/user fixtures; replace its three
+sections with the new current-user activity API described below. Personal query
+caches must be scoped to the current user or invalidated on authentication changes, and refreshed
 after join/leave along with list counts. An expired supplied access token now yields
 401 on detail reads; refresh/retry or clear credentials before anonymous browsing.
 
 The inspected contract, complete join/leave examples, and remaining integration
 work are documented in [the participation contract](backend/docs/activity-participation.md).
+The inspected My Activities views and their new API mapping are documented in
+[the My Activities contract](backend/docs/my-activities.md).
 Frontend source files are unchanged.
 
 ## Authentication
@@ -146,6 +150,7 @@ unique index on `lower(display_name)`.
 | `POST` | `/api/v1/auth/refresh` | Refresh token body | Issue a new access token |
 | `GET` | `/api/v1/users/me` | Access token | Read the current profile |
 | `PATCH` | `/api/v1/users/me` | Access token | Update display name and/or avatar URL |
+| `GET` | `/api/v1/users/me/activities` | Access token | List your organized/joined activities with time filtering and pagination |
 | `GET` | `/api/v1/categories` | No | List canonical activity categories |
 | `POST` | `/api/v1/activities` | Access token | Create an activity for the current user |
 | `GET` | `/api/v1/activities` | No | List/filter activity projections |
@@ -191,6 +196,61 @@ READ COMMITTED isolation, so a waiting writer counts the preceding writer's comm
 rows. A composite primary key also prevents duplicate membership. All future membership/capacity
 writers must follow the same locking protocol; direct SQL writes bypass business rules.
 Counts are queried from rows instead of maintained as mutable counters.
+
+## My Activities
+
+Use an access JWT with `GET /api/v1/users/me/activities`. Identity always comes
+from the token. The response is an array of existing `ActivityRead` objects,
+including real counts, the caller's membership, and permissions; no wrapper or
+new response DTO is introduced.
+
+| Query field | Values/default | Meaning |
+| --- | --- | --- |
+| `relation` | Required: `organized` or `joined` | Your organizer identity or your persisted membership; organizers are separate from participants |
+| `scope` | Optional: `upcoming` or `history` | Omit to include all times, as required by the current organized section |
+| `limit` | Default 20; 1-100 | Maximum matching records returned |
+| `offset` | Default 0; nonnegative | Matching records to skip after filtering/sorting |
+
+Map the current frontend's sections to these requests:
+
+```http
+GET /api/v1/users/me/activities?relation=joined&scope=upcoming&limit=20&offset=0
+GET /api/v1/users/me/activities?relation=organized&limit=20&offset=0
+GET /api/v1/users/me/activities?relation=joined&scope=history&limit=20&offset=0
+Authorization: Bearer <access_token>
+```
+
+`upcoming` means `end_at > cutoff` and includes ongoing activities. `history` means
+`end_at <= cutoff`; the exact end instant is history. A single UTC cutoff drives
+filtering, status, and permissions for the whole page. Upcoming sorts by start time
+ascending; history sorts by end time descending. When scope is omitted, upcoming
+comes first with that ordering, followed by history with its ordering. UUID
+ascending breaks ties in every case.
+
+Joined items contain the caller's `JOINED` membership; organized items normally
+have null membership and management permissions remain false. Checked-in/waitlist
+counts remain zero; unlimited activities keep `available_slots: null`.
+
+An empty result or out-of-range offset returns `[]`. There is no total count or
+`has_more`. Fetch successive offsets until a short/empty page; a full last page
+may require an additional empty fetch. Time/membership changes between requests can
+shift offsets; this is not a frozen snapshot across pages. Authentication failures
+return 401. Missing/invalid filters, pagination, and unknown query fields (including
+`user_id`) return 422. Personal responses use `Cache-Control: private, no-store`
+and `Vary: Authorization`.
+
+One activity SELECT includes the organizer, correlated participant count, and
+caller membership; authentication adds one user lookup. Query-count tests against
+SQLite and PostgreSQL verify that larger pages do not add SQL round trips per item.
+The public list retains its response shape and one-SELECT query path. No database
+schema changes or new migrations are needed; the head remains `20261018_0004`.
+
+Frontend work remains: add an authenticated API function/query hook, replace the
+mock sections, add page loading/error/load-more states, update the membership type,
+and scope caches to user identity plus relation/scope/pagination. The server owns
+the time classification; remove the current browser-clock split at integration.
+No edit/cancel/delete controls currently exist in this page; their APIs remain
+outside this milestone.
 
 ## Optional bootstrap user
 
@@ -267,7 +327,7 @@ to a migrated PostgreSQL database:
 
 ```powershell
 $env:POSTGRES_TEST_DATABASE_URL = "postgresql+psycopg://USER:PASSWORD@HOST:PORT/DATABASE"
-uv run pytest -v tests/test_activities_postgres.py tests/test_participation_postgres.py
+uv run pytest -v tests/test_activities_postgres.py tests/test_participation_postgres.py tests/test_my_activities_postgres.py
 ```
 
 Do not point integration tests at production data. Membership integration fixtures
@@ -278,6 +338,9 @@ The concurrency test holds the activity lock until both workers visibly wait in
 `pg_stat_activity`, then checks serial outcomes and capacity. SQLite tests do not
 claim to validate PostgreSQL locking. The final-place scenario uses capacity two
 with one existing member because the established creation contract requires at least two.
+My Activities integration fixtures roll back an outer PostgreSQL transaction and
+test real timestamptz values under multiple connection time zones, UUID tie ordering,
+PostGIS projections, scoped state, pagination, and constant query counts.
 
 ## Known limitations
 
@@ -287,7 +350,8 @@ with one existing member because the established creation contract requires at l
 - `distance_m` is currently `null`; nearby search is not implemented.
 - Categories are fixed application reference data rather than database-managed rows.
 - Activity status is derived from the current time and the stored start/end times.
-- My Activities is still a frontend mock; its authenticated API is a future milestone.
+- My Activities backend lists are implemented, but the frontend still uses mocks.
+- My Activities uses limit/offset arrays without total counts or a frozen cross-page snapshot.
 - Leaving removes the membership row; leave/rejoin audit history is not stored.
 - Capacity is enforced by the service locking protocol, not by a database count trigger.
 - Role-based administrator authorization is not implemented.

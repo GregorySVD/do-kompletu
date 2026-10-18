@@ -26,6 +26,7 @@ from app.schemas.activity import (
     ActivityStatus,
     PriceType,
 )
+from app.schemas.my_activities import ActivityRelation, ActivityScope
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +37,7 @@ class ActivityResult:
     participant_count: int
     current_user_joined_at: datetime | None = None
     current_user_id: UUID | None = None
+    as_of: datetime | None = None
 
 
 def create_activity(
@@ -113,12 +115,64 @@ def list_activities(
         statement = statement.where(Activity.price_type == price_type.value)
 
     statement = statement.order_by(
-        case((Activity.end_at >= now, 0), else_=1),
+        case((Activity.end_at > now, 0), else_=1),
         Activity.start_at.asc(),
         Activity.id.asc(),
     )
     statement = statement.offset(offset).limit(limit)
-    return _activity_results(session, statement)
+    return _activity_results(session, statement, as_of=now)
+
+
+def list_user_activities(
+    session: Session,
+    *,
+    current_user_id: UUID,
+    relation: ActivityRelation,
+    scope: ActivityScope | None,
+    limit: int,
+    offset: int,
+) -> list[ActivityResult]:
+    # One cutoff drives both filtering and response status/permissions, so an
+    # activity cannot cross the boundary midway through serializing this page.
+    now = datetime.now(UTC)
+    statement = select(Activity).options(joinedload(Activity.organizer))
+    if relation == ActivityRelation.ORGANIZED:
+        statement = statement.where(Activity.organizer_id == current_user_id)
+    else:
+        membership = (
+            select(ActivityParticipation.activity_id)
+            .where(
+                ActivityParticipation.activity_id == Activity.id,
+                ActivityParticipation.user_id == current_user_id,
+            )
+            .exists()
+        )
+        statement = statement.where(
+            membership, Activity.organizer_id != current_user_id
+        )
+
+    if scope == ActivityScope.UPCOMING:
+        statement = statement.where(Activity.end_at > now).order_by(
+            Activity.start_at.asc(), Activity.id.asc()
+        )
+    elif scope == ActivityScope.HISTORY:
+        statement = statement.where(Activity.end_at <= now).order_by(
+            Activity.end_at.desc(), Activity.id.asc()
+        )
+    else:
+        statement = statement.order_by(
+            case((Activity.end_at > now, 0), else_=1),
+            case((Activity.end_at > now, Activity.start_at)).asc(),
+            case((Activity.end_at <= now, Activity.end_at)).desc(),
+            Activity.id.asc(),
+        )
+
+    return _activity_results(
+        session,
+        statement.limit(limit).offset(offset),
+        current_user_id=current_user_id,
+        as_of=now,
+    )
 
 
 def get_activity_by_id(
@@ -167,7 +221,7 @@ def activity_to_list_item(result: ActivityResult) -> ActivityListItem:
         checked_in_count=0,
         waitlist_count=0,
         available_slots=available_slots,
-        status=_activity_status(start_at, end_at),
+        status=_activity_status(start_at, end_at, as_of=result.as_of),
     )
 
 
@@ -216,6 +270,7 @@ def _activity_results(
     statement: Select[tuple[Activity]],
     *,
     current_user_id: UUID | None = None,
+    as_of: datetime | None = None,
 ) -> list[ActivityResult]:
     # Correlated projections keep count and caller state in the same SQL snapshot,
     # without loading participant lists or issuing one query per activity.
@@ -258,6 +313,7 @@ def _activity_results(
                 participant_count=row.participant_count,
                 current_user_joined_at=row.joined_at,
                 current_user_id=current_user_id,
+                as_of=as_of,
             )
             for row in rows
         ]
@@ -270,6 +326,7 @@ def _activity_results(
             participant_count=row.participant_count,
             current_user_joined_at=row.joined_at,
             current_user_id=current_user_id,
+            as_of=as_of,
         )
         for row in rows
     ]
@@ -299,8 +356,10 @@ def _as_aware_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
-def _activity_status(start_at: datetime, end_at: datetime) -> ActivityStatus:
-    now = datetime.now(UTC)
+def _activity_status(
+    start_at: datetime, end_at: datetime, *, as_of: datetime | None = None
+) -> ActivityStatus:
+    now = as_of if as_of is not None else datetime.now(UTC)
     if now < start_at:
         return ActivityStatus.PUBLISHED
     if now < end_at:

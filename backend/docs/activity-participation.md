@@ -1,6 +1,10 @@
 # Activity participation contract
 
-## Repository/frontend findings (2026-10-18)
+## Repository/frontend findings (participation milestone, 2026-10-18)
+
+These findings describe the participation milestone. The subsequent
+[My Activities contract](my-activities.md) adds current-user organized/joined lists
+without changing the membership schema or join/leave rules below.
 
 The work uses the existing `backend` branch and leaves `frontend/` unchanged.
 Both the migration-file head and the development database started at `20260927_0003`.
@@ -279,13 +283,13 @@ Frontend follow-up:
    on login/logout/account changes; account for session restoration before fetching.
 4. Handle 401 through access-token refresh/retry or by clearing tokens and refetching
    anonymously. Current refresh-on-session-restoration alone is insufficient.
-5. Replace My Activities fixtures once an authenticated organized/joined list contract
-   is designed. No such endpoint exists in this milestone.
+5. Replace My Activities fixtures using the subsequent authenticated
+   [organized/joined list contract](my-activities.md).
 6. Integrate server pagination/filtering for discovery beyond its first 100 records;
    consider ended status when presenting available activities.
 
-Recommended next backend milestone: authenticated organized/joined activity lists,
-including pagination and clear upcoming/history semantics, followed by organizer
+Authenticated organized/joined lists are now covered by the subsequent
+[My Activities milestone](my-activities.md). The next backend milestone is organizer
 editing/cancellation using the same activity lock for capacity/lifecycle changes.
 Waitlists, attendance confirmation/check-in, reviews, XP, ranks, achievements, media,
 notifications, and distance search remain unimplemented.
