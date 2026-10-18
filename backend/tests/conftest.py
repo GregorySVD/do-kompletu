@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -42,6 +42,11 @@ def session_factory(monkeypatch):
         poolclass=StaticPool,
         future=True,
     )
+
+    @event.listens_for(engine, "connect")
+    def enable_foreign_keys(connection, _):
+        connection.execute("PRAGMA foreign_keys=ON")
+
     factory = sessionmaker(
         bind=engine,
         autoflush=False,

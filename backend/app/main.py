@@ -1,5 +1,8 @@
+from copy import deepcopy
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute, iter_route_contexts
 
 from app.api.router import api_router
 from app.core.config import get_settings
@@ -19,11 +22,14 @@ OPENAPI_TAGS = [
     },
     {
         "name": "Users",
-        "description": "Authenticated current-user profile operations.",
+        "description": "Authenticated current-user profile and organized/joined activity lists.",
     },
     {
         "name": "Activities",
-        "description": "Create activities and browse public activity data.",
+        "description": (
+            "Create, edit, cancel, finalize attendance, and browse activities; join, leave, confirm, or check in with an access JWT. "
+            "Detail authentication is optional for caller-specific membership."
+        ),
     },
     {
         "name": "Reference Data",
@@ -61,6 +67,40 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(api_router)
+
+    default_openapi = app.openapi
+
+    def openapi_with_examples() -> dict:
+        if app.openapi_schema is None:
+            schema = default_openapi()
+            # FastAPI removes None recursively, even inside request/response examples.
+            # Restore explicit examples so nullable fields match actual responses.
+            for route in iter_route_contexts(app.routes):
+                if (
+                    not isinstance(route.original_route, APIRoute)
+                    or not route.include_in_schema
+                ):
+                    continue
+                for method in route.methods:
+                    operation = schema["paths"][route.path_format][method.lower()]
+                    if route.body_field is not None:
+                        body_info = route.body_field.field_info
+                        if body_info.openapi_examples:
+                            operation["requestBody"]["content"][body_info.media_type][
+                                "examples"
+                            ] = deepcopy(body_info.openapi_examples)
+                    for code, response in route.responses.items():
+                        for media_type, media in response.get("content", {}).items():
+                            target = operation["responses"][str(code)]["content"][
+                                media_type
+                            ]
+                            for key in ("example", "examples"):
+                                if key in media:
+                                    target[key] = deepcopy(media[key])
+            app.openapi_schema = schema
+        return app.openapi_schema
+
+    app.openapi = openapi_with_examples
 
     @app.get(
         "/health",

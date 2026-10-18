@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
+    activity_confirmation_window_hours: int = Field(default=24, ge=1, le=8760)
+    activity_check_in_open_minutes_before: int = Field(default=30, ge=0, le=525600)
+    activity_check_in_close_minutes_after: int = Field(default=60, ge=0, le=525600)
+    activity_check_in_radius_meters: int = Field(default=150, ge=1, le=100000)
     bootstrap_user_email: str | None = None
     bootstrap_user_display_name: str | None = None
     bootstrap_user_password: str | None = None
@@ -59,8 +63,12 @@ class Settings(BaseSettings):
                 return []
             if stripped_value.startswith("["):
                 return json.loads(stripped_value)
-            return [origin.strip() for origin in stripped_value.split(",") if origin.strip()]
-        raise ValueError("cors_allowed_origins must be a list or comma-separated string")
+            return [
+                origin.strip() for origin in stripped_value.split(",") if origin.strip()
+            ]
+        raise ValueError(
+            "cors_allowed_origins must be a list or comma-separated string"
+        )
 
 
 @lru_cache
