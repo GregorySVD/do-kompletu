@@ -78,7 +78,13 @@ def test_organized_list_is_scoped_to_caller_and_includes_all_times(client, data)
     for item in items:
         assert item["organizer"]["id"] == str(data.users[0].id)
         assert item["current_user_participation"] is None
-        assert not any(item["permissions"].values())
+        assert item["permissions"]["can_edit"] is (item["status"] == "PUBLISHED")
+        assert item["permissions"]["can_cancel"] is (item["status"] != "ENDED")
+        assert not any(
+            value
+            for key, value in item["permissions"].items()
+            if key not in {"can_edit", "can_cancel"}
+        )
         assert "email" not in item["organizer"]
         assert "password_hash" not in str(item)
     assert (

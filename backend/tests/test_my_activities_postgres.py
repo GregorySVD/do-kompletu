@@ -85,7 +85,14 @@ def test_postgres_scoped_membership_counts_state_and_postgis_coordinates(
         )
         assert all(item["organizer"]["id"] == str(data.users[0].id) for item in items)
         assert all(item["current_user_participation"] is None for item in items)
-        assert all(not any(item["permissions"].values()) for item in items)
+        for item in items:
+            assert item["permissions"]["can_edit"] is (item["status"] == "PUBLISHED")
+            assert item["permissions"]["can_cancel"] is (item["status"] != "ENDED")
+            assert not any(
+                value
+                for key, value in item["permissions"].items()
+                if key not in {"can_edit", "can_cancel"}
+            )
         assert items[0]["participant_count"] == 1
         assert items[0]["available_slots"] == 3
     else:

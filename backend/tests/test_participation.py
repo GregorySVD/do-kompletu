@@ -223,7 +223,13 @@ def test_organizer_is_separate_from_membership(client, activity_context):
     ).json()
     assert body["participant_count"] == 0
     assert body["available_slots"] == 2
-    assert not any(body["permissions"].values())
+    assert body["permissions"]["can_edit"] is True
+    assert body["permissions"]["can_cancel"] is True
+    assert not any(
+        value
+        for key, value in body["permissions"].items()
+        if key not in {"can_edit", "can_cancel"}
+    )
 
 
 @pytest.mark.parametrize("elapsed", [False, True])

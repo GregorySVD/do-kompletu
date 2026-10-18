@@ -27,7 +27,7 @@ OPENAPI_TAGS = [
     {
         "name": "Activities",
         "description": (
-            "Create and browse activities; join or leave with an access JWT. "
+            "Create, edit, cancel, and browse activities; join or leave with an access JWT. "
             "Detail authentication is optional for caller-specific membership."
         ),
     },
@@ -70,10 +70,10 @@ def create_app() -> FastAPI:
 
     default_openapi = app.openapi
 
-    def openapi_with_response_examples() -> dict:
+    def openapi_with_examples() -> dict:
         if app.openapi_schema is None:
             schema = default_openapi()
-            # FastAPI removes None recursively, even inside response examples.
+            # FastAPI removes None recursively, even inside request/response examples.
             # Restore explicit examples so nullable fields match actual responses.
             for route in iter_route_contexts(app.routes):
                 if (
@@ -83,6 +83,12 @@ def create_app() -> FastAPI:
                     continue
                 for method in route.methods:
                     operation = schema["paths"][route.path_format][method.lower()]
+                    if route.body_field is not None:
+                        body_info = route.body_field.field_info
+                        if body_info.openapi_examples:
+                            operation["requestBody"]["content"][body_info.media_type][
+                                "examples"
+                            ] = deepcopy(body_info.openapi_examples)
                     for code, response in route.responses.items():
                         for media_type, media in response.get("content", {}).items():
                             target = operation["responses"][str(code)]["content"][
@@ -94,7 +100,7 @@ def create_app() -> FastAPI:
             app.openapi_schema = schema
         return app.openapi_schema
 
-    app.openapi = openapi_with_response_examples
+    app.openapi = openapi_with_examples
 
     @app.get(
         "/health",

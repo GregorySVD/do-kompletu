@@ -1,14 +1,16 @@
 # Activity participation contract
 
-## Repository/frontend findings (participation milestone, 2026-10-18)
+## Repository/frontend findings (verified 2026-10-18)
 
-These findings describe the participation milestone. The subsequent
-[My Activities contract](my-activities.md) adds current-user organized/joined lists
-without changing the membership schema or join/leave rules below.
+This contract includes the subsequent [My Activities](my-activities.md) and
+[management](activity-management.md) additions: authenticated organized/joined
+lists, organizer editing/cancellation, and cancelled join/leave rejection while
+preserving memberships. See the [root README](../../README.md#testing) for current
+combined verification; the participation milestone results below are historical.
 
-The work uses the existing `backend` branch and leaves `frontend/` unchanged.
-Both the migration-file head and the development database started at `20260927_0003`.
-Compose and the local settings use PostgreSQL on host port **5433**.
+The participation implementation used the existing `backend` branch and left
+`frontend/` unchanged. Its migration-file/database baseline was `20260927_0003`;
+the current head is `20261018_0005`. Compose uses PostgreSQL on host port **5433**.
 
 | Area inspected | Current frontend behavior | Backend assessment |
 | --- | --- | --- |
@@ -17,16 +19,18 @@ Compose and the local settings use PostgreSQL on host port **5433**.
 | List, map, cards, queries, local filters | Real activity/category APIs, numeric coordinates/counts, nullable capacity, enum prices | Existing names/types match. Counts/capacity now come from membership. The UI's missing-to-minimum calculation is presentation logic and can stay local. |
 | Discovery pagination | Fetches only `limit=100, offset=0`, then filters locally | It is not a complete dataset beyond 100 results. Server filtering already exists; pagination/filter integration is later frontend work. Availability filtering currently checks slots but not lifecycle. |
 | Detail page and detail query | Real API; reads `permissions.can_join`; button has no click handler; no leave UI | No existing join/leave network contract to preserve. Detail query key contains activity ID but no user identity. |
-| Activity/user TypeScript types | Detail membership declared as exactly `null`; user shape matches `/users/me` | Update membership to the object/null union below when wiring participation. Status union also permits DRAFT/CANCELLED, which the backend does not currently produce. |
+| Activity/user TypeScript types | Detail membership declared as exactly `null`; user shape matches `/users/me` | Update membership to the object/null union below when wiring participation, and add cancelled_at/can_cancel. Backend now produces CANCELLED; frontend's DRAFT remains unused. |
 | Creation form, Zod schema, mutation | Canonical categories, snake_case payload, timezone-aware dates, consistent price/capacity values | Compatible. Frontend additionally forbids past starts; backend preserves its existing allowance for past/ongoing activities. Backend enforces category IDs and decimal amount bounds more strictly. |
 | Profile/current user | Real auth-context user and `/users/me` | Compatible. Profile update API remains available; this page currently displays profile data. |
 | Routing/permissions | Public discovery/detail; protected creation/profile/My Activities | Compatible. Backend independently enforces write authentication and business rules. |
-| My Activities and fixture files | `mockActivities` plus static `mockUserActivities` IDs, split locally into upcoming/organized/history | No real API call or query contract exists here. No speculative My Activities endpoint was added. Static IDs may lead to real detail 404s; mock permissions/counts are not authoritative. |
+| My Activities and fixture files | `mockActivities` plus static `mockUserActivities` IDs, split locally into upcoming/organized/history | No real frontend API call/hook exists yet. The implemented backend endpoint is `GET /api/v1/users/me/activities`; see its contract. Static IDs may lead to real detail 404s; mock permissions/counts are not authoritative. |
 
 ## Storage and transactions
 
 Migration: `20261018_0004_create_activity_participations.py`, revision
 `20261018_0004`, parent `20260927_0003`.
+Cancellation metadata was added later by `20261018_0005`; it does not alter this
+membership table.
 
 ```sql
 CREATE TABLE activity_participations (
@@ -47,7 +51,7 @@ not recorded in this milestone. Cascades apply when referenced rows are deleted;
 this does not introduce user/activity deletion APIs.
 
 The service locks the activity row with `SELECT ... FOR UPDATE`, then checks role,
-membership, current time, and capacity, inserts/deletes membership, reads the updated
+cancellation, membership, current time, and capacity, inserts/deletes membership, reads the updated
 detail snapshot, and commits. Both operations roll back on failures. The response
 snapshot is read while holding the lock; later transactions can naturally change
 the activity after commit.
@@ -55,8 +59,9 @@ the activity after commit.
 The application explicitly configures PostgreSQL READ COMMITTED isolation, which
 gives each subsequent query a fresh snapshot. A writer
 waiting for the activity lock therefore sees the previous writer's committed
-membership before counting places. All membership and future capacity writers must
-follow this protocol. Direct SQL inserts are protected against duplicate membership
+membership before counting places. Membership, organizer editing, and cancellation
+already share this protocol; future capacity writers must also follow it.
+Direct SQL inserts are protected against duplicate membership
 and missing foreign keys, but do not enforce capacity, lifecycle, or organizer rules.
 Higher transaction isolation would require separate retry/isolation design.
 
@@ -121,8 +126,10 @@ Authorization: Bearer <access_token>
     "status": "JOINED",
     "joined_at": "2030-08-01T12:00:00Z"
   },
+  "cancelled_at": null,
   "permissions": {
     "can_edit": false,
+    "can_cancel": false,
     "can_delete": false,
     "can_join": false,
     "can_leave": true,
@@ -180,8 +187,10 @@ Authorization: Bearer <access_token>
   "price_amount": null,
   "currency": null,
   "current_user_participation": null,
+  "cancelled_at": null,
   "permissions": {
     "can_edit": false,
+    "can_cancel": false,
     "can_delete": false,
     "can_join": true,
     "can_leave": false,
@@ -206,18 +215,19 @@ counts/capacity. Unlimited activities have `max_participants: null` and
 ## Business rules, errors, and permissions
 
 Organizers are separate from participants and never consume capacity. Non-organizers
-may join/leave before or during the activity, strictly before its end. Membership
-is preserved after the end. All future permissions remain false, including edit and
-delete because their endpoints are not implemented.
+may join/leave an uncancelled activity before or during it, strictly before its end. Membership
+is preserved after the end and after cancellation. Future permissions remain false;
+organizer edit/cancel are now described by the management contract, while delete remains disabled.
 
 | Caller/state | can_join | can_leave |
 | --- | --- | --- |
 | Anonymous | false | false |
 | Organizer | false | false |
-| Authenticated non-member, open, space available/unlimited | true | false |
+| Authenticated non-member, uncancelled and before end, space available/unlimited | true | false |
 | Authenticated non-member, full | false | false |
-| Participant, before end (even if full) | false | true |
+| Participant, uncancelled and before end (even if full) | false | true |
 | Any caller after end | false | false |
+| Any caller after cancellation | false | false |
 
 | Status | Exact JSON body | Applies to |
 | --- | --- | --- |
@@ -228,11 +238,13 @@ delete because their endpoints are not implemented.
 | 409 | `{"detail":"Already joined this activity"}` | Duplicate POST, even when full |
 | 409 | `{"detail":"Not participating in this activity"}` | DELETE without membership, including repeat DELETE |
 | 409 | `{"detail":"Activity has ended"}` | New join or participating user's leave at/after end |
+| 409 | `{"detail":"Activity is cancelled"}` | Join or leave after cancellation |
 | 409 | `{"detail":"Activity is full"}` | New join with no remaining places |
 | 422 | Standard FastAPI validation body | Invalid activity UUID |
 
-Checks run in this order: existence, organizer, membership, end time, capacity.
-Repeated DELETE preserves state but returns 409; rejoining after leaving is allowed.
+Checks run in this order: existence, organizer, cancellation, membership, end time,
+then capacity for joining. Repeated DELETE preserves state but returns 409;
+rejoining after leaving is allowed while the activity remains open and has space.
 
 ## Validation and remaining work
 
@@ -248,12 +260,16 @@ scenarios. Each race proves both workers wait on real PostgreSQL locks before
 releasing the holder; the final-place scenario admits exactly one new member.
 SQLite is used only for isolated functional coverage.
 
-The development database was upgraded additively. A temporary PostGIS database
+During the participation milestone, the development database was upgraded additively. A temporary PostGIS database
 validated baseline `0003`, upgrade `0004`, schema/indexes/FKs, downgrade to `0003`
 (membership table absent), and re-upgrade to `0004`; the temporary database was
 removed afterward. No persistent volume was removed.
 
-Final verification:
+### Historical participation milestone verification
+
+These results record the original participation milestone, before My Activities
+and management were implemented. They are not the current combined test totals
+or migration head; see [current verification](../../README.md#testing).
 
 | Check | Result |
 | --- | --- |
@@ -262,7 +278,7 @@ Final verification:
 | `uv run ruff check .` | Passed |
 | `uv run python -m compileall app` | Passed |
 | `uv lock --check` | Passed; 66 packages resolved, lockfile unchanged |
-| `uv run alembic current` | `20261018_0004 (head)` in the development database |
+| `uv run alembic current` | `20261018_0004`, the development head at that milestone |
 | Upgrade/downgrade/re-upgrade | Passed against a temporary PostgreSQL 17/PostGIS database |
 | Application database configuration | `localhost:5433`, READ COMMITTED verified from an actual connection |
 | Complete documentation examples | Parsed and matched to the API response examples exactly |
@@ -289,7 +305,8 @@ Frontend follow-up:
    consider ended status when presenting available activities.
 
 Authenticated organized/joined lists are now covered by the subsequent
-[My Activities milestone](my-activities.md). The next backend milestone is organizer
-editing/cancellation using the same activity lock for capacity/lifecycle changes.
+[My Activities milestone](my-activities.md). Organizer editing/cancellation is now
+covered by the subsequent [management milestone](activity-management.md), using the
+same activity lock for capacity/lifecycle changes.
 Waitlists, attendance confirmation/check-in, reviews, XP, ranks, achievements, media,
 notifications, and distance search remain unimplemented.

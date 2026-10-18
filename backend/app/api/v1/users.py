@@ -63,9 +63,10 @@ shift offsets; pagination does not freeze the dataset.
 Joined items include your `JOINED` state and joined_at; organized items normally
 have null membership. Counts/capacity come from persisted memberships; organizers
 do not consume places, and unlimited activities have available_slots=null.
-can_join/can_leave follow existing lifecycle rules; ended memberships cannot leave.
-Checked-in/waitlist counts stay zero; editing, cancellation, deletion, and future
-attendance/reward actions are not implemented. Responses are private and must not
+Cancelled activities remain in both relations and retain the same end-time scope;
+their status remains CANCELLED. can_edit/can_cancel follow organizer lifecycle rules;
+ended or cancelled memberships cannot leave. Checked-in/waitlist counts stay zero;
+deletion and future attendance/reward actions are not implemented. Responses are private and must not
 be cached by shared intermediaries. Scope client query caches to the current user.
 """,
     response_description="A page of your activity details with your own state and permissions.",

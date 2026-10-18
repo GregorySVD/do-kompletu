@@ -54,7 +54,9 @@ MY_ACTIVITIES_RESPONSE_EXAMPLES = {
             {
                 **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
                 "current_user_participation": None,
-                "permissions": ActivityPermissionsRead().model_dump(),
+                "permissions": ActivityPermissionsRead(
+                    can_edit=True, can_cancel=True
+                ).model_dump(),
             }
         ],
     },

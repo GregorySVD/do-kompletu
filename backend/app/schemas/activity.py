@@ -30,6 +30,7 @@ class ActivityStatus(StrEnum):
     PUBLISHED = "PUBLISHED"
     ONGOING = "ONGOING"
     ENDED = "ENDED"
+    CANCELLED = "CANCELLED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -316,7 +317,11 @@ class ActivityTagRead(BaseModel):
 class ActivityPermissionsRead(BaseModel):
     can_edit: bool = Field(
         default=False,
-        description="Whether the current user may edit the activity; currently always false.",
+        description="True for the organizer before start_at, unless cancelled.",
+    )
+    can_cancel: bool = Field(
+        default=False,
+        description="True for the organizer strictly before end_at, unless already cancelled.",
     )
     can_delete: bool = Field(
         default=False,
@@ -326,12 +331,12 @@ class ActivityPermissionsRead(BaseModel):
         default=False,
         description=(
             "True for authenticated non-organizers who have not joined, while the "
-            "activity has not ended and capacity remains."
+            "activity is PUBLISHED/ONGOING and capacity remains."
         ),
     )
     can_leave: bool = Field(
         default=False,
-        description="True for a joined non-organizer before the activity ends.",
+        description="True for a joined non-organizer before end_at, unless cancelled.",
     )
     can_confirm: bool = Field(
         default=False,
@@ -388,8 +393,8 @@ class ActivityListItem(BaseModel):
     )
     status: ActivityStatus = Field(
         description=(
-            "Time-derived status: PUBLISHED before start_at, ONGOING from start_at "
-            "until end_at, and ENDED afterward."
+            "CANCELLED whenever cancelled_at is set, regardless of time. Otherwise "
+            "PUBLISHED before start_at, ONGOING from start_at until end_at, and ENDED afterward."
         )
     )
 
@@ -403,6 +408,10 @@ class ActivityParticipationRead(BaseModel):
 
 
 class ActivityRead(ActivityListItem):
+    cancelled_at: datetime | None = Field(
+        default=None,
+        description="UTC time of organizer cancellation, or null. Cancellation preserves memberships.",
+    )
     description: str = Field(description="Organizer-provided activity description.")
     organizer: ActivityOrganizerRead = Field(
         description="Public, safe organizer information."
@@ -447,7 +456,7 @@ class ActivityRead(ActivityListItem):
     permissions: ActivityPermissionsRead = Field(
         default_factory=ActivityPermissionsRead,
         description=(
-            "Caller-specific join/leave permissions. Unimplemented actions remain false."
+            "Caller-specific edit/cancel/join/leave permissions. Unimplemented actions remain false."
         ),
     )
 

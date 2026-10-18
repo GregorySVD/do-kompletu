@@ -1,5 +1,11 @@
 # My Activities contract
 
+Organizer editing and cancellation are now implemented by the subsequent
+[management milestone](activity-management.md). Cancelled rows remain in both
+relations and keep the end-time scopes described here; discovery excludes them.
+Current combined verification and the migration chain are in the
+[root README](../../README.md#testing). Earlier verification below is explicitly historical.
+
 ## Current frontend inspection
 
 `frontend/src/pages/MyActivitiesPage/MyActivitiesPage.tsx` is protected by
@@ -51,7 +57,8 @@ the frontend's existing all-organized section without merging the two relations.
 
 Organized selects `organizer_id == current_user.id`. Joined selects persisted
 membership for the caller and excludes the caller's organized activities.
-Leaving removes an item from joined lists; ended memberships remain in history.
+Leaving an uncancelled activity before end removes an item from joined lists;
+ended and cancelled memberships remain persisted. Cancellation blocks leaving.
 No other user's membership is returned.
 
 A single timezone-aware UTC cutoff is captured after authentication and used for
@@ -128,8 +135,10 @@ Authorization: Bearer <access_token>
       "status": "JOINED",
       "joined_at": "2030-08-01T12:00:00Z"
     },
+    "cancelled_at": null,
     "permissions": {
       "can_edit": false,
+      "can_cancel": false,
       "can_delete": false,
       "can_join": false,
       "can_leave": true,
@@ -144,8 +153,9 @@ Authorization: Bearer <access_token>
 
 Example IDs/timestamps are illustrative. Swagger also includes complete selectable
 organized, joined-history, and empty-array examples. Organized responses use the
-same schema with normally null membership and all permissions false; history keeps
-JOINED membership but disables leaving. Unlimited capacity returns null for both
+same schema with normally null membership and organizer can_edit/can_cancel based
+on lifecycle; history keeps JOINED membership but disables leaving. Cancelled
+activities retain membership with all permissions false. Unlimited capacity returns null for both
 `max_participants` and `available_slots`. Participant counts exclude the organizer;
 checked-in and waitlist counts stay zero.
 
@@ -178,8 +188,10 @@ uses one captured cutoff, with its active-first boundary aligned to ENDED semant
 This is a round-trip guarantee, not a claim that database CPU work is independent
 of page size. No formal benchmark or additional index is justified for this milestone.
 
-No migration or schema change was needed. Both migration-file head and the real
-development database were verified as `20261018_0004`, using `localhost:5433`.
+The My Activities milestone needed no migration or schema change. Its historical
+migration-file/database head was `20261018_0004`, using `localhost:5433`.
+The subsequent management migration adds cancelled_at; the current head is
+`20261018_0005`. The relation/scope query contract is unchanged.
 
 ## Tests and integration work
 
@@ -198,7 +210,10 @@ records. SQLite does not prove these PostgreSQL properties. Existing auth,
 participation locking, categories, public activity APIs, and bootstrap regressions
 remain covered by their existing suites.
 
-Final verification for this milestone:
+### Historical My Activities milestone verification
+
+These results predate organizer management. For current combined test counts and
+the current migration head, see [the README](../../README.md#testing).
 
 | Check | Result |
 | --- | --- |
@@ -207,7 +222,7 @@ Final verification for this milestone:
 | `uv run ruff check .` | Passed |
 | `uv run python -m compileall app` | Passed |
 | `uv lock --check` | Passed; lockfile unchanged |
-| `uv run alembic current` | `20261018_0004 (head)`; no new migration |
+| `uv run alembic current` | `20261018_0004`, the head at that milestone; no listing-specific migration |
 | Documentation JSON | Parsed and matched to the API examples exactly |
 | Database cleanup | One existing user, zero activities, zero memberships after tests |
 | `git diff --check` | Passed |
@@ -228,13 +243,14 @@ Frontend work still required:
    browser-clock classification and keep section labels/empty states.
 3. Add loading, retry/error, and pagination/load-more handling. Fetch after auth
    restoration and handle token refresh/re-authentication on 401.
-4. Update the membership TypeScript union. Invalidate personal lists after create,
-   join, and leave, and clear/remove them on logout/account changes.
-5. Keep management actions disabled until organizer editing/cancellation APIs exist.
+4. Update the membership TypeScript union and add cancelled_at/can_cancel. Invalidate
+   personal lists after create, join, leave, edit, and cancel, and clear/remove them
+   on logout/account changes.
+5. Add edit/cancel actions using can_edit/can_cancel and the management endpoints;
+   display CANCELLED/cancelled_at while retaining membership context.
 
-No edit/cancel/delete controls currently require a contract. The recommended next
-backend milestone is organizer editing and cancellation, with ownership checks and
-the existing activity lock protecting lifecycle and capacity changes. A cancellation
-contract must define joined-user/history behavior before implementation.
+No edit/cancel/delete controls currently exist in the frontend. The new
+[management contract](activity-management.md) supplies organizer editing/cancellation;
+hard deletion remains unimplemented. Attendance confirmation is a later milestone.
 Waitlist, confirmation, check-in, reviews, XP, rewards, ranks, achievements, chat,
 notifications, and gallery features remain outside this milestone.

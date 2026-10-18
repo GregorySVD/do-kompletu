@@ -16,6 +16,7 @@ from app.services.activity_service import (
     ActivityResult,
     _as_aware_utc,
     get_activity_by_id,
+    get_activity_for_update,
 )
 
 
@@ -28,19 +29,13 @@ class ParticipationError(Exception):
 
 
 def _lock_activity(session: Session, activity_id: UUID, user_id: UUID) -> Activity:
-    # All membership writes must take this lock first. At PostgreSQL's default
-    # READ COMMITTED isolation, subsequent queries see the previous holder's commit.
-    # Lock only the parent (no organizer join, aggregate, or nullable outer join).
-    activity = session.scalar(
-        select(Activity)
-        .where(Activity.id == activity_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
+    activity = get_activity_for_update(session, activity_id)
     if activity is None:
         raise ParticipationError("Activity not found", 404)
     if activity.organizer_id == user_id:
         raise ParticipationError("Organizer cannot join or leave their own activity")
+    if activity.cancelled_at is not None:
+        raise ParticipationError("Activity is cancelled")
     return activity
 
 

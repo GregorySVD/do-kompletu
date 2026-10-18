@@ -82,7 +82,11 @@ def list_activities(
     price_type: PriceType | None = None,
 ) -> list[ActivityResult]:
     now = datetime.now(UTC)
-    statement = select(Activity).options(joinedload(Activity.organizer))
+    statement = (
+        select(Activity)
+        .where(Activity.cancelled_at.is_(None))
+        .options(joinedload(Activity.organizer))
+    )
 
     if query:
         normalized_query = query.strip().lower()
@@ -175,15 +179,36 @@ def list_user_activities(
     )
 
 
+def get_activity_for_update(session: Session, activity_id: UUID) -> Activity | None:
+    # Every membership/management writer takes this parent lock first. READ
+    # COMMITTED ensures queries after acquiring it see the previous writer's commit.
+    # Avoid joins/aggregates in the locking SELECT, and refresh cached ORM state.
+    return session.scalar(
+        select(Activity)
+        .where(Activity.id == activity_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+
 def get_activity_by_id(
-    session: Session, activity_id: UUID, *, current_user_id: UUID | None = None
+    session: Session,
+    activity_id: UUID,
+    *,
+    current_user_id: UUID | None = None,
+    as_of: datetime | None = None,
 ) -> ActivityResult | None:
     statement = (
         select(Activity)
         .where(Activity.id == activity_id)
         .options(joinedload(Activity.organizer))
     )
-    results = _activity_results(session, statement, current_user_id=current_user_id)
+    results = _activity_results(
+        session,
+        statement,
+        current_user_id=current_user_id,
+        as_of=as_of if as_of is not None else datetime.now(UTC),
+    )
     return results[0] if results else None
 
 
@@ -221,7 +246,9 @@ def activity_to_list_item(result: ActivityResult) -> ActivityListItem:
         checked_in_count=0,
         waitlist_count=0,
         available_slots=available_slots,
-        status=_activity_status(start_at, end_at, as_of=result.as_of),
+        status=_activity_status(
+            start_at, end_at, as_of=result.as_of, cancelled_at=activity.cancelled_at
+        ),
     )
 
 
@@ -233,9 +260,13 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
         result.current_user_id is not None
         and result.current_user_id != activity.organizer_id
     )
-    is_open = list_item.status != ActivityStatus.ENDED
+    is_open = list_item.status in {ActivityStatus.PUBLISHED, ActivityStatus.ONGOING}
+    is_organizer = result.current_user_id == activity.organizer_id
     return ActivityRead(
         **list_item.model_dump(),
+        cancelled_at=_as_aware_utc(activity.cancelled_at)
+        if activity.cancelled_at is not None
+        else None,
         description=activity.description,
         organizer=ActivityOrganizerRead(
             id=activity.organizer.id,
@@ -254,6 +285,8 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
             else None
         ),
         permissions=ActivityPermissionsRead(
+            can_edit=is_organizer and list_item.status == ActivityStatus.PUBLISHED,
+            can_cancel=is_organizer and is_open,
             can_join=(
                 eligible_user
                 and is_open
@@ -357,8 +390,14 @@ def _as_aware_utc(value: datetime) -> datetime:
 
 
 def _activity_status(
-    start_at: datetime, end_at: datetime, *, as_of: datetime | None = None
+    start_at: datetime,
+    end_at: datetime,
+    *,
+    as_of: datetime | None = None,
+    cancelled_at: datetime | None = None,
 ) -> ActivityStatus:
+    if cancelled_at is not None:
+        return ActivityStatus.CANCELLED
     now = as_of if as_of is not None else datetime.now(UTC)
     if now < start_at:
         return ActivityStatus.PUBLISHED

@@ -222,3 +222,47 @@ def test_openapi_my_activities_filters_auth_array_and_complete_examples(client):
     for example in media["examples"].values():
         for item in example["value"]:
             ActivityRead.model_validate(item)
+
+
+def test_openapi_management_contracts_and_complete_examples(client):
+    from app.schemas.activity_management import (
+        ACTIVITY_CANCEL_RESPONSE_EXAMPLE,
+        ACTIVITY_PATCH_EXAMPLES,
+        ACTIVITY_PATCH_RESPONSE_EXAMPLE,
+        ActivityUpdate,
+    )
+
+    schema = client.get("/openapi.json").json()
+    patch = schema["paths"]["/api/v1/activities/{activity_id}"]["patch"]
+    cancel = schema["paths"]["/api/v1/activities/{activity_id}/cancel"]["post"]
+    for operation, example in [
+        (patch, ACTIVITY_PATCH_RESPONSE_EXAMPLE),
+        (cancel, ACTIVITY_CANCEL_RESPONSE_EXAMPLE),
+    ]:
+        assert operation["security"] == [{"OAuth2PasswordBearer": []}]
+        assert {"200", "401", "403", "404", "409", "422"} <= operation[
+            "responses"
+        ].keys()
+        returned = operation["responses"]["200"]["content"]["application/json"][
+            "example"
+        ]
+        assert returned == example
+        ActivityRead.model_validate(returned)
+    assert "requestBody" not in cancel
+    examples = patch["requestBody"]["content"]["application/json"]["examples"]
+    assert set(examples) == set(ACTIVITY_PATCH_EXAMPLES)
+    assert examples == ACTIVITY_PATCH_EXAMPLES
+    for example in examples.values():
+        ActivityUpdate.model_validate(example["value"])
+    properties = schema["components"]["schemas"]["ActivityUpdate"]
+    assert properties["additionalProperties"] is False
+    assert "organizer_id" not in properties["properties"]
+    assert "CANCELLED" in schema["components"]["schemas"]["ActivityStatus"]["enum"]
+    assert "DRAFT" not in schema["components"]["schemas"]["ActivityStatus"]["enum"]
+    assert (
+        "can_cancel"
+        in schema["components"]["schemas"]["ActivityPermissionsRead"]["properties"]
+    )
+    assert (
+        "cancelled_at" in schema["components"]["schemas"]["ActivityRead"]["properties"]
+    )
