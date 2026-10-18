@@ -322,6 +322,10 @@ class ActivityPermissionsRead(BaseModel):
         default=False,
         description="True for the organizer strictly before end_at, unless already cancelled.",
     )
+    can_finalize: bool = Field(
+        default=False,
+        description="True only for the organizer of an ended, uncancelled activity with unresolved JOINED/CONFIRMED/CHECKED_IN attendance.",
+    )
     can_delete: bool = Field(
         default=False,
         description="Whether the current user may delete the activity; currently always false.",
@@ -329,7 +333,7 @@ class ActivityPermissionsRead(BaseModel):
     can_join: bool = Field(
         default=False,
         description=(
-            "True for authenticated non-organizers without active JOINED/CONFIRMED/CHECKED_IN membership (including LEFT), while the "
+            "True for authenticated non-organizers with no membership or LEFT, never a final COMPLETED/NO_SHOW outcome, while the "
             "activity is PUBLISHED/ONGOING and capacity remains."
         ),
     )
@@ -376,10 +380,10 @@ class ActivityListItem(BaseModel):
     min_participants: int
     max_participants: int | None
     participant_count: int = Field(
-        description="Persisted JOINED + CONFIRMED + CHECKED_IN membership count; LEFT and organizer excluded."
+        description="Active capacity count: JOINED + CONFIRMED + CHECKED_IN. LEFT/COMPLETED/NO_SHOW and organizer excluded, including after end/finalization."
     )
     checked_in_count: int = Field(
-        description="Persisted CHECKED_IN count only; CONFIRMED is not checked in."
+        description="Historical successful check-in count: CHECKED_IN + COMPLETED. CONFIRMED/NO_SHOW do not count."
     )
     waitlist_count: int = Field(
         description="Waitlist count; currently 0 until waitlists are implemented."
@@ -399,9 +403,11 @@ class ActivityListItem(BaseModel):
 
 
 class ActivityParticipationRead(BaseModel):
-    status: Literal["JOINED", "CONFIRMED", "CHECKED_IN"] = Field(
-        default="JOINED",
-        description="Active lifecycle status. JOINED is unconfirmed; CONFIRMED expresses attendance intention; CHECKED_IN passed server time/PostGIS checks. LEFT is null current participation.",
+    status: Literal["JOINED", "CONFIRMED", "CHECKED_IN", "COMPLETED", "NO_SHOW"] = (
+        Field(
+            default="JOINED",
+            description="Caller's current or final attendance state. COMPLETED means checked in then explicitly finalized after end; NO_SHOW means unresolved JOINED/CONFIRMED finalized without check-in. LEFT is null current participation.",
+        )
     )
     joined_at: datetime = Field(
         description="UTC time the current user's latest active join cycle began."
@@ -413,6 +419,14 @@ class ActivityParticipationRead(BaseModel):
     checked_in_at: datetime | None = Field(
         default=None,
         description="Caller-only UTC time of successful check-in, or null. No participant coordinates are returned.",
+    )
+    completed_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC finalization time for COMPLETED, otherwise null.",
+    )
+    no_show_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC finalization time for NO_SHOW, otherwise null.",
     )
 
 
@@ -458,14 +472,14 @@ class ActivityRead(ActivityListItem):
     current_user_participation: ActivityParticipationRead | None = Field(
         default=None,
         description=(
-            "The authenticated caller's active membership, or null for anonymous "
+            "The authenticated caller's current or final attendance, or null for anonymous "
             "users, organizers, non-members, and inactive LEFT records. Never another user's membership."
         ),
     )
     permissions: ActivityPermissionsRead = Field(
         default_factory=ActivityPermissionsRead,
         description=(
-            "Caller-specific edit/cancel/join/leave/confirm/check-in permissions. Check-in eligibility still requires location validation on POST; unsupported actions remain false."
+            "Caller-specific edit/cancel/finalize/join/leave/confirm/check-in permissions. Final outcomes allow no participant mutations. Check-in still requires location validation; unsupported actions remain false."
         ),
     )
 
@@ -528,6 +542,8 @@ ACTIVITY_CONFIRM_RESPONSE_EXAMPLE = {
         "joined_at": "2030-08-01T12:00:00Z",
         "confirmed_at": "2030-08-07T16:00:00Z",
         "checked_in_at": None,
+        "completed_at": None,
+        "no_show_at": None,
     },
     "permissions": ActivityPermissionsRead(can_leave=True).model_dump(),
 }
@@ -540,4 +556,35 @@ ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE = {
         "checked_in_at": "2030-08-08T15:45:00Z",
     },
     "permissions": ActivityPermissionsRead().model_dump(),
+}
+ACTIVITY_COMPLETED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        **ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE,
+        "status": "ENDED",
+        "participant_count": 0,
+        "available_slots": 12,
+        "current_user_participation": {
+            **ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE["current_user_participation"],
+            "status": "COMPLETED",
+            "completed_at": "2030-08-08T18:00:00Z",
+        },
+    }
+).model_dump(mode="json")
+ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+        "status": "ENDED",
+        "participant_count": 0,
+        "available_slots": 12,
+        "current_user_participation": {
+            **ACTIVITY_JOIN_RESPONSE_EXAMPLE["current_user_participation"],
+            "status": "NO_SHOW",
+            "no_show_at": "2030-08-08T18:00:00Z",
+        },
+        "permissions": ActivityPermissionsRead().model_dump(),
+    }
+).model_dump(mode="json")
+ACTIVITY_FINALIZE_RESPONSE_EXAMPLE = {
+    **ACTIVITY_COMPLETED_RESPONSE_EXAMPLE,
+    "current_user_participation": None,
 }

@@ -197,6 +197,8 @@ def test_openapi_detail_documents_optional_auth_and_membership_shape(client):
         "JOINED",
         "CONFIRMED",
         "CHECKED_IN",
+        "COMPLETED",
+        "NO_SHOW",
     ]
     assert membership["properties"]["joined_at"]["format"] == "date-time"
 

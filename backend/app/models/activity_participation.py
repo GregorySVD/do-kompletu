@@ -27,18 +27,31 @@ class ParticipationStatus(StrEnum):
     JOINED = "JOINED"
     CONFIRMED = "CONFIRMED"
     CHECKED_IN = "CHECKED_IN"
+    COMPLETED = "COMPLETED"
+    NO_SHOW = "NO_SHOW"
     LEFT = "LEFT"
 
 
-# All capacity, membership, and personal-list queries share this definition.
-ACTIVE_PARTICIPATION_STATUSES = (
+# Current occupancy and final history are distinct concepts.
+CAPACITY_CONSUMING_STATES = (
     ParticipationStatus.JOINED,
     ParticipationStatus.CONFIRMED,
     ParticipationStatus.CHECKED_IN,
 )
+CURRENT_PARTICIPATION_STATES = CAPACITY_CONSUMING_STATES
+ACTIVE_PARTICIPATION_STATUSES = (
+    CAPACITY_CONSUMING_STATES  # Existing internal import compatibility.
+)
+FINAL_ATTENDANCE_STATES = (ParticipationStatus.COMPLETED, ParticipationStatus.NO_SHOW)
+PARTICIPATION_HISTORY_STATES = CURRENT_PARTICIPATION_STATES + FINAL_ATTENDANCE_STATES
+CHECKED_IN_PARTICIPATION_STATES = (
+    ParticipationStatus.CHECKED_IN,
+    ParticipationStatus.COMPLETED,
+)
 SCHEDULE_PROTECTED_PARTICIPATION_STATUSES = (
     ParticipationStatus.CONFIRMED,
     ParticipationStatus.CHECKED_IN,
+    ParticipationStatus.COMPLETED,
 )
 
 
@@ -68,18 +81,22 @@ class ActivityParticipation(Base):
     left_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    no_show_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
         PrimaryKeyConstraint("activity_id", "user_id", name=PARTICIPATION_PRIMARY_KEY),
         CheckConstraint(
-            "status IN ('JOINED', 'CONFIRMED', 'CHECKED_IN', 'LEFT')",
+            "status IN ('JOINED', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'NO_SHOW', 'LEFT')",
             name=PARTICIPATION_STATUS_CHECK,
         ),
         CheckConstraint(
-            "(status = 'JOINED' AND left_at IS NULL AND confirmed_at IS NULL AND checked_in_at IS NULL) OR "
-            "(status = 'CONFIRMED' AND left_at IS NULL AND confirmed_at IS NOT NULL AND checked_in_at IS NULL) OR "
-            "(status = 'CHECKED_IN' AND left_at IS NULL AND confirmed_at IS NOT NULL AND checked_in_at IS NOT NULL) OR "
-            "(status = 'LEFT' AND left_at IS NOT NULL AND checked_in_at IS NULL)",
+            "(status = 'JOINED' AND left_at IS NULL AND confirmed_at IS NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL) OR "
+            "(status = 'CONFIRMED' AND left_at IS NULL AND confirmed_at IS NOT NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL) OR "
+            "(status = 'CHECKED_IN' AND left_at IS NULL AND confirmed_at IS NOT NULL AND checked_in_at IS NOT NULL AND completed_at IS NULL AND no_show_at IS NULL) OR "
+            "(status = 'COMPLETED' AND left_at IS NULL AND confirmed_at IS NOT NULL AND checked_in_at IS NOT NULL AND completed_at IS NOT NULL AND no_show_at IS NULL) OR "
+            "(status = 'NO_SHOW' AND left_at IS NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NOT NULL) OR "
+            "(status = 'LEFT' AND left_at IS NOT NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL)",
             name=PARTICIPATION_TIMESTAMPS_CHECK,
         ),
         Index("ix_activity_participations_user_id", "user_id"),

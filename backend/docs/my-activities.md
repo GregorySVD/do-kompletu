@@ -4,7 +4,9 @@ Organizer editing and cancellation are now implemented by the subsequent
 [management milestone](activity-management.md). Cancelled rows remain in both
 relations and keep the end-time scopes described here; discovery excludes them.
 The [participation lifecycle](activity-participation.md) now retains LEFT records
-internally; joined lists include active JOINED/CONFIRMED/CHECKED_IN records.
+internally; joined lists include current JOINED/CONFIRMED/CHECKED_IN records before
+end and also COMPLETED/NO_SHOW in history after explicit
+[organizer finalization](activity-finalization.md). LEFT stays excluded.
 The [check-in contract](activity-check-in.md) describes live counts, timing, proximity,
 and checked_in_at privacy; no separate attendance-history endpoint is introduced.
 Current combined verification and the migration chain are in the
@@ -33,8 +35,9 @@ No existing My Activities API function or React Query hook constrains the URL.
 The API client sends the sessionStorage access token. Existing query keys lack
 user identity, so personalized caches need explicit handling during integration.
 The TypeScript detail type still declares `current_user_participation: null`, which
-must become an active JOINED/CONFIRMED/CHECKED_IN object/null union with joined_at
-and nullable confirmed_at/checked_in_at. Existing checkin_* metadata and can_check_in
+must become a JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union with
+joined_at and nullable confirmed_at/checked_in_at/completed_at/no_show_at.
+Add can_finalize alongside can_cancel/cancelled_at. Existing checkin_* metadata and can_check_in
 types/panel can be reused; browser geolocation and actions still need integration.
 The existing confirmation_opens_at/confirmation_deadline_at and can_confirm fields
 now carry real backend behavior; API functions, mutation hooks, and UI are still absent.
@@ -64,8 +67,9 @@ the frontend's existing all-organized section without merging the two relations.
 | Historia | `relation=joined&scope=history` |
 
 Organized selects `organizer_id == current_user.id`. Joined selects persisted
-JOINED/CONFIRMED/CHECKED_IN membership for the caller and excludes LEFT and the caller's
-organized activities. Leaving an uncancelled activity before end marks its row
+JOINED/CONFIRMED/CHECKED_IN membership for the caller before end. At/after end it
+also selects COMPLETED/NO_SHOW outcomes. LEFT and the caller's organized activities
+are always excluded. Leaving an uncancelled activity before end marks its row
 LEFT and removes the item from joined lists without deleting the record. Eligible
 rejoin reactivates the row. Ended/cancelled active memberships remain listed;
 cancellation blocks all participation actions. CHECKED_IN cannot leave even before
@@ -148,11 +152,14 @@ Authorization: Bearer <access_token>
       "status": "JOINED",
       "joined_at": "2030-08-01T12:00:00Z",
       "confirmed_at": null,
-      "checked_in_at": null
+      "checked_in_at": null,
+      "completed_at": null,
+      "no_show_at": null
     },
     "permissions": {
       "can_edit": false,
       "can_cancel": false,
+      "can_finalize": false,
       "can_delete": false,
       "can_join": false,
       "can_leave": true,
@@ -167,12 +174,16 @@ Authorization: Bearer <access_token>
 
 Example IDs/timestamps are illustrative. Swagger also includes complete selectable
 organized, joined-history, and empty-array examples. Organized responses use the
-same schema with normally null membership and organizer can_edit/can_cancel based
-on lifecycle; history keeps active JOINED/CONFIRMED/CHECKED_IN but disables all participant actions. Cancelled
+same schema with normally null membership and organizer can_edit/can_cancel/can_finalize
+based on lifecycle; history keeps unresolved JOINED/CONFIRMED/CHECKED_IN plus final
+COMPLETED/NO_SHOW, with all participant actions disabled. Final outcomes never
+appear in upcoming. Cancelled
 activities retain membership with all permissions false. Unlimited capacity returns null for both
 `max_participants` and `available_slots`. Participant counts exclude the organizer;
-checked_in_count counts only CHECKED_IN and waitlist_count stays zero.
-Current participation includes nullable confirmed_at/checked_in_at belonging only to the caller.
+participant_count remains the active capacity count and becomes zero after finalization.
+checked_in_count counts CHECKED_IN + COMPLETED and waitlist_count stays zero.
+Current participation includes nullable confirmed_at/checked_in_at/completed_at/no_show_at
+belonging only to the caller, including final outcomes in direct detail/history.
 LEFT returns null current participation. Public confirmation timing is derived in
 ActivityRead, with can_confirm true only for eligible JOINED users in the window.
 
@@ -209,9 +220,10 @@ The My Activities milestone needed no migration or schema change. Its historical
 migration-file/database head was `20261018_0004`, using `localhost:5433`.
 The subsequent management migration adds cancelled_at, and lifecycle migration
 `20261018_0006` adds status/left_at/confirmed_at; 0007 adds checked_in_at and CHECKED_IN.
-Current head is `20261018_0007`.
+Migration 0008 adds COMPLETED/NO_SHOW and completed_at/no_show_at.
+Current head is `20261018_0008`.
 The relation/scope query contract is unchanged; membership predicates/projections
-now explicitly filter active states in SQL.
+now distinguish upcoming current states from current/final history states in SQL.
 
 ## Tests and integration work
 
@@ -263,17 +275,22 @@ Frontend work still required:
    browser-clock classification and keep section labels/empty states.
 3. Add loading, retry/error, and pagination/load-more handling. Fetch after auth
    restoration and handle token refresh/re-authentication on 401.
-4. Update the membership TypeScript union/timestamps and add cancelled_at/can_cancel.
+4. Update the membership TypeScript union/timestamps including COMPLETED/NO_SHOW
+   and completed_at/no_show_at; add cancelled_at/can_cancel/can_finalize.
    Add confirmation API/hooks/UI using existing timing/can_confirm fields. Invalidate
-   personal lists after create, join, leave, confirm, check-in, edit, and cancel, and clear/remove them
+   personal lists after create, join, leave, confirm, check-in, edit, cancel, and finalize, and clear/remove them
    on logout/account changes.
 5. Add edit/cancel actions using can_edit/can_cancel and the management endpoints;
    display CANCELLED/cancelled_at while retaining membership context.
+6. Render the caller's COMPLETED/NO_SHOW outcome separately from Activity ENDED;
+   add organizer finalize action/result/error handling using can_finalize. Existing
+   fixtures have no attendance-outcome UI. Future review/XP eligibility may use
+   COMPLETED only after those product features and policies are implemented.
 
 No edit/cancel/delete controls currently exist in the frontend. The new
 [management contract](activity-management.md) supplies organizer editing/cancellation;
 hard deletion remains unimplemented. Timed attendance confirmation is implemented
 by the participation contract, with PostGIS check-in described separately.
-Waitlist, completed attendance/no-show,
-reviews, XP, rewards, ranks, achievements, chat,
+Explicit finalization implements final attendance; it does not run automatically.
+Waitlist, reviews, XP, rewards, ranks, achievements, chat,
 notifications, and gallery features remain outside this milestone.

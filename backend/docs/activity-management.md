@@ -11,7 +11,7 @@ but cards/details do not currently render cancellation status. Creation is alrea
 integrated with a form/schema covering all editable public fields below.
 
 No frontend files were changed. Future integration must add management actions and
-forms, API/hooks, can_cancel/cancelled_at types, status rendering, mutation error
+forms, API/hooks, can_cancel/can_finalize/cancelled_at types, status rendering, mutation error
 handling, and user-scoped query invalidation. The earlier membership-type and mock
 integration gaps remain documented in the participation/My Activities contracts.
 
@@ -19,7 +19,7 @@ The management implementation started from a clean `backend` branch with
 migration-file/database head `20261018_0004`. Its historical baseline verification
 was 164 default tests and 20 separate PostgreSQL tests, with Ruff and lock validation
 passing. That describes the start of implementation, not the current working-tree
-status. Current migration-file/database head is `20261018_0007`; Compose uses host
+status. Current migration-file/database head is `20261018_0008`; Compose uses host
 port 5433. See the [README](../../README.md#testing) for the current combined checks.
 
 ## Persistent lifecycle and schema
@@ -37,6 +37,8 @@ That describes migration 0005. The subsequent [participation lifecycle](activity
 adds status/left_at/confirmed_at in 0006 and the schedule/active-count rules below.
 The [check-in contract](activity-check-in.md) adds 0007, CHECKED_IN/checked_in_at,
 and stronger location protections without changing cancellation identity.
+The [finalization contract](activity-finalization.md) adds 0008 terminal
+COMPLETED/NO_SHOW attendance and timestamps; Activity itself still becomes ENDED.
 
 Status priority is deterministic:
 
@@ -184,6 +186,7 @@ another user, because the organizer is separate from membership.
   "permissions": {
     "can_edit": false,
     "can_cancel": false,
+    "can_finalize": false,
     "can_delete": false,
     "can_join": false,
     "can_leave": false,
@@ -209,7 +212,9 @@ another user, because the organizer is separate from membership.
 | Private state | Anonymous/unrelated callers receive null membership, never someone else's state |
 
 For uncancelled activities, organizer can_edit is true before start and can_cancel
-is true before end. Participant can_join/can_leave follow active state and lifecycle;
+is true before end. Organizer can_finalize is true at/after end only if uncancelled
+and at least one JOINED/CONFIRMED/CHECKED_IN row remains unresolved.
+Participant can_join/can_leave follow current state and lifecycle;
 CHECKED_IN cannot leave. can_check_in permits an attempt, still requiring PostGIS validation.
 Every cancelled permission is false. can_delete and all future permissions remain
 false. The UI must render status rather than infer bookability from remaining slots.
@@ -232,9 +237,30 @@ input/authentication, checks run as existence, ownership, cancellation, then the
 applicable time/capacity rules. Errors expose no owner ID or database details.
 Management responses use Cache-Control: private, no-store.
 
+## Final attendance finalization
+
+`POST /api/v1/activities/{activity_id}/finalize` is organizer-only, bodyless,
+and returns ActivityRead (200). It is allowed at `now >= end_at`; editing remains
+forbidden from start, and cancellation remains forbidden from end. It does not
+make an ended activity editable or introduce Activity status COMPLETED.
+
+One atomic UPDATE maps CHECKED_IN to COMPLETED and JOINED/CONFIRMED to NO_SHOW.
+LEFT and existing final states/timestamps are preserved. Cancelled activities
+return 409 without converting any attendance, even after planned end. Repeats and
+empty/LEFT-only attendance return 409 `No unresolved attendance to finalize`.
+Earlier requests return 409 `Activity can only be finalized after it ends`.
+The shared 401/403/404/422 management conventions apply.
+
+participant_count remains the active capacity count and becomes zero after
+finalization. checked_in_count includes CHECKED_IN + COMPLETED, retaining check-in
+evidence. No public completed/no-show analytics or participant list is added.
+The response carries only the caller's private attendance, normally null for an
+organizer. See the [complete finalization contract](activity-finalization.md)
+for constraints, downgrade mappings, history, and concurrency verification.
+
 ## Transactions, query efficiency, and migration validation
 
-Management, join, leave, confirm, and check-in all use get_activity_for_update: a parent-only SELECT
+Management, join, leave, confirm, check-in, and finalization all use get_activity_for_update: a parent-only SELECT
 FOR UPDATE with populate_existing, under explicit PostgreSQL READ COMMITTED.
 Lifecycle checks use a UTC cutoff captured after waiting for the lock. PATCH reads
 the locked activity projection, merges only supplied fields, validates merged state
@@ -254,7 +280,8 @@ Serial outcomes are defined and tested in both lock orders:
 
 SQL round trips are constant, not per participant: authenticated PATCH has four
 SELECTs (auth, lock, pre-update projection, returned projection); cancellation has
-three (auth, lock, returned projection), plus the applicable UPDATE. Counts and
+three (auth, lock, returned projection), as does finalization with one bulk UPDATE
+for every unresolved participant. Counts and
 caller state remain correlated projections with organizer eager-loading. Public
 discovery stays one SELECT, My Activities two including auth. PostgreSQL tests
 verify these paths and actual PostGIS coordinate updates.
@@ -300,7 +327,7 @@ round-trip/update tests passed. No warnings were suppressed.
 ## Remaining work and limits
 
 Frontend integration can reuse create-form controls with partial-update handling.
-It still needs edit/cancel API functions and mutation hooks, lifecycle/cancelled_at display,
+It still needs edit/cancel/finalize API functions and mutation hooks, lifecycle/cancelled_at display,
 honor permissions, and invalidate discovery/detail/personal caches after mutations.
 My Activities still needs its previously documented replacement of mock arrays.
 Access-token refresh and authentication-specific query keys remain frontend work.
@@ -310,8 +337,9 @@ error handling, and cache refresh too; its passive timing panel already exists.
 
 There is no hard deletion, DRAFT, uncancel, cancellation reason, edit audit/version
 token, notifications, or payment/refund processing. Writes to the same field use
-the last successful writer. Editing a field does not notify participants. Attendance,
-waitlist, completed attendance/no-show, reviews, XP, ranks, achievements,
-chat, and media remain unimplemented. Timed attendance confirmation and retained
-JOINED/CONFIRMED/CHECKED_IN/LEFT and timed PostGIS check-in are implemented. The next
-backend milestone can define completed attendance/no-show and cancelled-event policies.
+the last successful writer. Editing a field does not notify participants.
+Waitlist, reviews, XP, ranks, achievements, chat, and media remain unimplemented.
+Retained participation, timed confirmation/PostGIS check-in, and explicit terminal
+COMPLETED/NO_SHOW outcomes are implemented. There is no scheduler, manual attendance
+override, or undo outcome. Cancelled events retain their evidence and cannot be
+finalized by the ordinary endpoint; future refund/reward policy must handle them separately.

@@ -25,6 +25,7 @@ from app.schemas.activity import (
     ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE,
     ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
     ACTIVITY_CREATE_EXAMPLES,
+    ACTIVITY_FINALIZE_RESPONSE_EXAMPLE,
     ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     ACTIVITY_LEAVE_RESPONSE_EXAMPLE,
     ActivityCategoryId,
@@ -46,6 +47,7 @@ from app.schemas.activity_management import (
 from app.services.activity_management_service import (
     ActivityManagementError,
     cancel_activity,
+    finalize_activity,
     update_activity,
 )
 from app.services.activity_service import (
@@ -324,6 +326,64 @@ def cancel(
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
+@router.post(
+    "/{activity_id}/finalize",
+    response_model=ActivityRead,
+    summary="Finalize attendance after an activity ends",
+    description="""
+Use **Authorize** or Authorization: Bearer <access_token>. No request body is needed.
+Only the organizer may finalize, at current UTC time >= end_at. Cancelled activities
+return 409 and retain their evidence. Activity status stays ENDED, never COMPLETED.
+
+Under the same activity-first FOR UPDATE lock as every other writer, one atomic
+bulk UPDATE maps CHECKED_IN -> COMPLETED and JOINED/CONFIRMED -> NO_SHOW. LEFT and
+existing final outcomes remain unchanged. completed_at/no_show_at record one UTC
+finalization time, preserving joined_at/confirmed_at/checked_in_at. Final outcomes
+are terminal. There is no automatic scheduler, manual attendance override, undo,
+XP, reward, or review implementation.
+
+Returns the normal ActivityRead for the organizer. participant_count remains the
+active capacity count and becomes zero once all unresolved rows are finalized;
+checked_in_count includes CHECKED_IN + COMPLETED, preserving successful check-ins.
+There is no public no-show analytics field or new wrapper. The organizer's own
+current_user_participation is normally null; can_finalize becomes false.
+
+A repeated request, or an ended activity containing only LEFT/no rows/final outcomes,
+returns 409 No unresolved attendance to finalize, without changing timestamps.
+Thus repeated calls are idempotent at the data level. Joined My Activities history
+retains the caller's COMPLETED/NO_SHOW state/timestamps; future final states are
+excluded from upcoming results. Direct detail exposes only the caller's outcome.
+""",
+    responses={
+        200: {
+            "content": {
+                "application/json": {"example": ACTIVITY_FINALIZE_RESPONSE_EXAMPLE}
+            }
+        },
+        **_management_responses(
+            "Activity is cancelled",
+            "Activity can only be finalized after it ends",
+            "No unresolved attendance to finalize",
+        ),
+    },
+)
+def finalize(
+    activity_id: Annotated[
+        UUID, Path(description="Activity UUID owned by the caller.")
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_db)],
+    response: Response,
+) -> ActivityRead:
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        return activity_to_read(
+            finalize_activity(session, activity_id, current_user.id)
+        )
+    except ActivityManagementError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+
 @router.get(
     "",
     response_model=list[ActivityListItem],
@@ -383,7 +443,8 @@ def list_all(
         "Return public details and the organizer's safe public identity. Password "
         "hashes and other internal user fields are never exposed. Authentication "
         "is optional: omit Authorization for anonymous browsing, or send an access "
-        "bearer token for your own membership and join/leave permissions. Supplied "
+        "bearer token for your own current/final attendance and action permissions. "
+        "COMPLETED/NO_SHOW include caller-only completed_at/no_show_at, never another user's state. Supplied "
         "invalid/expired credentials return 401. Membership counts are public; "
         "other users' memberships are never returned. Cancelled activities remain "
         "readable here, including status and cancelled_at. Responses must not be cached."
@@ -479,7 +540,8 @@ return 409; `max_participants: null` means unlimited places.
 PostgreSQL serializes join/leave transactions using a lock on the activity row.
 The 201 response contains updated activity details, counts, your `JOINED` state,
 and permissions. `JOINED` does not mean confirmed attendance or check-in.
-Waitlist remains zero; checked_in_count counts CHECKED_IN only. Retry after an uncertain network result
+Waitlist remains zero; checked_in_count counts CHECKED_IN + COMPLETED. Final outcomes
+cannot rejoin. Retry after an uncertain network result
 by reading details; another POST after a successful join returns 409.
 """,
     response_description="Updated activity details including your new active membership.",
@@ -489,6 +551,7 @@ by reading details; another POST after a successful join returns 409.
         },
         **_membership_responses(
             "Already joined this activity",
+            "Attendance outcome is final",
             "Activity is full",
             "Activity has ended",
             "Activity is cancelled",
@@ -516,7 +579,8 @@ def join(
     description="""
 Transition the authenticated caller's JOINED or CONFIRMED membership to LEFT.
 The row remains stored; left_at is set, joined_at/confirmed_at are preserved.
-CHECKED_IN participants cannot leave (409); there is no undo check-in.
+CHECKED_IN and final COMPLETED/NO_SHOW participants cannot leave (409).
+There is no undo check-in or final attendance outcome.
 No request body is needed.
 Send an access JWT using **Authorize** or `Authorization: Bearer <access_token>`.
 First join as a non-organizer with POST on this same path, then try DELETE.
@@ -541,6 +605,7 @@ Join and leave use the same PostgreSQL activity-row lock, preventing counter rac
         },
         **_membership_responses(
             "Not participating in this activity",
+            "Attendance outcome is final",
             "Checked-in participants cannot leave",
             "Activity has ended",
             "Activity is cancelled",
@@ -583,7 +648,8 @@ A confirmed participant may leave before end unless cancelled. Leaving preserves
 confirmed_at as last-cycle evidence; rejoining clears it and starts JOINED again.
 Activity schedule changes are blocked while any participant remains CONFIRMED.
 CHECKED_IN users cannot confirm again (409). Check-in is a separate POST with
-time and PostGIS validation; attendance completion, no-show, and rewards remain unimplemented.
+time and PostGIS validation. After end, organizer finalization resolves attendance
+to COMPLETED/NO_SHOW; these terminal outcomes cannot confirm. Rewards remain unimplemented.
 """,
     responses={
         200: {
@@ -595,6 +661,7 @@ time and PostGIS validation; attendance completion, no-show, and rewards remain 
             "Organizer cannot confirm their own activity",
             "Not participating in this activity",
             "Already confirmed attendance",
+            "Attendance outcome is final",
             "Already checked in",
             "Activity is cancelled",
             "Activity has ended",
@@ -644,7 +711,9 @@ can_check_in means state/time allow an attempt; POST still validates proximity.
 CHECKED_IN remains active and consumes capacity; it cannot leave or confirm again.
 Schedule/location edits are protected, and cancellation preserves check-in evidence.
 Submitted coordinates can be spoofed: this is not device attestation or fraud-proof
-GPS verification. No completed attendance, no-show, rewards, or undo check-in exists.
+GPS verification. After end, organizer finalization converts CHECKED_IN to COMPLETED
+and unresolved JOINED/CONFIRMED to NO_SHOW; final outcomes cannot check in.
+No rewards or undo check-in exists.
 """,
     responses={
         200: {
@@ -654,6 +723,7 @@ GPS verification. No completed attendance, no-show, rewards, or undo check-in ex
         },
         **_membership_responses(
             "Organizer cannot check in to their own activity",
+            "Attendance outcome is final",
             "Not participating in this activity",
             "Attendance must be confirmed before check-in",
             "Already checked in",

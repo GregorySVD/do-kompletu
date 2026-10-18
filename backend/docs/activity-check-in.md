@@ -9,7 +9,10 @@ transitioning CONFIRMED → CHECKED_IN. JOINED is never implicitly confirmed.
 CHECKED_IN is active and consumes the same place; LEFT remains inactive.
 
 ```json
-{"latitude": 52.4232, "longitude": 16.9461}
+{
+  "latitude": 52.4232,
+  "longitude": 16.9461
+}
 ```
 
 Both coordinates are required, finite WGS 84 numbers with the existing creation
@@ -66,7 +69,7 @@ Coordinate ordering and crossing the date line are tested independently.
 Only checked_in_at is persisted. Submitted coordinates and computed distance are
 not stored or returned. The activity's public venue coordinates remain public.
 Current-user participation adds nullable checked_in_at beside joined_at/confirmed_at;
-only the caller's active timestamps are exposed. Anonymous/unrelated/LEFT callers
+only the caller's current/final timestamps are exposed. Anonymous/unrelated/LEFT callers
 receive null participation. Aggregate checked_in_count and nominal timing/radius
 are public. Responses use the existing private/no-store cache policy.
 
@@ -79,12 +82,14 @@ attestation and makes no fraud-proof attendance claim.
 - Success preserves joined_at/confirmed_at and sets checked_in_at once. Repeated
   POST returns 409 without changing it. No second participation row is created.
 - `participant_count`/available_slots use centralized JOINED, CONFIRMED, CHECKED_IN
-  active states. checked_in_count counts only CHECKED_IN; waitlist_count stays zero.
+  active states, excluding final COMPLETED/NO_SHOW. checked_in_count counts
+  CHECKED_IN + COMPLETED to retain successful check-ins; waitlist_count stays zero.
 - JOINED/CONFIRMED can leave under the existing uncancelled/before-end rule.
   CHECKED_IN cannot leave. LEFT rejoin resets joined_at and clears all lifecycle
   timestamps, including checked_in_at, for the new JOINED cycle.
 - Joined My Activities includes CHECKED_IN, excludes LEFT, and keeps the existing
-  end-time upcoming/history scopes. History preserves CHECKED_IN; no separate
+  end-time upcoming/history scopes. History includes unresolved CHECKED_IN and
+  final COMPLETED/NO_SHOW; final states are excluded from upcoming. No separate
   attendance-history endpoint is introduced.
 - Schedule changes remain blocked while any participant is CONFIRMED or CHECKED_IN.
   Once any participant is CHECKED_IN, actual latitude/longitude/location_name/address
@@ -92,7 +97,14 @@ attestation and makes no fraud-proof attendance claim.
   possible while normal management lifecycle rules allow editing.
 - Cancellation before end can preserve CHECKED_IN/checked_in_at, with CANCELLED
   activity status and all action permissions false. No participation state is
-  rewritten. Future completion/reward policy for cancelled events is undecided.
+  rewritten. Cancelled activities cannot use ordinary attendance finalization,
+  even after planned end; any future reward/refund policy must interpret them separately.
+
+After end, the organizer may explicitly [finalize attendance](activity-finalization.md):
+CHECKED_IN becomes COMPLETED, retaining checked_in_at and gaining completed_at;
+JOINED/CONFIRMED become NO_SHOW. These terminal states cannot check in, confirm,
+leave, or rejoin. At exact end, check-in is already forbidden (exclusive deadline),
+while finalization is allowed. Activity status stays ENDED. No scheduler runs.
 
 See [management](activity-management.md) and [My Activities](my-activities.md) for
 the unchanged ownership, pagination, and visibility contracts.
@@ -143,13 +155,14 @@ database, which is removed afterward. Normal development data is only upgraded.
 Check-in follows the same activity-first FOR UPDATE protocol as every other
 writer under READ COMMITTED. Cached activity/membership state is refreshed after
 waiting. PostGIS validation and the returned snapshot occur while the lock is held.
-Both observed lock orders are tested for duplicate check-in, leave, cancel,
+Both observed lock orders are tested for finalization at end, duplicate check-in, leave, cancel,
 location edit, time edit, and confirm. A location edit that wins first changes the
 location against which check-in is validated; a check-in that wins blocks that edit.
 
 SQL projections count active and checked-in states without loading participant
 collections. Discovery remains one SELECT, authenticated detail/My Activities two,
-PATCH four, and cancel three. Check-in has four SELECTs in the service (lock,
+PATCH four, and cancel/finalize three. Finalize also issues one bulk UPDATE.
+Check-in has four SELECTs in the service (lock,
 membership, PostGIS, returned projection), five including HTTP authentication.
 Existing multiple-item query-count regressions remain in place. Isolated tests
 stub proximity and test domain behavior only; real PostGIS tests establish spatial
@@ -162,13 +175,16 @@ can_check_in, and details render a passive timing/radius panel. It has no browse
 geolocation utility, check-in API/mutation, action button, or CHECKED_IN membership
 union. The existing membership type remains exactly null; My Activities is mocked.
 
-Add the active participation union and checked_in_at, browser permission/coordinate
+Add the current/final participation union and checked_in_at/completed_at/no_show_at,
+can_finalize, browser permission/coordinate
 flow, timeout/denial/unavailable-location handling, mutation/pending/success UI,
 outside-radius/window error handling, and permission-driven actions. Refresh
 discovery/detail/personal caches after check-in and scope personalized keys to
 identity. Retain the existing checkin_* field names. No frontend files were changed.
 
-COMPLETED, NO_SHOW, automatic completion, rewards, reviews, waitlists, QR/NFC,
+COMPLETED/NO_SHOW are now implemented by explicit finalization, with caller-only
+history/detail outcomes and no automatic scheduling. Automatic completion,
+manual attendance overrides, undo outcomes, rewards, reviews, waitlists, QR/NFC,
 notifications, media, payment/refund, exact participant-location history, and a
 full participation event log remain unimplemented.
 
@@ -221,11 +237,14 @@ Illustrative IDs/date and default settings; Swagger provides the same full examp
     "status": "CHECKED_IN",
     "joined_at": "2030-08-01T12:00:00Z",
     "confirmed_at": "2030-08-07T16:00:00Z",
-    "checked_in_at": "2030-08-08T15:45:00Z"
+    "checked_in_at": "2030-08-08T15:45:00Z",
+    "completed_at": null,
+    "no_show_at": null
   },
   "permissions": {
     "can_edit": false,
     "can_cancel": false,
+    "can_finalize": false,
     "can_delete": false,
     "can_join": false,
     "can_leave": false,

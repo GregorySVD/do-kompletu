@@ -6,8 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.activity import (
     ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE,
+    ACTIVITY_COMPLETED_RESPONSE_EXAMPLE,
     ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
     ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+    ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE,
     ActivityPermissionsRead,
 )
 
@@ -27,7 +29,7 @@ class MyActivitiesQuery(BaseModel):
 
     relation: ActivityRelation = Field(
         description=(
-            "organized: you are the organizer; joined: you have active JOINED/CONFIRMED/CHECKED_IN membership (LEFT excluded). "
+            "organized: you are the organizer; joined: current states before end, current or final COMPLETED/NO_SHOW states in history. LEFT excluded. "
             "Organizer identity alone never counts as joined membership."
         ),
     )
@@ -46,6 +48,14 @@ class MyActivitiesQuery(BaseModel):
 
 
 MY_ACTIVITIES_RESPONSE_EXAMPLES = {
+    "completed_history": {
+        "summary": "Your completed attendance after organizer finalization",
+        "value": [ACTIVITY_COMPLETED_RESPONSE_EXAMPLE],
+    },
+    "no_show_history": {
+        "summary": "Your own no-show outcome, never another user's state",
+        "value": [ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE],
+    },
     "checked_in_upcoming": {
         "summary": "Checked-in caller with private checked_in_at and public checked_in_count",
         "value": [ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE],
@@ -87,6 +97,8 @@ MY_ACTIVITIES_RESPONSE_EXAMPLES = {
                     "joined_at": "2025-08-01T12:00:00Z",
                     "confirmed_at": None,
                     "checked_in_at": None,
+                    "completed_at": None,
+                    "no_show_at": None,
                 },
                 "permissions": ActivityPermissionsRead().model_dump(),
             }

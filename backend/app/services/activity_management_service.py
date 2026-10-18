@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+from sqlalchemy import case, update
 from sqlalchemy.orm import Session
 
 from app.models.activity import Activity
+from app.models.activity_participation import ActivityParticipation, ParticipationStatus
 from app.schemas.activity import (
     ACTIVITY_CATEGORIES,
     ACTIVITY_CATEGORIES_BY_SLUG,
@@ -19,6 +21,7 @@ from app.services.activity_service import (
     get_activity_by_id,
     get_activity_for_update,
 )
+from app.services.participation_rules import FINALIZATION_TRANSITIONS
 
 
 class ActivityManagementError(Exception):
@@ -137,6 +140,47 @@ def cancel_activity(
         result = _snapshot(session, activity_id, user_id, now)
         session.commit()
         return result
+    except Exception:
+        session.rollback()
+        raise
+
+
+def finalize_activity(
+    session: Session, activity_id: UUID, user_id: UUID
+) -> ActivityResult:
+    try:
+        activity = _owned_activity(session, activity_id, user_id)
+        now = datetime.now(UTC)  # Capture after waiting for the same parent-row lock.
+        if now < _as_aware_utc(activity.end_at):
+            raise ActivityManagementError(
+                "Activity can only be finalized after it ends"
+            )
+        status = ActivityParticipation.status
+        checked_in = status == ParticipationStatus.CHECKED_IN
+        result = session.execute(
+            update(ActivityParticipation)
+            .where(
+                ActivityParticipation.activity_id == activity_id,
+                status.in_(tuple(FINALIZATION_TRANSITIONS)),
+            )
+            .values(
+                status=case(
+                    *[
+                        (status == source, target.value)
+                        for source, target in FINALIZATION_TRANSITIONS.items()
+                    ]
+                ),
+                completed_at=case((checked_in, now), else_=None),
+                no_show_at=case((checked_in, None), else_=now),
+            )
+            .execution_options(synchronize_session=False)
+        )
+        if result.rowcount == 0:
+            raise ActivityManagementError("No unresolved attendance to finalize")
+        # One bulk UPDATE; response SQL reads database state rather than cached rows.
+        snapshot = _snapshot(session, activity_id, user_id, now)
+        session.commit()
+        return snapshot
     except Exception:
         session.rollback()
         raise

@@ -114,6 +114,8 @@ def test_postgres_membership_schema(pg_engine):
         "left_at",
         "confirmed_at",
         "checked_in_at",
+        "completed_at",
+        "no_show_at",
     }
     assert all(
         not columns[name]["nullable"]

@@ -118,6 +118,8 @@ def test_joined_list_requires_own_membership_and_excludes_organized_activities(
             "joined_at": (AS_OF - timedelta(days=4)).isoformat().replace("+00:00", "Z"),
             "confirmed_at": None,
             "checked_in_at": None,
+            "completed_at": None,
+            "no_show_at": None,
         }
         assert item["permissions"]["can_join"] is False
         assert item["permissions"]["can_leave"] is (item["status"] != "ENDED")

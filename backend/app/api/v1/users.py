@@ -31,8 +31,9 @@ rejected with 422. This endpoint never exposes another caller's membership.
 ## RELATION
 
 `relation=organized` selects activities you organize, without treating you as a
-participant. `relation=joined` selects active JOINED/CONFIRMED/CHECKED_IN memberships,
-excluding LEFT records and organizer activities. Relation is required; there is no combined/all relation.
+participant. `relation=joined` selects JOINED/CONFIRMED/CHECKED_IN before end;
+history also includes final COMPLETED/NO_SHOW outcomes. LEFT records and organizer
+activities are excluded. Relation is required; there is no combined/all relation.
 
 ## TIME AND SORTING
 
@@ -60,15 +61,19 @@ shift offsets; pagination does not freeze the dataset.
 
 ## STATE AND LIMITATIONS
 
-Joined items include your actual JOINED/CONFIRMED/CHECKED_IN state, joined_at, and
-nullable confirmed_at/checked_in_at; LEFT is inactive and excluded. Organized items
-normally have null membership. Counts/capacity use active states; organizers
-do not consume places, and unlimited activities have available_slots=null.
+Joined items include your own current or final state, joined_at, and nullable
+confirmed_at/checked_in_at/completed_at/no_show_at. LEFT is inactive and excluded.
+Organized items normally have null membership. Counts/capacity use only unresolved
+JOINED/CONFIRMED/CHECKED_IN states; organizers do not consume places, and unlimited
+activities have available_slots=null. Finalization reduces participant_count to
+zero, while checked_in_count preserves CHECKED_IN + COMPLETED.
 Cancelled activities remain in both relations and retain the same end-time scope;
 their status remains CANCELLED. can_edit/can_cancel follow organizer lifecycle rules;
-ended/cancelled/checked-in memberships cannot leave. checked_in_count counts only
-CHECKED_IN; waitlist stays zero. Confirmation and PostGIS check-in use their published
-windows. completed attendance, no-show, deletion, and rewards are not implemented. Responses are private and must not
+ended/cancelled/checked-in/final memberships cannot leave. Organizer can_finalize
+is true only for uncancelled ended activities with unresolved attendance. Explicit
+organizer finalization maps CHECKED_IN to COMPLETED and JOINED/CONFIRMED to NO_SHOW;
+cancelled activities cannot be finalized. Waitlist stays zero. Confirmation and
+PostGIS check-in use their published windows. Deletion and rewards are not implemented. Responses are private and must not
 be cached by shared intermediaries. Scope client query caches to the current user.
 """,
     response_description="A page of your activity details with your own state and permissions.",

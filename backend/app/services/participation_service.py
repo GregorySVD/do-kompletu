@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.models.activity import Activity
 from app.models.activity_participation import (
     ACTIVE_PARTICIPATION_STATUSES,
+    FINAL_ATTENDANCE_STATES,
     PARTICIPATION_PRIMARY_KEY,
     ActivityParticipation,
     ParticipationStatus,
@@ -68,12 +69,21 @@ def _snapshot(
     return result
 
 
+def _mutable_participation(
+    session: Session, activity_id: UUID, user_id: UUID
+) -> ActivityParticipation | None:
+    participation = session.get(
+        ActivityParticipation, (activity_id, user_id), populate_existing=True
+    )
+    if participation is not None and participation.status in FINAL_ATTENDANCE_STATES:
+        raise ParticipationError("Attendance outcome is final")
+    return participation
+
+
 def join_activity(session: Session, activity_id: UUID, user_id: UUID) -> ActivityResult:
     try:
         activity = _lock_activity(session, activity_id, user_id)
-        participation = session.get(
-            ActivityParticipation, (activity_id, user_id), populate_existing=True
-        )
+        participation = _mutable_participation(session, activity_id, user_id)
         if (
             participation is not None
             and participation.status in ACTIVE_PARTICIPATION_STATUSES
@@ -124,9 +134,7 @@ def leave_activity(
 ) -> ActivityResult:
     try:
         activity = _lock_activity(session, activity_id, user_id)
-        participation = session.get(
-            ActivityParticipation, (activity_id, user_id), populate_existing=True
-        )
+        participation = _mutable_participation(session, activity_id, user_id)
         if (
             participation is None
             or participation.status not in ACTIVE_PARTICIPATION_STATUSES
@@ -160,9 +168,7 @@ def confirm_activity(
         )
         now = datetime.now(UTC)
         _require_open(activity, now)
-        participation = session.get(
-            ActivityParticipation, (activity_id, user_id), populate_existing=True
-        )
+        participation = _mutable_participation(session, activity_id, user_id)
         if (
             participation is None
             or participation.status not in ACTIVE_PARTICIPATION_STATUSES
@@ -219,9 +225,7 @@ def check_in_activity(
         )
         now = datetime.now(UTC)
         _require_open(activity, now)
-        participation = session.get(
-            ActivityParticipation, (activity_id, user_id), populate_existing=True
-        )
+        participation = _mutable_participation(session, activity_id, user_id)
         if (
             participation is None
             or participation.status not in ACTIVE_PARTICIPATION_STATUSES
