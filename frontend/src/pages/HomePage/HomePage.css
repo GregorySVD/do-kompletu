@@ -19,29 +19,26 @@
   grid-template-rows: minmax(0, 1fr);
 }
 
-@media (min-width: 64rem) {
+@media (min-width: 75rem) {
   .home-page {
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .home-workspace {
     display: grid;
+    width: calc(100% - (2 * var(--page-gutter)));
+    max-width: var(--page-max-width);
+    margin: var(--space-4) auto;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   .home-workspace--map-hidden {
     grid-template-columns: minmax(0, 1fr);
-    justify-items: start;
-    padding-inline-end: var(--map-hidden-rail);
   }
 
   .home-workspace--map-hidden .activities {
     border-inline-end: 0;
-  }
-}
-
-@media (min-width: 90rem) {
-  .home-workspace--map-hidden .activities {
-    width: min(100%, var(--offers-only-max-width));
   }
 }

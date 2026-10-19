@@ -4,31 +4,6 @@
   padding: var(--section-gap) var(--page-gutter);
 }
 
-.activity-details-page__summary,
 .activity-details-page__not-found {
   margin-top: var(--space-4);
-}
-
-.activity-details-page__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
-.activity-details-page__action {
-  margin-top: var(--space-6);
-}
-
-.activity-details-page__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-}
-
-@media (min-width: 43.75rem) {
-  .activity-details-page__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }

@@ -3,25 +3,18 @@ import { Button } from '@mui/material'
 import './MapVisibilityToggle.css'
 
 interface MapVisibilityToggleProps {
-  isMapVisible: boolean
-  onToggle: () => void
+  onShow: () => void
 }
 
-function MapVisibilityToggle({
-  isMapVisible,
-  onToggle,
-}: MapVisibilityToggleProps) {
+function MapVisibilityToggle({ onShow }: MapVisibilityToggleProps) {
   return (
     <Button
-      className={`home-page__map-toggle${
-        isMapVisible ? '' : ' home-page__map-toggle--map-hidden'
-      }`}
-      aria-pressed={isMapVisible}
+      className="home-page__map-toggle"
       startIcon={<MapOutlined />}
       variant="contained"
-      onClick={onToggle}
+      onClick={onShow}
     >
-      {isMapVisible ? 'Ukryj mapę' : 'Pokaż mapę'}
+      Pokaż mapę
     </Button>
   )
 }
