@@ -8,6 +8,7 @@ from sqlalchemy import event, func, select
 from sqlalchemy.exc import IntegrityError
 from test_participation_lifecycle import freeze
 
+from app.core.config import get_settings
 from app.core.security import create_access_token
 from app.models.activity import Activity
 from app.models.activity_participation import ActivityParticipation
@@ -21,6 +22,9 @@ START = NOW + timedelta(hours=12)
 
 @pytest.fixture
 def queue(client, db_session, monkeypatch):
+    monkeypatch.setenv("ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE", "1440")
+    monkeypatch.setenv("ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE", "0")
+    get_settings.cache_clear()
     freeze(monkeypatch, NOW)
     users = [
         User(
@@ -290,6 +294,7 @@ def test_join_cutoff_applies_to_direct_waitlist_and_rejoin(
 @pytest.mark.parametrize("offset", [timedelta(0), timedelta(minutes=1)])
 def test_leave_after_start_does_not_admit_waiter(client, queue, monkeypatch, offset):
     fill(client, queue)
+    assert action(client, queue, 1, "confirm").status_code == 200
     freeze(monkeypatch, START + offset)
     assert action(client, queue, 1, "leave").status_code == 200
     assert (
@@ -390,6 +395,8 @@ def test_finalization_preserves_waitlisted_history_without_attendance(
 
 def test_waitlist_only_end_has_no_attendance_to_finalize(client, queue, monkeypatch):
     fill(client, queue)
+    for user in (1, 2):
+        assert action(client, queue, user, "confirm").status_code == 200
     freeze(monkeypatch, START)
     assert action(client, queue, 1, "leave").status_code == 200
     assert action(client, queue, 2, "leave").status_code == 200

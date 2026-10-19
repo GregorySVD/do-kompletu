@@ -15,7 +15,8 @@ geographic check-in for confirmed participants. PostgreSQL/PostGIS is authoritat
 for proximity validation. Organizer-triggered attendance finalization records
 terminal COMPLETED and NO_SHOW outcomes after activity end. FIFO waitlists now
 queue full-activity requests and promote users atomically on active leave or
-capacity increase before start; no scheduler/confirmation expiry is implemented.
+capacity increase before start. A lifespan worker now expires overdue reservations,
+promotes FIFO waiters with late-confirmation grace, and expires remaining queues at start.
 
 Frontend authentication, profile display, discovery, details, categories, and
 creation use real APIs. My Activities still uses fixtures, and join/leave/confirm/check-in and
@@ -177,22 +178,40 @@ starts a fresh active/queued cycle. waitlist_count is real. See the
 cycle, not an immutable audit of every join/leave. See the
 [full participation contract](backend/docs/activity-participation.md).
 
-### Attendance confirmation
+### Attendance confirmation and automatic lifecycle
 
-POST `/api/v1/activities/{activity_id}/confirm` requires an access JWT and no body.
-A non-organizer with JOINED membership may transition to CONFIRMED (200), recording
-`confirmed_at` without consuming another seat. The configurable
-`ACTIVITY_CONFIRMATION_WINDOW_HOURS` defaults to 24 (integer 1–8760): confirmation
-opens that many hours before start, inclusively, and closes exactly at start,
-exclusively. Existing detail fields `confirmation_opens_at` and
-`confirmation_deadline_at` now contain derived UTC timing, including in My Activities.
+POST `/api/v1/activities/{activity_id}/confirm` keeps its access JWT, no-body
+request, and 200 ActivityRead response. Only JOINED may confirm. Default opening
+is 60 minutes before start, inclusive; normal deadline is 30 minutes before start,
+exclusive. Configure ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE and
+ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE with open > deadline >= 0.
+The old ACTIVITY_CONFIRMATION_WINDOW_HOURS setting has been removed.
 
-Outside the window, after cancellation/end, for non-members/LEFT callers, or after
-already confirming, the endpoint returns 409. `can_confirm` is true only for
-eligible JOINED callers inside the window. There is no unconfirm or automatic
-expiry/removal. A CONFIRMED participant may still leave before end unless cancelled;
-rejoin requires a fresh confirmation. Check-in and finalization are separate
-operations; confirmation alone grants no successful attendance outcome or rewards.
+A place acquired at/after the normal deadline gets
+ACTIVITY_LATE_CONFIRMATION_GRACE_MINUTES (default 10), capped at start_at.
+Earlier joins use the normal deadline. Top-level confirmation_deadline_at is
+always the public normal deadline; the caller's JOINED object contains
+`effective_confirmation_deadline_at`. Exact deadline rejects confirmation even
+before a sweep updates an overdue JOINED row. Overdue JOINED cannot leave/rejoin
+to bypass the deadline; voluntary LEFT before expiry keeps normal rejoin rules.
+
+An in-process lifespan worker runs immediately and periodically, off the asyncio
+event loop, with its own synchronous sessions. It atomically expires due JOINED
+to terminal CONFIRMATION_EXPIRED, releases capacity, and promotes FIFO waiters
+before start. At start it expires remaining WAITLISTED to WAITLIST_EXPIRED,
+without promotion or NO_SHOW. Both states retain private timestamps, allow no
+participant actions/rejoin, and are excluded from joined/waitlisted My Activities.
+Cancellation skips automation and preserves its evidence. Explicit organizer
+attendance finalization is unchanged and is never scheduled automatically.
+
+PARTICIPATION_LIFECYCLE_WORKER_ENABLED defaults true; disable it explicitly for
+tests or development if needed. PARTICIPATION_LIFECYCLE_SWEEP_INTERVAL_SECONDS
+defaults 60 (finite, positive). The interval follows each completed sweep.
+Multiple app processes serialize on existing activity-first PostgreSQL locks.
+Persistence may lag deadlines until a sweep, while request-time eligibility is
+always checked. No WebSockets/notifications are implemented; frontend refetch is
+required. See the [worker contract](backend/docs/participation-lifecycle-worker.md)
+for state, shutdown, migration, testability, and deployment details.
 
 ### Check-in
 
@@ -235,7 +254,7 @@ The response is updated ActivityRead (200). Cancelled activities, requests befor
 end, and requests with no unresolved rows (including repeats and empty/LEFT-only
 activities) return 409. `permissions.can_finalize` is true only for the organizer
 of an ended uncancelled activity with unresolved attendance. All writers share the
-activity-first row lock; no scheduler is added.
+activity-first row lock. The participation worker does not finalize attendance.
 
 The Activity remains ENDED; COMPLETED is a participation state. The existing
 `participant_count` remains an active capacity count and becomes zero after
@@ -265,7 +284,7 @@ Cancelled activities remain in all relations and use the same end-time scopes;
 their status remains CANCELLED.
 The Waitlist section uses `relation=waitlisted&scope=upcoming`; it may include
 ongoing records because scopes still follow end time. Historical waitlists remain
-until a later scheduler/lifecycle milestone; joining and promotion close at start.
+until the next sweep persists expiry (cancelled records are skipped); joining and promotion close at start.
 
 The response is an array of `ActivityRead`, with no total-count/page/`has_more`
 wrapper. Unknown query parameters and literal `relation=all`/`scope=all` return
@@ -375,7 +394,11 @@ Edit your local `.env`, keeping it out of version control. The example contains:
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5433/do_kompletu
 JWT_SECRET=replace-me-with-a-long-random-secret
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-ACTIVITY_CONFIRMATION_WINDOW_HOURS=24
+ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE=60
+ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE=30
+ACTIVITY_LATE_CONFIRMATION_GRACE_MINUTES=10
+PARTICIPATION_LIFECYCLE_WORKER_ENABLED=true
+PARTICIPATION_LIFECYCLE_SWEEP_INTERVAL_SECONDS=60
 ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE=30
 ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER=60
 ACTIVITY_CHECK_IN_RADIUS_METERS=150
@@ -455,7 +478,7 @@ this root document describes the current project setup.
 6. Register a second account, log out in **Authorize**, and authorize as that user.
    Join the activity, read detail and `relation=joined&scope=upcoming`, leave, and
    rejoin. Check real counts and caller-specific permissions at each step. For
-   confirmation testing, create the activity less than 24 hours ahead and call
+   confirmation testing, create the activity 30–60 minutes ahead and call
    `/confirm`; check CONFIRMED/confirmed_at and that schedule changes now return 409.
    For check-in, create within 30 minutes of start, confirm first, and POST your
    coordinates to `/check-in`. Check CHECKED_IN/checked_in_at, checked_in_count,
@@ -537,17 +560,22 @@ The lifecycle, check-in, and finalization migration tests exercise
 `0007 → 0008 → 0007 → 0008`; none downgrades the normal database. Isolated
 check-in tests stub proximity explicitly; only real PostGIS tests validate geography.
 
-Verified on 2026-10-19 after the waitlist milestone (baseline: 404 isolated and 98 PostgreSQL tests passed):
+Verified on 2026-10-19 after the automated lifecycle milestone (baseline: 460 default and 122 PostgreSQL tests passed):
 
 | Check | Current result |
 | --- | --- |
-| Default `uv run pytest -v` without integration URL | 460 passed, 122 PostgreSQL tests skipped |
-| Separate twelve-module PostgreSQL run | 122 passed |
+| Default `uv run pytest -v` without integration URL | 518 passed, 146 PostgreSQL tests skipped |
+| Separate fourteen-module PostgreSQL run | 146 passed |
 | Ruff, compileall, `uv lock --check` | Passed |
-| Migration files and development database | `20261018_0009` is head |
+| Migration files and development database | `20261019_0010` is head |
 | Waitlist migration cycle in a generated temporary database | `0008 → 0009 → 0008 → 0009` passed, preserving rows and enforcing timestamp constraints |
+| Lifecycle migration cycle | `0009 → 0010 → 0009 → 0010` passed in a generated temporary database |
 | `git diff --check` | Passed |
 | `git diff -- frontend` | Empty |
+
+The [53-point lifecycle report](backend/docs/participation-lifecycle-milestone-report.md)
+records the implementation decisions, exact files/status, validation, deployment
+limits, and remaining frontend integration.
 
 The tests report an existing Starlette TestClient/httpx deprecation warning and
 local pytest-cache permission warnings. Git may also report an unreadable root
@@ -569,7 +597,8 @@ The verified linear chain and current head are:
 | `20261018_0006` | `20261018_0006_add_participation_lifecycle.py` | Backfilled JOINED status, left_at/confirmed_at, lifecycle CHECK constraints |
 | `20261018_0007` | `20261018_0007_add_participation_check_in.py` | Nullable checked_in_at, CHECKED_IN status and updated timestamp CHECKs |
 | `20261018_0008` | `20261018_0008_add_final_attendance_outcomes.py` | Nullable completed_at/no_show_at, terminal COMPLETED/NO_SHOW and consistent timestamp CHECKs |
-| `20261018_0009` | `20261018_0009_add_activity_waitlist.py` | WAITLISTED, waitlisted_at, nullable joined_at with state CHECKs, FIFO index; **current head** |
+| `20261018_0009` | `20261018_0009_add_activity_waitlist.py` | WAITLISTED, waitlisted_at, nullable joined_at with state CHECKs, FIFO index |
+| `20261019_0010` | `20261019_0010_add_participation_expiry.py` | System expiry states/timestamps, status VARCHAR(24), strict CHECKs; **current head** |
 
 Check file history with `uv run alembic history` and file heads with
 `uv run alembic heads`. `uv run alembic current` checks the configured database.
@@ -595,6 +624,7 @@ Historical upgrade/downgrade probes are recorded in the contracts; normal onboar
 
 - [Activity participation contract](backend/docs/activity-participation.md):
   retained lifecycle, join/leave/rejoin/confirm, timing, full responses, privacy, and concurrency.
+- [Automated lifecycle worker](backend/docs/participation-lifecycle-worker.md): confirmation/grace, expiry, worker startup/shutdown, locking and frontend polling.
 - [FIFO waitlist contract](backend/docs/activity-waitlist.md): admission, queue timestamps/position, atomic promotion, migration/downgrade, frontend follow-up.
 - [My Activities contract](backend/docs/my-activities.md): relation/scope semantics,
   sorting/pagination, full responses, query strategy, and frontend integration.
@@ -641,7 +671,7 @@ the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled 
 
 ## Current limitations / not implemented yet
 
-- Scheduled/automatic finalization, waitlist expiry and confirmation-timeout promotion, organizer manual attendance overrides,
+- Scheduled/automatic finalization, organizer manual attendance overrides,
   undo completion/no-show, and separate cancelled-event attendance/refund policy.
 - Reviews, ratings, XP/points progression, ranks, and achievements.
 - Notifications, chat, photo galleries/uploads, and media workflows.
@@ -656,16 +686,16 @@ Placeholder fields do not imply implemented features: `tags` is empty,
 `distance_m` is null, and unsupported gallery/photo/delete
 permissions remain false. Check-in timing/radius and checked_in_count are now real.
 My Activities has no total-count wrapper or cross-page snapshot guarantee.
-There is no unconfirm, undo check-in, automatic confirmation expiry, immutable participation event
+There is no unconfirm, undo check-in, immutable participation event
 log, or schedule-edit notification. Confirmation is a self-declared intent to attend.
 
 ## Roadmap
 
 | State | Milestone |
 | --- | --- |
-| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization; FIFO waitlists/promotion |
+| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization; FIFO waitlists/promotion; autonomous confirmation/waitlist expiry with grace |
 | Next frontend integration | Real My Activities and final history outcomes; join/leave/rejoin/confirm/check-in; geolocation; organizer edit/cancel/finalize; state/window/error UI; identity-aware caching and invalidation |
-| Recommended next backend milestone | Define scheduler/lifecycle policy for stale WAITLISTED and confirmation deadlines, then add expiry and timeout-driven FIFO promotion with the same activity lock |
+| Recommended next backend milestone | Final scoped hardening: ENDED discovery filtering, check-in accuracy_m, /ready, auth refresh exception cleanup, production JWT-secret validation |
 | Potential later sequence | Reviews/ratings → XP/points → ranks/achievements, after eligibility and cancelled-event policies are defined |
 | Later product work | Notifications/chat, galleries, nearby search; payment handling if required |
 

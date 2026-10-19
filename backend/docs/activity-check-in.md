@@ -84,7 +84,9 @@ attestation and makes no fraud-proof attendance claim.
 - `participant_count`/available_slots use centralized JOINED, CONFIRMED, CHECKED_IN
   active states, excluding final COMPLETED/NO_SHOW. checked_in_count counts
   CHECKED_IN + COMPLETED to retain successful check-ins; waitlist_count counts WAITLISTED only; queued users cannot confirm/check in and receive 409.
-- JOINED/CONFIRMED can leave under the existing uncancelled/before-end rule.
+- CONFIRMED may leave before end unless cancelled. JOINED must also precede its
+  effective confirmation deadline, even before the worker persists expiry. Both
+  system-expired states cannot confirm/check in and never consume capacity.
   CHECKED_IN cannot leave. LEFT rejoin resets joined_at and clears all lifecycle
   timestamps, including checked_in_at, for the new JOINED cycle.
 - Joined My Activities includes CHECKED_IN, excludes LEFT, and keeps the existing
@@ -104,7 +106,8 @@ After end, the organizer may explicitly [finalize attendance](activity-finalizat
 CHECKED_IN becomes COMPLETED, retaining checked_in_at and gaining completed_at;
 JOINED/CONFIRMED become NO_SHOW. These terminal states cannot check in, confirm,
 leave, or rejoin. At exact end, check-in is already forbidden (exclusive deadline),
-while finalization is allowed. Activity status stays ENDED. No scheduler runs.
+while finalization is allowed. Activity status stays ENDED. The participation
+worker expires reservations/queues only; it never performs attendance finalization.
 
 See [management](activity-management.md) and [My Activities](my-activities.md) for
 the unchanged ownership, pagination, and visibility contracts.
@@ -226,8 +229,8 @@ Illustrative IDs/date and default settings; Swagger provides the same full examp
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -236,7 +239,7 @@ Illustrative IDs/date and default settings; Swagger provides the same full examp
   "current_user_participation": {
     "status": "CHECKED_IN",
     "joined_at": "2030-08-01T12:00:00Z",
-    "confirmed_at": "2030-08-07T16:00:00Z",
+    "confirmed_at": "2030-08-08T15:05:00Z",
     "checked_in_at": "2030-08-08T15:45:00Z",
     "completed_at": null,
     "no_show_at": null

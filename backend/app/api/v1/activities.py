@@ -24,11 +24,13 @@ from app.schemas.activity import (
     ACTIVITY_CATEGORY_MARKDOWN_TABLE,
     ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE,
     ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
+    ACTIVITY_CONFIRMATION_EXPIRED_RESPONSE_EXAMPLE,
     ACTIVITY_CREATE_EXAMPLES,
     ACTIVITY_FINALIZE_RESPONSE_EXAMPLE,
     ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     ACTIVITY_LEAVE_RESPONSE_EXAMPLE,
     ACTIVITY_PROMOTED_RESPONSE_EXAMPLE,
+    ACTIVITY_WAITLIST_EXPIRED_RESPONSE_EXAMPLE,
     ACTIVITY_WAITLIST_RESPONSE_EXAMPLE,
     ActivityCategoryId,
     ActivityCreate,
@@ -342,7 +344,8 @@ Only the organizer may finalize, at current UTC time >= end_at. Cancelled activi
 return 409 and retain their evidence. Activity status stays ENDED, never COMPLETED.
 
 Under the same activity-first FOR UPDATE lock as every other writer, one atomic
-bulk UPDATE maps CHECKED_IN -> COMPLETED and JOINED/CONFIRMED -> NO_SHOW. WAITLISTED, LEFT and
+bulk UPDATE maps CHECKED_IN -> COMPLETED and JOINED/CONFIRMED -> NO_SHOW. System-expired
+states, WAITLISTED, LEFT and
 existing final outcomes remain unchanged. completed_at/no_show_at record one UTC
 finalization time, preserving joined_at/confirmed_at/checked_in_at. Final outcomes
 are terminal. There is no automatic scheduler, manual attendance override, undo,
@@ -464,6 +467,12 @@ def list_all(
                         "joined": {"value": ACTIVITY_JOIN_RESPONSE_EXAMPLE},
                         "waitlisted": {"value": ACTIVITY_WAITLIST_RESPONSE_EXAMPLE},
                         "promoted": {"value": ACTIVITY_PROMOTED_RESPONSE_EXAMPLE},
+                        "confirmation_expired": {
+                            "value": ACTIVITY_CONFIRMATION_EXPIRED_RESPONSE_EXAMPLE
+                        },
+                        "waitlist_expired": {
+                            "value": ACTIVITY_WAITLIST_EXPIRED_RESPONSE_EXAMPLE
+                        },
                     }
                 }
             }
@@ -500,6 +509,7 @@ def read(
 
 
 def _membership_responses(*conflicts: str) -> dict:
+    conflicts = ("Participation has expired", *conflicts)
     return {
         401: {
             "description": "Authentication required: use an access JWT, not a refresh JWT.",
@@ -563,7 +573,9 @@ joined_at=null, waitlisted_at, and a private 1-based waitlist_position, ordered 
 waitlisted_at ASC then user_id ASC. WAITLISTED cannot confirm/check in; JOINED
 does not mean confirmed attendance. Before start, active leave or capacity increase
 promotes earliest waiters to JOINED in the same transaction, sets joined_at to
-promotion time, and retains waitlisted_at. There is no scheduler/confirmation expiry.
+promotion time, and retains waitlisted_at. A periodic worker also expires overdue
+JOINED reservations and promotes FIFO waiters atomically; remaining waiters expire
+at start. Late joins/promotions receive the effective confirmation grace deadline.
 Final outcomes cannot rejoin. Retry after an uncertain network result
 by reading details; another POST after a successful join returns 409.
 """,
@@ -627,9 +639,13 @@ First join as a non-organizer with POST on this same path, then try DELETE.
 
 The 200 response is updated activity detail: counts reflect any promotion and
 `current_user_participation` becomes null. Use authenticated detail to observe
-your own promotion later; no notifications or periodic scheduler exist.
+your own promotion later; the periodic worker may change participation without
+a request. No notifications or server push channel exist.
 The organizer cannot leave because organizers are separate from membership.
-Leaving is allowed before and during an activity, strictly before `end_at`.
+CONFIRMED/WAITLISTED leave is allowed strictly before end_at unless cancelled.
+JOINED additionally must be before its effective confirmation deadline; an overdue
+reservation cannot voluntarily leave and rejoin to reset its deadline (409).
+System-expired participation is terminal and cannot leave/rejoin.
 Ended membership is preserved for history; leaving after the end returns 409.
 Cancelled membership is also preserved; leaving after cancellation returns 409.
 
@@ -648,6 +664,7 @@ Join and leave use the same PostgreSQL activity-row lock, preventing counter rac
             "Not participating in this activity",
             "Attendance outcome is final",
             "Checked-in participants cannot leave",
+            "Confirmation window has closed",
             "Activity has ended",
             "Activity is cancelled",
             "Organizer cannot join or leave their own activity",
@@ -679,14 +696,29 @@ Successful confirmation transitions JOINED to CONFIRMED, persists confirmed_at,
 and returns the full ActivityRead with the caller's actual status. It consumes no
 additional place: JOINED, CONFIRMED, and CHECKED_IN count toward capacity; LEFT does not.
 
-The configured ACTIVITY_CONFIRMATION_WINDOW_HOURS (default 24) defines the window:
-confirmation_opens_at <= current UTC time < confirmation_deadline_at. Opening is
-start_at minus the window; the exclusive deadline is start_at. Checks run after
-the same activity-row lock as join/leave/edit/cancel. Cancelled or ended activities,
-non-members/LEFT users, repeated confirmation, and requests outside the window
-return 409. An organizer cannot confirm their own activity. There is no unconfirm.
+ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE (default 60) and
+ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE (default 30) define public normal
+metadata: opening=start-60 minutes, normal deadline=start-30 minutes. The opening
+is inclusive and the deadline exclusive. Configuration requires open > deadline >= 0.
 
-A confirmed participant may leave before end unless cancelled. Leaving preserves
+Only JOINED can confirm, at opening <= now < its effective confirmation deadline.
+If joined_at is before the normal deadline, its deadline is the normal deadline.
+If joined_at is at/after normal deadline, its deadline is min(joined_at plus
+ACTIVITY_LATE_CONFIRMATION_GRACE_MINUTES (default 10), start_at). This covers direct
+late joins, eligible LEFT rejoins, and promotions. Top-level confirmation_deadline_at
+always stays the public normal deadline; current_user_participation exposes the
+caller's effective_confirmation_deadline_at. Exact deadline is rejected even if
+an overdue database row is still JOINED because the worker has not swept yet.
+
+A lifespan worker periodically expires overdue JOINED to CONFIRMATION_EXPIRED and
+promotes FIFO waiters atomically before start. At start, remaining waiters become
+WAITLIST_EXPIRED. Both states retain private evidence and cannot rejoin/confirm.
+Cancelled activities are skipped; finalization remains explicit. All checks run
+after the existing activity-first lock. Non-members/LEFT users, repeated confirmation,
+and out-of-window attempts return 409. There is no unconfirm.
+
+A confirmed participant may leave before end unless cancelled. Overdue JOINED cannot
+leave to bypass expiry by rejoining. Leaving preserves
 confirmed_at as last-cycle evidence; rejoining clears it and starts JOINED again.
 Activity schedule changes are blocked while any participant remains CONFIRMED.
 CHECKED_IN users cannot confirm again (409). Check-in is a separate POST with

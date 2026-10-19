@@ -65,7 +65,8 @@ def pg_engine():
 
 @pytest.fixture
 def lifecycle_activity(pg_engine, monkeypatch):
-    monkeypatch.setenv("ACTIVITY_CONFIRMATION_WINDOW_HOURS", "24")
+    monkeypatch.setenv("ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE", "1440")
+    monkeypatch.setenv("ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE", "0")
     get_settings.cache_clear()
     start = datetime.now(UTC) + timedelta(hours=12)
     activity_id = None

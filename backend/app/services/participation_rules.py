@@ -29,13 +29,36 @@ def _shift_time(value: datetime, duration: timedelta) -> datetime:
 
 
 def confirmation_window(start_at: datetime) -> tuple[datetime, datetime]:
-    """Nominal UTC window: inclusive opening, exclusive deadline at start."""
-    duration = timedelta(hours=get_settings().activity_confirmation_window_hours)
-    return _shift_time(start_at, -duration), start_at
+    """Public normal window, independent of caller identity or queue history."""
+    settings = get_settings()
+    return (
+        _shift_time(
+            start_at,
+            -timedelta(minutes=settings.activity_confirmation_open_minutes_before),
+        ),
+        _shift_time(
+            start_at,
+            -timedelta(minutes=settings.activity_confirmation_deadline_minutes_before),
+        ),
+    )
 
 
-def is_confirmation_window_open(start_at: datetime, now: datetime) -> bool:
-    opens_at, deadline_at = confirmation_window(start_at)
+def effective_confirmation_deadline(
+    start_at: datetime, joined_at: datetime
+) -> datetime:
+    """Actual place acquisition grants grace at/after the normal deadline."""
+    _, normal_deadline = confirmation_window(start_at)
+    if joined_at < normal_deadline:
+        return normal_deadline
+    grace = timedelta(minutes=get_settings().activity_late_confirmation_grace_minutes)
+    return min(_shift_time(joined_at, grace), start_at)
+
+
+def is_confirmation_window_open(
+    start_at: datetime, joined_at: datetime, now: datetime
+) -> bool:
+    opens_at, _ = confirmation_window(start_at)
+    deadline_at = effective_confirmation_deadline(start_at, joined_at)
     return opens_at <= now < deadline_at
 
 

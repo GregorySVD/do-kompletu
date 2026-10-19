@@ -333,17 +333,17 @@ class ActivityPermissionsRead(BaseModel):
     can_join: bool = Field(
         default=False,
         description=(
-            "True for authenticated non-organizers with no membership or LEFT, never a final COMPLETED/NO_SHOW outcome, while the "
+            "True for authenticated non-organizers with no membership or LEFT, never an expired or final attendance state, while the "
             "activity is PUBLISHED (strictly before start_at) and uncancelled. Full limited activities are eligible: the request may return JOINED or WAITLISTED. This does not guarantee an immediate place."
         ),
     )
     can_leave: bool = Field(
         default=False,
-        description="True for a JOINED/CONFIRMED/WAITLISTED non-organizer before end_at, unless cancelled. Waitlist leave frees no capacity.",
+        description="True for a JOINED/CONFIRMED/WAITLISTED non-organizer before end_at, unless cancelled. JOINED must still be before its effective confirmation deadline; overdue leave cannot reset a reservation. Expired states cannot leave. Waitlist leave frees no capacity.",
     )
     can_confirm: bool = Field(
         default=False,
-        description="True only for a JOINED non-organizer inside the confirmation window, unless cancelled. False after confirmation or leaving.",
+        description="True only for a JOINED non-organizer at/after public opening and strictly before their effective confirmation deadline, unless cancelled/ended. Evaluated even before the periodic sweep updates an overdue row.",
     )
     can_check_in: bool = Field(
         default=False,
@@ -380,13 +380,13 @@ class ActivityListItem(BaseModel):
     min_participants: int
     max_participants: int | None
     participant_count: int = Field(
-        description="Active capacity count: JOINED + CONFIRMED + CHECKED_IN. WAITLISTED/LEFT/COMPLETED/NO_SHOW and organizer excluded, including after end/finalization."
+        description="Active capacity count: JOINED + CONFIRMED + CHECKED_IN. WAITLISTED/LEFT/system-expired/final attendance states and organizer excluded. Overdue JOINED remains counted until a sweep persists expiry."
     )
     checked_in_count: int = Field(
         description="Historical successful check-in count: CHECKED_IN + COMPLETED. CONFIRMED/NO_SHOW do not count."
     )
     waitlist_count: int = Field(
-        description="Persisted count of WAITLISTED records only; excludes active/LEFT/final states. Historical waitlists remain until a future lifecycle milestone."
+        description="Persisted count of WAITLISTED only. At/after start the worker transitions remaining rows to WAITLIST_EXPIRED, excluding them from this count. Cancellation preserves existing evidence and is skipped by automation."
     )
     available_slots: int | None = Field(
         description=(
@@ -404,13 +404,20 @@ class ActivityListItem(BaseModel):
 
 class ActivityParticipationRead(BaseModel):
     status: Literal[
-        "WAITLISTED", "JOINED", "CONFIRMED", "CHECKED_IN", "COMPLETED", "NO_SHOW"
+        "CONFIRMATION_EXPIRED",
+        "WAITLIST_EXPIRED",
+        "WAITLISTED",
+        "JOINED",
+        "CONFIRMED",
+        "CHECKED_IN",
+        "COMPLETED",
+        "NO_SHOW",
     ] = Field(
         default="JOINED",
-        description="Caller's current or final state. WAITLISTED has no active place and cannot confirm/check in. COMPLETED means checked in then explicitly finalized after end; NO_SHOW means unresolved JOINED/CONFIRMED finalized without check-in. LEFT is null current participation.",
+        description="Caller's private current, expired, or final state. CONFIRMATION_EXPIRED releases an unconfirmed place; WAITLIST_EXPIRED never held a place. Both system states are terminal. WAITLISTED cannot confirm/check in. COMPLETED/NO_SHOW require explicit organizer finalization; LEFT is null current participation.",
     )
     joined_at: datetime | None = Field(
-        description="UTC time the caller obtained a place in the latest cycle, including promotion time. Null while WAITLISTED."
+        description="UTC time the caller obtained a place, including promotion. Null for WAITLISTED/WAITLIST_EXPIRED. Preserved for CONFIRMATION_EXPIRED."
     )
     waitlisted_at: datetime | None = Field(
         default=None,
@@ -420,6 +427,18 @@ class ActivityParticipationRead(BaseModel):
         default=None,
         ge=1,
         description="Caller-only 1-based FIFO position by waitlisted_at ASC then user_id ASC; null outside WAITLISTED. A snapshot, not a reserved position.",
+    )
+    effective_confirmation_deadline_at: datetime | None = Field(
+        default=None,
+        description="Caller-only deadline for JOINED: normal deadline for early joins; late joins/promotions get configured grace capped at start. Null for other states. Exclusive and derived from the current schedule/configuration.",
+    )
+    confirmation_expired_at: datetime | None = Field(
+        default=None,
+        description="UTC sweep time when unconfirmed JOINED became terminal CONFIRMATION_EXPIRED; otherwise null.",
+    )
+    waitlist_expired_at: datetime | None = Field(
+        default=None,
+        description="UTC sweep time at/after start when remaining WAITLISTED became terminal WAITLIST_EXPIRED; otherwise null.",
     )
     confirmed_at: datetime | None = Field(
         default=None,
@@ -454,11 +473,11 @@ class ActivityRead(ActivityListItem):
     )
     confirmation_opens_at: datetime | None = Field(
         default=None,
-        description="Derived UTC opening: start_at minus configured confirmation window (default 24 hours), inclusive.",
+        description="Public normal UTC opening: start_at minus ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE (default 60), inclusive.",
     )
     confirmation_deadline_at: datetime | None = Field(
         default=None,
-        description="Derived UTC confirmation deadline equal to start_at, exclusive. Nominal timing remains visible after cancellation/end.",
+        description="Public normal UTC deadline: start_at minus ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE (default 30), exclusive. Never varies by caller. Late joins/promotions use the effective deadline in current_user_participation.",
     )
     checkin_opens_at: datetime | None = Field(
         default=None,
@@ -528,9 +547,10 @@ ACTIVITY_JOIN_RESPONSE_EXAMPLE = ActivityRead.model_validate(
         "current_user_participation": {
             "status": "JOINED",
             "joined_at": "2030-08-01T12:00:00Z",
+            "effective_confirmation_deadline_at": "2030-08-08T15:30:00Z",
         },
-        "confirmation_opens_at": "2030-08-07T16:00:00Z",
-        "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+        "confirmation_opens_at": "2030-08-08T15:00:00Z",
+        "confirmation_deadline_at": "2030-08-08T15:30:00Z",
         "checkin_opens_at": "2030-08-08T15:30:00Z",
         "checkin_closes_at": "2030-08-08T17:00:00Z",
         "checkin_radius_m": 150,
@@ -567,10 +587,14 @@ ACTIVITY_PROMOTED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
         "waitlist_count": 2,
         "current_user_participation": {
             "status": "JOINED",
-            "joined_at": "2030-08-02T10:00:00Z",
+            "joined_at": "2030-08-08T15:30:00Z",
+            "effective_confirmation_deadline_at": "2030-08-08T15:40:00Z",
             "waitlisted_at": "2030-08-01T12:00:00Z",
             "waitlist_position": None,
         },
+        "permissions": ActivityPermissionsRead(
+            can_leave=True, can_confirm=True
+        ).model_dump(),
     }
 ).model_dump(mode="json")
 ACTIVITY_CONFIRM_RESPONSE_EXAMPLE = {
@@ -580,7 +604,10 @@ ACTIVITY_CONFIRM_RESPONSE_EXAMPLE = {
         "joined_at": "2030-08-01T12:00:00Z",
         "waitlisted_at": None,
         "waitlist_position": None,
-        "confirmed_at": "2030-08-07T16:00:00Z",
+        "confirmed_at": "2030-08-08T15:05:00Z",
+        "effective_confirmation_deadline_at": None,
+        "confirmation_expired_at": None,
+        "waitlist_expired_at": None,
         "checked_in_at": None,
         "completed_at": None,
         "no_show_at": None,
@@ -619,6 +646,7 @@ ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE = ActivityRead.model_validate(
         "current_user_participation": {
             **ACTIVITY_JOIN_RESPONSE_EXAMPLE["current_user_participation"],
             "status": "NO_SHOW",
+            "effective_confirmation_deadline_at": None,
             "no_show_at": "2030-08-08T18:00:00Z",
         },
         "permissions": ActivityPermissionsRead().model_dump(),
@@ -628,3 +656,31 @@ ACTIVITY_FINALIZE_RESPONSE_EXAMPLE = {
     **ACTIVITY_COMPLETED_RESPONSE_EXAMPLE,
     "current_user_participation": None,
 }
+ACTIVITY_CONFIRMATION_EXPIRED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+        "participant_count": 0,
+        "available_slots": 12,
+        "current_user_participation": {
+            **ACTIVITY_JOIN_RESPONSE_EXAMPLE["current_user_participation"],
+            "status": "CONFIRMATION_EXPIRED",
+            "effective_confirmation_deadline_at": None,
+            "confirmation_expired_at": "2030-08-08T15:30:00Z",
+        },
+        "permissions": ActivityPermissionsRead().model_dump(),
+    }
+).model_dump(mode="json")
+ACTIVITY_WAITLIST_EXPIRED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        **ACTIVITY_WAITLIST_RESPONSE_EXAMPLE,
+        "status": "ONGOING",
+        "waitlist_count": 0,
+        "current_user_participation": {
+            **ACTIVITY_WAITLIST_RESPONSE_EXAMPLE["current_user_participation"],
+            "status": "WAITLIST_EXPIRED",
+            "waitlist_position": None,
+            "waitlist_expired_at": "2030-08-08T16:00:00Z",
+        },
+        "permissions": ActivityPermissionsRead().model_dump(),
+    }
+).model_dump(mode="json")

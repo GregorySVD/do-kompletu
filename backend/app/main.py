@@ -6,6 +6,7 @@ from fastapi.routing import APIRoute, iter_route_contexts
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.workers.participation_lifecycle import lifecycle_lifespan
 
 OPENAPI_TAGS = [
     {
@@ -22,7 +23,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "Users",
-        "description": "Authenticated current-user profile and organized/joined activity lists.",
+        "description": "Authenticated current-user profile and organized/joined/waitlisted activity lists.",
     },
     {
         "name": "Activities",
@@ -45,6 +46,7 @@ OPENAPI_TAGS = [
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
+        lifespan=lifecycle_lifespan(settings),
         title=settings.app_name,
         version=settings.app_version,
         description=(

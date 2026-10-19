@@ -66,11 +66,15 @@ shift offsets; pagination does not freeze the dataset.
 Waitlisted items include private waitlisted_at and 1-based waitlist_position
 (waitlisted_at ASC, user_id ASC), with joined_at=null. Promotion changes the row
 to JOINED, sets joined_at and preserves waitlisted_at; position becomes null.
-Waitlisted uses the same end-time scope as other relations, including ongoing
-or cancelled activities. Stale WAITLISTED rows remain historically after end;
-there is no scheduler/automatic expiry yet and finalization leaves them unchanged.
+Waitlisted uses the same end-time scope as other relations. The periodic worker
+expires overdue JOINED reservations and remaining WAITLISTED at start. Expired
+states are excluded from joined/waitlisted relations but remain private on direct
+detail with expiry timestamps. Cancellation skips automation and preserves its
+existing evidence, so cancelled waitlists can remain in their original relation.
+State changes are visible after refetch; no WebSocket/push channel is implemented.
 Joined items include your own current or final state, joined_at, and nullable
-confirmed_at/checked_in_at/completed_at/no_show_at. LEFT is inactive and excluded.
+confirmed_at/checked_in_at/completed_at/no_show_at, plus effective_confirmation_deadline_at
+for JOINED. LEFT and system-expired states are inactive and excluded.
 Organized items normally have null membership. Counts/capacity use only unresolved
 JOINED/CONFIRMED/CHECKED_IN states; organizers do not consume places, and unlimited
 activities have available_slots=null. Finalization reduces participant_count to

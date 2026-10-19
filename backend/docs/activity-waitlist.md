@@ -1,8 +1,9 @@
 # Activity waitlist contract
 
 Migration `20261018_0009_add_activity_waitlist.py` follows verified head
-`20261018_0008`. This milestone adds synchronous FIFO waitlists. It does not add
-a scheduler, confirmation expiry, notifications, or frontend changes.
+`20261018_0008`. This defines the original FIFO milestone. Current 0010 adds an autonomous
+[lifecycle worker](participation-lifecycle-worker.md): confirmation expiry, late
+grace, and waitlist expiry at start. Notifications and frontend changes remain absent.
 
 ## Request and response
 
@@ -108,8 +109,9 @@ promotes them in one SQL UPDATE before the response snapshot and commit. This
 fills actual available capacity, including any previously unused places. A
 response/projection failure rolls back both leave and promotion.
 
-Leaving WAITLISTED never invokes promotion: no place was freed. Existing leave
-eligibility remains uncancelled `now < end_at` for JOINED/CONFIRMED/WAITLISTED;
+Leaving WAITLISTED never invokes promotion: no place was freed. Leave eligibility
+remains uncancelled `now < end_at` for CONFIRMED/WAITLISTED. JOINED additionally
+must precede its effective confirmation deadline to prevent expiry bypass;
 CHECKED_IN and final states cannot leave. A leave at/after start may free capacity
 but does not promote anyone, because admission has closed.
 
@@ -147,10 +149,13 @@ Discovery still excludes cancelled activities. Finalization leaves WAITLISTED
 unchanged: a person who never received a place becomes neither NO_SHOW nor
 COMPLETED. An ended waitlist-only event has no unresolved attendance to finalize.
 
-There is no automatic queue expiry, periodic promotion, confirmation timeout,
-WAITLIST_EXPIRED, or notification. WAITLISTED may remain historically after end;
-its position/count remain snapshots of those retained rows. The next lifecycle
-milestone should define stale queue resolution and deadline-driven promotion.
+The lifecycle worker now expires overdue JOINED to CONFIRMATION_EXPIRED and
+promotes FIFO waiters atomically before start. Each late promotion gets configured
+grace from its real joined_at. At/after start, remaining WAITLISTED becomes
+WAITLIST_EXPIRED and disappears from waitlist_count/relation=waitlisted. Both new
+states are terminal and private on direct detail. Cancellation skips automation
+and can retain its original historical waitlist. There is no notification/push;
+see the lifecycle contract for polling and worker-lag semantics.
 
 ## Migration and downgrade
 

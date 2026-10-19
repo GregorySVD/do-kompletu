@@ -16,6 +16,7 @@ from app.models.activity_participation import (
     LEAVABLE_PARTICIPATION_STATES,
     PARTICIPATION_PRIMARY_KEY,
     REQUESTED_PARTICIPATION_STATES,
+    SYSTEM_EXPIRED_STATES,
     ActivityParticipation,
     ParticipationStatus,
 )
@@ -26,7 +27,11 @@ from app.services.activity_service import (
     get_activity_by_id,
     get_activity_for_update,
 )
-from app.services.participation_rules import check_in_window, confirmation_window
+from app.services.participation_rules import (
+    check_in_window,
+    confirmation_window,
+    effective_confirmation_deadline,
+)
 from app.services.waitlist_service import (
     active_participant_count,
     promote_waitlisted_participants,
@@ -83,6 +88,8 @@ def _mutable_participation(
     )
     if participation is not None and participation.status in FINAL_ATTENDANCE_STATES:
         raise ParticipationError("Attendance outcome is final")
+    if participation is not None and participation.status in SYSTEM_EXPIRED_STATES:
+        raise ParticipationError("Participation has expired")
     return participation
 
 
@@ -118,6 +125,8 @@ def join_activity(session: Session, activity_id: UUID, user_id: UUID) -> Activit
         participation.checked_in_at = None
         participation.completed_at = None
         participation.no_show_at = None
+        participation.confirmation_expired_at = None
+        participation.waitlist_expired_at = None
         session.flush()
         result = _snapshot(session, activity_id, user_id, now)
         session.commit()
@@ -151,6 +160,16 @@ def leave_activity(
         _require_open(activity, now)
         if participation.status == ParticipationStatus.CHECKED_IN:
             raise ParticipationError("Checked-in participants cannot leave")
+        if (
+            participation.status == ParticipationStatus.JOINED
+            and now
+            >= effective_confirmation_deadline(
+                _as_aware_utc(activity.start_at), _as_aware_utc(participation.joined_at)
+            )
+        ):
+            # Do not turn an overdue reservation into voluntary LEFT and allow
+            # deadline-bypassing rejoin before the next periodic sweep.
+            raise ParticipationError("Confirmation window has closed")
         assert participation.status in LEAVABLE_PARTICIPATION_STATES
         freed_place = participation.status in ACTIVE_PARTICIPATION_STATUSES
         participation.status = ParticipationStatus.LEFT
@@ -189,7 +208,11 @@ def confirm_activity(
             raise ParticipationError("Already checked in")
         if participation.status == ParticipationStatus.CONFIRMED:
             raise ParticipationError("Already confirmed attendance")
-        opens_at, deadline_at = confirmation_window(_as_aware_utc(activity.start_at))
+        start_at = _as_aware_utc(activity.start_at)
+        opens_at, _ = confirmation_window(start_at)
+        deadline_at = effective_confirmation_deadline(
+            start_at, _as_aware_utc(participation.joined_at)
+        )
         if now < opens_at:
             raise ParticipationError("Confirmation window has not opened")
         if now >= deadline_at:

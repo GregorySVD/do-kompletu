@@ -38,7 +38,10 @@ The API client sends the sessionStorage access token. Existing query keys lack
 user identity, so personalized caches need explicit handling during integration.
 The TypeScript detail type still declares `current_user_participation: null`, which
 must become a WAITLISTED/JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union with
-nullable joined_at, waitlisted_at, waitlist_position, and attendance timestamps.
+nullable joined_at, waitlisted_at, waitlist_position, effective_confirmation_deadline_at,
+confirmation_expired_at/waitlist_expired_at, and attendance timestamps. Add
+CONFIRMATION_EXPIRED/WAITLIST_EXPIRED to the union for private detail. Poll/refetch
+detail and personal lists during pre-start windows to observe autonomous changes.
 Add can_finalize alongside can_cancel/cancelled_at. Existing checkin_* metadata and can_check_in
 types/panel can be reused; browser geolocation and actions still need integration.
 The existing confirmation_opens_at/confirmation_deadline_at and can_confirm fields
@@ -80,8 +83,12 @@ end. A separate list of left activities
 is not implemented, including in history scope.
 Waitlisted selects only the caller's WAITLISTED rows and excludes organizer-owned
 activities. It preserves cancelled rows and uses the same end-time scopes, so
-upcoming includes ongoing waitlisted events and history retains stale waitlists.
-There is no expiry scheduler yet. WAITLISTED never appears in joined relation,
+upcoming can include ongoing waitlisted events until a sweep expires the queue.
+The [lifecycle worker](participation-lifecycle-worker.md) expires overdue JOINED
+and remaining WAITLISTED at start. CONFIRMATION_EXPIRED is excluded from joined;
+WAITLIST_EXPIRED is excluded from waitlisted. Both remain caller-only on direct
+detail, without a new section. Cancelled records are skipped by automation and
+retain their original evidence. WAITLISTED never appears in joined relation,
 never consumes participant capacity, and never becomes NO_SHOW/COMPLETED.
 No other user's membership is returned.
 
@@ -149,8 +156,8 @@ Authorization: Bearer <access_token>
       "avatar_url": null
     },
     "tags": [],
-    "confirmation_opens_at": "2030-08-07T16:00:00Z",
-    "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+    "confirmation_opens_at": "2030-08-08T15:00:00Z",
+    "confirmation_deadline_at": "2030-08-08T15:30:00Z",
     "checkin_opens_at": "2030-08-08T15:30:00Z",
     "checkin_closes_at": "2030-08-08T17:00:00Z",
     "checkin_radius_m": 150,
@@ -229,7 +236,7 @@ migration-file/database head was `20261018_0004`, using `localhost:5433`.
 The subsequent management migration adds cancelled_at, and lifecycle migration
 `20261018_0006` adds status/left_at/confirmed_at; 0007 adds checked_in_at and CHECKED_IN.
 Migration 0008 adds COMPLETED/NO_SHOW and completed_at/no_show_at.
-Current head is `20261018_0009`; see the waitlist contract for nullable joined_at,
+Current head is `20261019_0010`; see the waitlist contract for nullable joined_at,
 waitlisted_at, FIFO index, unchanged-data upgrade, and lossy inactive-LEFT downgrade.
 The relation/scope query contract is unchanged; membership predicates/projections
 now distinguish upcoming current states from current/final history states in SQL.

@@ -32,7 +32,7 @@ class MyActivitiesQuery(BaseModel):
     relation: ActivityRelation = Field(
         description=(
             "organized: you are the organizer; joined: current states before end, current or final COMPLETED/NO_SHOW states in history. LEFT excluded. "
-            "waitlisted: only your WAITLISTED records, separate from joined. Organizer identity alone never counts as membership."
+            "waitlisted: only your WAITLISTED records, separate from joined. CONFIRMATION_EXPIRED/WAITLIST_EXPIRED and LEFT are excluded from personal membership relations. Organizer identity alone never counts as membership."
         ),
     )
     scope: ActivityScope | None = Field(
@@ -94,16 +94,19 @@ MY_ACTIVITIES_RESPONSE_EXAMPLES = {
                 "start_at": "2025-08-08T16:00:00Z",
                 "end_at": "2025-08-08T18:00:00Z",
                 "status": "ENDED",
-                "confirmation_opens_at": "2025-08-07T16:00:00Z",
-                "confirmation_deadline_at": "2025-08-08T16:00:00Z",
+                "confirmation_opens_at": "2025-08-08T15:00:00Z",
+                "confirmation_deadline_at": "2025-08-08T15:30:00Z",
                 "checkin_opens_at": "2025-08-08T15:30:00Z",
                 "checkin_closes_at": "2025-08-08T17:00:00Z",
                 "current_user_participation": {
-                    "status": "JOINED",
+                    "status": "CONFIRMED",
                     "joined_at": "2025-08-01T12:00:00Z",
                     "waitlisted_at": None,
                     "waitlist_position": None,
-                    "confirmed_at": None,
+                    "confirmed_at": "2025-08-08T15:05:00Z",
+                    "effective_confirmation_deadline_at": None,
+                    "confirmation_expired_at": None,
+                    "waitlist_expired_at": None,
                     "checked_in_at": None,
                     "completed_at": None,
                     "no_show_at": None,

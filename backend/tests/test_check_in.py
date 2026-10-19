@@ -34,7 +34,8 @@ POSTGIS_CHECK = service._within_check_in_radius
 @pytest.fixture
 def context(client, db_session, monkeypatch):
     for name, value in {
-        "ACTIVITY_CONFIRMATION_WINDOW_HOURS": "24",
+        "ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE": "1440",
+        "ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE": "0",
         "ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE": "30",
         "ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER": "60",
         "ACTIVITY_CHECK_IN_RADIUS_METERS": "150",

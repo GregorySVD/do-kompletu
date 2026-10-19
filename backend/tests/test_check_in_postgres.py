@@ -70,7 +70,8 @@ def context(pg_engine, monkeypatch):
         "ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE": "30",
         "ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER": "60",
         "ACTIVITY_CHECK_IN_RADIUS_METERS": "150",
-        "ACTIVITY_CONFIRMATION_WINDOW_HOURS": "24",
+        "ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE": "1440",
+        "ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE": "0",
     }.items():
         monkeypatch.setenv(key, value)
     get_settings.cache_clear()

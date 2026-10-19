@@ -19,7 +19,7 @@ The management implementation started from a clean `backend` branch with
 migration-file/database head `20261018_0004`. Its historical baseline verification
 was 164 default tests and 20 separate PostgreSQL tests, with Ruff and lock validation
 passing. That describes the start of implementation, not the current working-tree
-status. Current migration-file/database head is `20261018_0009`; Compose uses host
+status. Current migration-file/database head is `20261019_0010`; Compose uses host
 port 5433. See the [README](../../README.md#testing) for the current combined checks.
 
 ## Persistent lifecycle and schema
@@ -81,6 +81,11 @@ latitude, longitude, location_name, and address changes also return 409. This ke
 the venue against which attendance was validated. Equivalent unchanged values are allowed,
 as are other fields under normal management rules. LEFT rows with historical
 confirmed_at do not block schedule changes. Editing never silently clears confirmations.
+Confirmation opening, normal deadline, and each JOINED user's effective deadline
+derive from the current schedule/configuration; no stored deadline can become
+stale after an allowed edit. Queue-entry timestamps and FIFO order stay unchanged.
+System-expired users remain terminal if a future event is rescheduled, and
+cancellation skips all subsequent lifecycle automation.
 
 | Editable fields | Rules |
 | --- | --- |
@@ -184,8 +189,8 @@ another user, because the organizer is separate from membership.
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -351,6 +356,6 @@ Reviews, XP, ranks, achievements, chat, and media remain unimplemented. FIFO
 waitlists are implemented; capacity increases and limited-to-unlimited edits
 promote earliest waiters in the same activity-locked transaction before start.
 Retained participation, timed confirmation/PostGIS check-in, and explicit terminal
-COMPLETED/NO_SHOW outcomes are implemented. There is no scheduler, manual attendance
-override, or undo outcome. Cancelled events retain their evidence and cannot be
+COMPLETED/NO_SHOW outcomes are implemented. The participation lifecycle worker automates expiry/promotion, not finalization.
+There is no manual attendance override or undo outcome. Cancelled events retain their evidence and cannot be
 finalized by the ordinary endpoint; future refund/reward policy must handle them separately.

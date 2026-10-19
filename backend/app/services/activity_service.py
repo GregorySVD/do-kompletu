@@ -54,6 +54,7 @@ from app.schemas.my_activities import ActivityRelation, ActivityScope
 from app.services.participation_rules import (
     check_in_window,
     confirmation_window,
+    effective_confirmation_deadline,
     is_check_in_window_open,
     is_confirmation_window_open,
     waitlist_ordering,
@@ -79,6 +80,8 @@ class ActivityResult:
     waitlist_count: int = 0
     current_user_waitlisted_at: datetime | None = None
     current_user_waitlist_position: int | None = None
+    current_user_confirmation_expired_at: datetime | None = None
+    current_user_waitlist_expired_at: datetime | None = None
 
 
 def create_activity(
@@ -332,6 +335,14 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
         start_at, _as_aware_utc(activity.end_at)
     )
     now = result.as_of if result.as_of is not None else datetime.now(UTC)
+    caller_deadline = (
+        effective_confirmation_deadline(
+            start_at, _as_aware_utc(result.current_user_joined_at)
+        )
+        if result.current_user_joined_at is not None
+        and result.current_user_participation_status == ParticipationStatus.JOINED
+        else None
+    )
     return ActivityRead(
         **list_item.model_dump(),
         cancelled_at=_as_aware_utc(activity.cancelled_at)
@@ -362,6 +373,17 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
                 if result.current_user_waitlisted_at is not None
                 else None,
                 waitlist_position=result.current_user_waitlist_position,
+                effective_confirmation_deadline_at=caller_deadline,
+                confirmation_expired_at=_as_aware_utc(
+                    result.current_user_confirmation_expired_at
+                )
+                if result.current_user_confirmation_expired_at is not None
+                else None,
+                waitlist_expired_at=_as_aware_utc(
+                    result.current_user_waitlist_expired_at
+                )
+                if result.current_user_waitlist_expired_at is not None
+                else None,
                 confirmed_at=_as_aware_utc(result.current_user_confirmed_at)
                 if result.current_user_confirmed_at is not None
                 else None,
@@ -392,13 +414,16 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
             can_leave=eligible_user
             and is_open
             and result.current_user_participation_status
-            in LEAVABLE_PARTICIPATION_STATES,
+            in LEAVABLE_PARTICIPATION_STATES
+            and (caller_deadline is None or now < caller_deadline),
             can_confirm=(
                 eligible_user
                 and is_open
                 and result.current_user_participation_status
                 == ParticipationStatus.JOINED
-                and is_confirmation_window_open(start_at, now)
+                and is_confirmation_window_open(
+                    start_at, _as_aware_utc(result.current_user_joined_at), now
+                )
             ),
             can_check_in=(
                 eligible_user
@@ -512,7 +537,7 @@ def _activity_results(
         caller_value(ActivityParticipation.joined_at, DateTime(timezone=True)).label(
             "joined_at"
         ),
-        caller_value(ActivityParticipation.status, String(16)).label(
+        caller_value(ActivityParticipation.status, String(24)).label(
             "participation_status"
         ),
         caller_value(ActivityParticipation.confirmed_at, DateTime(timezone=True)).label(
@@ -527,6 +552,12 @@ def _activity_results(
         caller_value(ActivityParticipation.no_show_at, DateTime(timezone=True)).label(
             "no_show_at"
         ),
+        caller_value(
+            ActivityParticipation.confirmation_expired_at, DateTime(timezone=True)
+        ).label("confirmation_expired_at"),
+        caller_value(
+            ActivityParticipation.waitlist_expired_at, DateTime(timezone=True)
+        ).label("waitlist_expired_at"),
     )
     if _is_postgresql(session):
         point_geometry = cast(
@@ -556,6 +587,8 @@ def _activity_results(
                 waitlist_count=row.waitlist_count,
                 current_user_waitlisted_at=row.waitlisted_at,
                 current_user_waitlist_position=row.waitlist_position,
+                current_user_confirmation_expired_at=row.confirmation_expired_at,
+                current_user_waitlist_expired_at=row.waitlist_expired_at,
                 current_user_id=current_user_id,
                 as_of=as_of,
             )
@@ -579,6 +612,8 @@ def _activity_results(
             waitlist_count=row.waitlist_count,
             current_user_waitlisted_at=row.waitlisted_at,
             current_user_waitlist_position=row.waitlist_position,
+            current_user_confirmation_expired_at=row.confirmation_expired_at,
+            current_user_waitlist_expired_at=row.waitlist_expired_at,
             current_user_id=current_user_id,
             as_of=as_of,
         )

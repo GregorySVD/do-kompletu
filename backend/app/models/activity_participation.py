@@ -24,6 +24,8 @@ PARTICIPATION_TIMESTAMPS_CHECK = "ck_activity_participations_state_timestamps"
 
 
 class ParticipationStatus(StrEnum):
+    CONFIRMATION_EXPIRED = "CONFIRMATION_EXPIRED"
+    WAITLIST_EXPIRED = "WAITLIST_EXPIRED"
     WAITLISTED = "WAITLISTED"
     JOINED = "JOINED"
     CONFIRMED = "CONFIRMED"
@@ -50,8 +52,14 @@ ACTIVE_PARTICIPATION_STATUSES = (
     CAPACITY_CONSUMING_STATES  # Existing internal import compatibility.
 )
 FINAL_ATTENDANCE_STATES = (ParticipationStatus.COMPLETED, ParticipationStatus.NO_SHOW)
+SYSTEM_EXPIRED_STATES = (
+    ParticipationStatus.CONFIRMATION_EXPIRED,
+    ParticipationStatus.WAITLIST_EXPIRED,
+)
 PARTICIPATION_HISTORY_STATES = CURRENT_PARTICIPATION_STATES + FINAL_ATTENDANCE_STATES
-VISIBLE_PARTICIPATION_STATES = PARTICIPATION_HISTORY_STATES + WAITLIST_STATES
+VISIBLE_PARTICIPATION_STATES = (
+    PARTICIPATION_HISTORY_STATES + WAITLIST_STATES + SYSTEM_EXPIRED_STATES
+)
 CHECKED_IN_PARTICIPATION_STATES = (
     ParticipationStatus.CHECKED_IN,
     ParticipationStatus.COMPLETED,
@@ -82,7 +90,7 @@ class ActivityParticipation(Base):
     )
     waitlisted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(
-        String(16),
+        String(24),
         default=ParticipationStatus.JOINED,
         server_default=ParticipationStatus.JOINED.value,
         nullable=False,
@@ -92,21 +100,30 @@ class ActivityParticipation(Base):
     checked_in_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     no_show_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    confirmation_expired_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    waitlist_expired_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
 
     __table_args__ = (
         PrimaryKeyConstraint("activity_id", "user_id", name=PARTICIPATION_PRIMARY_KEY),
         CheckConstraint(
-            "status IN ('WAITLISTED', 'JOINED', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'NO_SHOW', 'LEFT')",
+            "status IN ('CONFIRMATION_EXPIRED', 'WAITLIST_EXPIRED', 'WAITLISTED', 'JOINED', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'NO_SHOW', 'LEFT')",
             name=PARTICIPATION_STATUS_CHECK,
         ),
         CheckConstraint(
+            "(confirmation_expired_at IS NULL AND waitlist_expired_at IS NULL AND ("
             "(status = 'WAITLISTED' AND waitlisted_at IS NOT NULL AND joined_at IS NULL AND left_at IS NULL AND confirmed_at IS NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL) OR "
             "(status = 'JOINED' AND joined_at IS NOT NULL AND left_at IS NULL AND confirmed_at IS NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL) OR "
             "(status = 'CONFIRMED' AND joined_at IS NOT NULL AND left_at IS NULL AND confirmed_at IS NOT NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL) OR "
             "(status = 'CHECKED_IN' AND joined_at IS NOT NULL AND left_at IS NULL AND confirmed_at IS NOT NULL AND checked_in_at IS NOT NULL AND completed_at IS NULL AND no_show_at IS NULL) OR "
             "(status = 'COMPLETED' AND joined_at IS NOT NULL AND left_at IS NULL AND confirmed_at IS NOT NULL AND checked_in_at IS NOT NULL AND completed_at IS NOT NULL AND no_show_at IS NULL) OR "
             "(status = 'NO_SHOW' AND joined_at IS NOT NULL AND left_at IS NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NOT NULL) OR "
-            "(status = 'LEFT' AND (joined_at IS NOT NULL OR (waitlisted_at IS NOT NULL AND confirmed_at IS NULL)) AND left_at IS NOT NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL)",
+            "(status = 'LEFT' AND (joined_at IS NOT NULL OR (waitlisted_at IS NOT NULL AND confirmed_at IS NULL)) AND left_at IS NOT NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL))) OR "
+            "(status = 'CONFIRMATION_EXPIRED' AND joined_at IS NOT NULL AND confirmation_expired_at IS NOT NULL AND waitlist_expired_at IS NULL AND left_at IS NULL AND confirmed_at IS NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL) OR "
+            "(status = 'WAITLIST_EXPIRED' AND waitlisted_at IS NOT NULL AND joined_at IS NULL AND waitlist_expired_at IS NOT NULL AND confirmation_expired_at IS NULL AND left_at IS NULL AND confirmed_at IS NULL AND checked_in_at IS NULL AND completed_at IS NULL AND no_show_at IS NULL)",
             name=PARTICIPATION_TIMESTAMPS_CHECK,
         ),
         Index("ix_activity_participations_user_id", "user_id"),

@@ -249,9 +249,11 @@ def test_finalization_races_respect_both_lock_orders_at_end(
             assert users[5] not in rows
         elif scenario == "leave":
             assert outcomes[1] == (
-                (200, None) if reverse else (409, "Attendance outcome is final")
+                (409, "Confirmation window has closed")
+                if reverse
+                else (409, "Attendance outcome is final")
             )
-            assert rows[users[1]].status == ("LEFT" if reverse else "NO_SHOW")
+            assert rows[users[1]].status == "NO_SHOW"
         else:
             assert outcomes[1][0] == 409
             assert rows[users[1]].status == "NO_SHOW"

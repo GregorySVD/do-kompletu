@@ -197,6 +197,8 @@ def test_openapi_detail_documents_optional_auth_and_membership_shape(client):
     assert "401" in operation["responses"]
     membership = schema["components"]["schemas"]["ActivityParticipationRead"]
     assert membership["properties"]["status"]["enum"] == [
+        "CONFIRMATION_EXPIRED",
+        "WAITLIST_EXPIRED",
         "WAITLISTED",
         "JOINED",
         "CONFIRMED",

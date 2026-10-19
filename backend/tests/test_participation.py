@@ -261,7 +261,7 @@ def test_lifecycle_boundary(client, db_session, activity_context, monkeypatch, e
     ).json()
     assert member["status"] == ("ENDED" if elapsed else "ONGOING")
     assert member["current_user_participation"]["status"] == "JOINED"
-    assert member["permissions"]["can_leave"] is not elapsed
+    assert member["permissions"]["can_leave"] is False
     assert outsider["permissions"]["can_join"] is False
     joined = join(client, activity_context, 2)
     left = leave(client, activity_context, 1)
@@ -269,7 +269,10 @@ def test_lifecycle_boundary(client, db_session, activity_context, monkeypatch, e
     assert joined.json() == {
         "detail": "Activity has ended" if elapsed else "Activity has started"
     }
-    assert left.status_code == (409 if elapsed else 200)
+    assert left.status_code == 409
+    assert left.json() == {
+        "detail": "Activity has ended" if elapsed else "Confirmation window has closed"
+    }
     if elapsed:
         assert joined.json() == left.json() == {"detail": "Activity has ended"}
         assert (

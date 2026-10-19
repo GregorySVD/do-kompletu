@@ -117,6 +117,8 @@ def test_postgres_membership_schema(pg_engine):
         "completed_at",
         "no_show_at",
         "waitlisted_at",
+        "confirmation_expired_at",
+        "waitlist_expired_at",
     }
     assert all(
         not columns[name]["nullable"] for name in ("activity_id", "user_id", "status")
