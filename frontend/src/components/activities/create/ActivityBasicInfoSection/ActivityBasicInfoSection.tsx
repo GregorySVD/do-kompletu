@@ -8,14 +8,14 @@ import {
 import { Controller } from 'react-hook-form'
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form'
 import type { ActivityCategory } from '../../../../types/activity'
-import type { CreateActivityFormValues } from '../../../../types/createActivityForm'
+import type { ActivityFormValues } from '../../../../types/activityForm'
 
 interface ActivityBasicInfoSectionProps {
   categories: ActivityCategory[]
-  control: Control<CreateActivityFormValues>
+  control: Control<ActivityFormValues>
   disabled: boolean
-  errors: FieldErrors<CreateActivityFormValues>
-  register: UseFormRegister<CreateActivityFormValues>
+  errors: FieldErrors<ActivityFormValues>
+  register: UseFormRegister<ActivityFormValues>
 }
 
 function ActivityBasicInfoSection({
@@ -32,7 +32,7 @@ function ActivityBasicInfoSection({
           Informacje podstawowe
         </Typography>
 
-        <div className="create-activity-form__fields">
+        <div className="activity-form__fields">
           <TextField
             label="Tytuł"
             disabled={disabled}

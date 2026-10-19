@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useCancelActivityMutation } from '../../../../hooks/mutations/useCancelActivityMutation'
 import { useFinalizeActivityMutation } from '../../../../hooks/mutations/useFinalizeActivityMutation'
 import type { ActivityDetails } from '../../../../types/activity'
@@ -77,6 +78,7 @@ function ActivityOrganizerActions({ activity }: ActivityOrganizerActionsProps) {
   }
 
   if (
+    !activity.permissions.can_edit &&
     !activity.permissions.can_cancel &&
     !activity.permissions.can_finalize &&
     !successMessage &&
@@ -107,6 +109,17 @@ function ActivityOrganizerActions({ activity }: ActivityOrganizerActionsProps) {
           {successMessage && <Alert severity="success">{successMessage}</Alert>}
 
           <div className="activity-organizer-actions__buttons">
+            {activity.permissions.can_edit && (
+              <Button
+                component={Link}
+                to={`/activities/${activity.id}/edit`}
+                variant="outlined"
+                disabled={isPending}
+              >
+                Edytuj aktywność
+              </Button>
+            )}
+
             {activity.permissions.can_finalize && (
               <Button
                 variant="contained"

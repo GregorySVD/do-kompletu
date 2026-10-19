@@ -3,6 +3,7 @@ import type {
   ActivityCategory,
   ActivityDetails,
   CreateActivityPayload,
+  UpdateActivityPayload,
 } from '../types/activity'
 import apiClient from './apiClient'
 
@@ -36,6 +37,18 @@ export async function createActivity(
 ): Promise<ActivityDetails> {
   const response = await apiClient.post<ActivityDetails>(
     '/api/v1/activities',
+    payload,
+  )
+
+  return response.data
+}
+
+export async function updateActivity(
+  activityId: string,
+  payload: UpdateActivityPayload,
+): Promise<ActivityDetails> {
+  const response = await apiClient.patch<ActivityDetails>(
+    `/api/v1/activities/${activityId}`,
     payload,
   )
 

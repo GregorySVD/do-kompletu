@@ -3,18 +3,18 @@ import { Card, CardContent, TextField, Typography } from '@mui/material'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { Controller } from 'react-hook-form'
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form'
-import type { CreateActivityFormValues } from '../../../../types/createActivityForm'
+import type { ActivityFormValues } from '../../../../types/activityForm'
 import ActivityLocationPicker from '../ActivityLocationPicker/ActivityLocationPicker'
 import './ActivityScheduleLocationSection.css'
 
 interface ActivityScheduleLocationSectionProps {
-  control: Control<CreateActivityFormValues>
+  control: Control<ActivityFormValues>
   disabled: boolean
-  errors: FieldErrors<CreateActivityFormValues>
+  errors: FieldErrors<ActivityFormValues>
   latitude: number | null
   longitude: number | null
   onLocationChange: (latitude: number, longitude: number) => void
-  register: UseFormRegister<CreateActivityFormValues>
+  register: UseFormRegister<ActivityFormValues>
   startAt: string
 }
 
@@ -37,7 +37,7 @@ function ActivityScheduleLocationSection({
           Termin i miejsce
         </Typography>
 
-        <div className="create-activity-form__grid">
+        <div className="activity-form__grid">
           <Controller
             name="start_at"
             control={control}
