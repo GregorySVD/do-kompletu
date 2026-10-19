@@ -7,10 +7,19 @@ import {
   Typography,
 } from '@mui/material'
 import type { PriceFilter, TimeFilter } from '../../../hooks/useActivityFilters'
+import ActivityCategoryBar, {
+  type ActivityCategoryBarProps,
+} from '../ActivityCategoryBar/ActivityCategoryBar'
 import './ActivityFilters.css'
+
+export type ActivityCategoryFilterProps = Omit<
+  ActivityCategoryBarProps,
+  'variant'
+>
 
 export interface ActivityFiltersProps {
   titleId: string
+  categoryFilterProps?: ActivityCategoryFilterProps
   priceFilter: PriceFilter
   timeFilter: TimeFilter
   availabilityOnly: boolean
@@ -25,6 +34,7 @@ export type ActivityFilterProps = Omit<ActivityFiltersProps, 'titleId'>
 
 function ActivityFilters({
   titleId,
+  categoryFilterProps,
   priceFilter,
   timeFilter,
   availabilityOnly,
@@ -51,6 +61,16 @@ function ActivityFilters({
       </div>
 
       <div className="filters__controls">
+        {categoryFilterProps && (
+          <div className="filters__group">
+            <Typography component="h3" variant="subtitle1">
+              Kategorie
+            </Typography>
+
+            <ActivityCategoryBar variant="compact" {...categoryFilterProps} />
+          </div>
+        )}
+
         <div className="filters__group">
           <Typography component="h3" variant="subtitle1">
             Cena

@@ -26,7 +26,10 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [isDesktopMapVisible, setIsDesktopMapVisible] = useState(true)
   const activitiesListRef = useRef<HTMLDivElement>(null)
-  const isDesktopLayout = useMediaQuery('(min-width: 75rem)')
+  const isWideDesktopLayout = useMediaQuery('(min-width: 75rem)')
+  const isCompactFiltersLayout = useMediaQuery(
+    '(min-width: 64rem) and (max-width: 74.99rem)',
+  )
   const activitiesQuery = useActivitiesQuery()
   const categoriesQuery = useActivityCategoriesQuery()
   const {
@@ -49,10 +52,10 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
 
   useActivityWheelRouting({
     activitiesListRef,
-    enabled: isDesktopLayout,
+    enabled: isWideDesktopLayout,
   })
 
-  const isMapVisible = isDesktopLayout
+  const isMapVisible = isWideDesktopLayout
     ? isDesktopMapVisible
     : viewMode === 'map'
   const categoryBarItems = useMemo(() => {
@@ -70,7 +73,12 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
       count: categoryCounts.get(category.id) ?? 0,
     }))
   }, [activitiesQuery.data, categoriesQuery.data])
-  const filterProps = {
+  const categoryFilterProps = {
+    categories: categoryBarItems,
+    selectedCategoryId,
+    onToggleCategory: toggleCategory,
+  }
+  const baseFilterProps = {
     priceFilter,
     timeFilter,
     availabilityOnly,
@@ -79,6 +87,14 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
     onTimeFilterChange: setTimeFilter,
     onAvailabilityChange: setAvailabilityOnly,
     onClearFilters: clearFilters,
+  }
+  const listFilterProps = {
+    ...baseFilterProps,
+    ...(isCompactFiltersLayout && { categoryFilterProps }),
+  }
+  const mobileFilterProps = {
+    ...baseFilterProps,
+    categoryFilterProps,
   }
   const isInitialLoading =
     activitiesQuery.isPending || categoriesQuery.isPending
@@ -115,14 +131,17 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
 
   return (
     <main className="home-page">
-      <ActivityCategoryBar
-        categories={categoryBarItems}
-        selectedCategoryId={selectedCategoryId}
-        onToggleCategory={toggleCategory}
-      />
+      {isWideDesktopLayout && (
+        <ActivityCategoryBar
+          categories={categoryBarItems}
+          selectedCategoryId={selectedCategoryId}
+          onToggleCategory={toggleCategory}
+        />
+      )}
 
       <MobileHomeControls
         viewMode={viewMode}
+        showFiltersButton={!isCompactFiltersLayout}
         onViewModeChange={setViewMode}
         onOpenFilters={() => setFiltersOpen(true)}
       />
@@ -132,7 +151,7 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
       >
         <ActivityListPanel
           activities={filteredActivities}
-          filterProps={filterProps}
+          filterProps={listFilterProps}
           isMobileHidden={viewMode === 'map'}
           scrollContainerRef={activitiesListRef}
         />
@@ -151,11 +170,13 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
         <MapVisibilityToggle onShow={() => setIsDesktopMapVisible(true)} />
       )}
 
-      <MobileFiltersDrawer
-        filterProps={filterProps}
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-      />
+      {!isWideDesktopLayout && !isCompactFiltersLayout && (
+        <MobileFiltersDrawer
+          filterProps={mobileFilterProps}
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+        />
+      )}
     </main>
   )
 }
