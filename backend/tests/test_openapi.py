@@ -166,9 +166,12 @@ def test_openapi_membership_endpoints_document_auth_conflicts_and_valid_examples
         assert operation["security"] == [{"OAuth2PasswordBearer": []}]
         assert {success, "401", "404", "409", "422"} <= operation["responses"].keys()
         assert "requestBody" not in operation
-        example = operation["responses"][success]["content"]["application/json"][
-            "example"
-        ]
+        media = operation["responses"][success]["content"]["application/json"]
+        example = (
+            media["examples"]["joined"]["value"]
+            if method == "post"
+            else media["example"]
+        )
         activity = ActivityRead.model_validate(example)
         assert example == (
             ACTIVITY_JOIN_RESPONSE_EXAMPLE
@@ -194,13 +197,14 @@ def test_openapi_detail_documents_optional_auth_and_membership_shape(client):
     assert "401" in operation["responses"]
     membership = schema["components"]["schemas"]["ActivityParticipationRead"]
     assert membership["properties"]["status"]["enum"] == [
+        "WAITLISTED",
         "JOINED",
         "CONFIRMED",
         "CHECKED_IN",
         "COMPLETED",
         "NO_SHOW",
     ]
-    assert membership["properties"]["joined_at"]["format"] == "date-time"
+    assert membership["properties"]["joined_at"]["anyOf"][0]["format"] == "date-time"
 
 
 def test_openapi_my_activities_filters_auth_array_and_complete_examples(client):

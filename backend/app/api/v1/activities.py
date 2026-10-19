@@ -28,6 +28,8 @@ from app.schemas.activity import (
     ACTIVITY_FINALIZE_RESPONSE_EXAMPLE,
     ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     ACTIVITY_LEAVE_RESPONSE_EXAMPLE,
+    ACTIVITY_PROMOTED_RESPONSE_EXAMPLE,
+    ACTIVITY_WAITLIST_RESPONSE_EXAMPLE,
     ActivityCategoryId,
     ActivityCreate,
     ActivityListItem,
@@ -219,7 +221,11 @@ and price consistency. One coordinate can change while the other stays unchanged
 Set has_participant_limit=true together with a valid maximum when enabling a
 limit. Set has_participant_limit=false and max_participants=null to remove it.
 Finite capacity must be at least min_participants and the current membership
-count; a limit below membership returns 409. Set PAID together with a positive
+count (JOINED/CONFIRMED/CHECKED_IN only); a limit below membership returns 409.
+WAITLISTED consumes no place. Capacity edits fill newly free places FIFO before
+start, including promotion of every waiter when switching to unlimited. Promotion
+is one bulk UPDATE inside this same activity-locked transaction, never post-commit.
+Set PAID together with a positive
 PLN price_amount (at most two decimal places); switching to FREE requires explicit
 price_amount=null. Omission does not silently clear a price or maximum.
 Only active states consume capacity. Changing start_at or end_at while any
@@ -296,7 +302,7 @@ They do not mean cancelled places are bookable.
 New joins and leaving are blocked with 409 after cancellation, preserving membership
 history. All cancelled activity permissions are false, including can_edit,
 can_cancel, can_join, can_leave, and can_confirm. Confirmation is also blocked.
-JOINED, CONFIRMED, CHECKED_IN, and LEFT retain their statuses/timestamps. Only active
+WAITLISTED, JOINED, CONFIRMED, CHECKED_IN, and LEFT retain their statuses/timestamps. Only active
 states count; CHECKED_IN and checked_in_at survive cancellation. Check-in is blocked
 after cancellation too. There is no hard deletion, uncancel, cancellation
 reason, notification, refund, or payment processing in this milestone.
@@ -336,7 +342,7 @@ Only the organizer may finalize, at current UTC time >= end_at. Cancelled activi
 return 409 and retain their evidence. Activity status stays ENDED, never COMPLETED.
 
 Under the same activity-first FOR UPDATE lock as every other writer, one atomic
-bulk UPDATE maps CHECKED_IN -> COMPLETED and JOINED/CONFIRMED -> NO_SHOW. LEFT and
+bulk UPDATE maps CHECKED_IN -> COMPLETED and JOINED/CONFIRMED -> NO_SHOW. WAITLISTED, LEFT and
 existing final outcomes remain unchanged. completed_at/no_show_at record one UTC
 finalization time, preserving joined_at/confirmed_at/checked_in_at. Final outcomes
 are terminal. There is no automatic scheduler, manual attendance override, undo,
@@ -348,7 +354,7 @@ checked_in_count includes CHECKED_IN + COMPLETED, preserving successful check-in
 There is no public no-show analytics field or new wrapper. The organizer's own
 current_user_participation is normally null; can_finalize becomes false.
 
-A repeated request, or an ended activity containing only LEFT/no rows/final outcomes,
+A repeated request, or an ended activity containing only WAITLISTED/LEFT/no rows/final outcomes,
 returns 409 No unresolved attendance to finalize, without changing timestamps.
 Thus repeated calls are idempotent at the data level. Joined My Activities history
 retains the caller's COMPLETED/NO_SHOW state/timestamps; future final states are
@@ -451,6 +457,17 @@ def list_all(
     ),
     response_description="The requested activity details.",
     responses={
+        200: {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "joined": {"value": ACTIVITY_JOIN_RESPONSE_EXAMPLE},
+                        "waitlisted": {"value": ACTIVITY_WAITLIST_RESPONSE_EXAMPLE},
+                        "promoted": {"value": ACTIVITY_PROMOTED_RESPONSE_EXAMPLE},
+                    }
+                }
+            }
+        },
         401: {"description": "Supplied bearer credentials are invalid or expired."},
         404: {
             "description": "No activity exists for the supplied UUID.",
@@ -522,9 +539,11 @@ def _membership_responses(*conflicts: str) -> dict:
     status_code=status.HTTP_201_CREATED,
     summary="Join an activity",
     description="""
-Create JOINED membership for the authenticated caller, or reactivate an existing
-LEFT row. No request body is needed. Rejoin updates joined_at and clears left_at
-and confirmed_at/checked_in_at; it never inserts a second user/activity row.
+Request a place for the authenticated caller, or reuse an existing LEFT row.
+Unlimited activities and limited activities with free capacity return JOINED.
+A full limited activity succeeds as WAITLISTED (201), without consuming a place.
+No request body is needed. Rejoin resets cycle timestamps and never inserts a
+second user/activity row. Duplicate JOINED/CONFIRMED/CHECKED_IN/WAITLISTED is 409.
 
 In Swagger, register/login as a user other than the organizer, select **Authorize**
 (email or display name in `username`), and paste a real activity UUID into
@@ -532,27 +551,44 @@ In Swagger, register/login as a user other than the organizer, select **Authoriz
 
 Send `Authorization: Bearer <access_token>`; refresh tokens are not accepted.
 The organizer cannot join and is excluded from participant counts and capacity.
-Joining is allowed before and during the activity, strictly before `end_at`.
-Cancelled activities reject joining with 409.
-Duplicate active-state joins return 409, including when the activity is full. Full activities
-return 409; `max_participants: null` means unlimited places.
+Joining/rejoining/entering the queue is allowed only while current UTC time is
+strictly before start_at; exact start and later return 409. Cancelled and ended
+activities reject joining. can_join=true allows requesting a place and may result
+in JOINED or WAITLISTED; it does not guarantee immediate capacity.
 
 PostgreSQL serializes join/leave transactions using a lock on the activity row.
-The 201 response contains updated activity details, counts, your `JOINED` state,
-and permissions. `JOINED` does not mean confirmed attendance or check-in.
-Waitlist remains zero; checked_in_count counts CHECKED_IN + COMPLETED. Final outcomes
-cannot rejoin. Retry after an uncertain network result
+The 201 response contains updated activity details, real participant_count and
+waitlist_count, your JOINED or WAITLISTED state, and permissions. WAITLISTED has
+joined_at=null, waitlisted_at, and a private 1-based waitlist_position, ordered by
+waitlisted_at ASC then user_id ASC. WAITLISTED cannot confirm/check in; JOINED
+does not mean confirmed attendance. Before start, active leave or capacity increase
+promotes earliest waiters to JOINED in the same transaction, sets joined_at to
+promotion time, and retains waitlisted_at. There is no scheduler/confirmation expiry.
+Final outcomes cannot rejoin. Retry after an uncertain network result
 by reading details; another POST after a successful join returns 409.
 """,
-    response_description="Updated activity details including your new active membership.",
+    response_description="Updated activity details including your JOINED or WAITLISTED participation.",
     responses={
         201: {
-            "content": {"application/json": {"example": ACTIVITY_JOIN_RESPONSE_EXAMPLE}}
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "joined": {
+                            "summary": "Free place: JOINED",
+                            "value": ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+                        },
+                        "waitlisted": {
+                            "summary": "Full activity: FIFO WAITLISTED",
+                            "value": ACTIVITY_WAITLIST_RESPONSE_EXAMPLE,
+                        },
+                    }
+                }
+            }
         },
         **_membership_responses(
             "Already joined this activity",
             "Attendance outcome is final",
-            "Activity is full",
+            "Activity has started",
             "Activity has ended",
             "Activity is cancelled",
             "Organizer cannot join or leave their own activity",
@@ -577,16 +613,21 @@ def join(
     response_model=ActivityRead,
     summary="Leave an activity",
     description="""
-Transition the authenticated caller's JOINED or CONFIRMED membership to LEFT.
-The row remains stored; left_at is set, joined_at/confirmed_at are preserved.
+Transition the authenticated caller's JOINED, CONFIRMED, or WAITLISTED participation
+to LEFT. The row remains stored; left_at is set, cycle timestamps are preserved.
+Leaving WAITLISTED removes the caller from the queue without promoting anyone.
+Before start, an active leave promotes the earliest waiter(s) into actual free
+capacity in this same locked transaction. FIFO uses waitlisted_at ASC, user_id ASC.
+After start, leaving remains allowed until end but never promotes a waiter.
 CHECKED_IN and final COMPLETED/NO_SHOW participants cannot leave (409).
 There is no undo check-in or final attendance outcome.
 No request body is needed.
 Send an access JWT using **Authorize** or `Authorization: Bearer <access_token>`.
 First join as a non-organizer with POST on this same path, then try DELETE.
 
-The 200 response is the updated activity detail: participant count decreases,
-capacity becomes available, and `current_user_participation` becomes null.
+The 200 response is updated activity detail: counts reflect any promotion and
+`current_user_participation` becomes null. Use authenticated detail to observe
+your own promotion later; no notifications or periodic scheduler exist.
 The organizer cannot leave because organizers are separate from membership.
 Leaving is allowed before and during an activity, strictly before `end_at`.
 Ended membership is preserved for history; leaving after the end returns 409.
@@ -633,6 +674,7 @@ def leave(
     description="""
 Send an access JWT using **Authorize** or Authorization: Bearer <access_token>.
 No body is required. Only a non-organizer with JOINED membership may confirm.
+WAITLISTED cannot confirm or check in; promotion first grants JOINED, never automatic confirmation.
 Successful confirmation transitions JOINED to CONFIRMED, persists confirmed_at,
 and returns the full ActivityRead with the caller's actual status. It consumes no
 additional place: JOINED, CONFIRMED, and CHECKED_IN count toward capacity; LEFT does not.
@@ -690,7 +732,8 @@ def confirm(
     description="""
 Use **Authorize** or Authorization: Bearer <access_token>. Submit WGS 84 latitude
 (-90..90) and longitude (-180..180). Only a CONFIRMED non-organizer may check in;
-JOINED is not implicitly confirmed, LEFT is inactive, duplicate CHECKED_IN is 409.
+JOINED is not implicitly confirmed, WAITLISTED has no place and is rejected with
+409, LEFT is inactive, duplicate CHECKED_IN is 409.
 
 The shared UTC check-in window is inclusive at checkin_opens_at and exclusive at
 checkin_closes_at: start minus ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE (default 30),

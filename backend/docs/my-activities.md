@@ -1,12 +1,14 @@
 # My Activities contract
 
 Organizer editing and cancellation are now implemented by the subsequent
-[management milestone](activity-management.md). Cancelled rows remain in both
+[management milestone](activity-management.md). Cancelled rows remain in all
 relations and keep the end-time scopes described here; discovery excludes them.
 The [participation lifecycle](activity-participation.md) now retains LEFT records
 internally; joined lists include current JOINED/CONFIRMED/CHECKED_IN records before
 end and also COMPLETED/NO_SHOW in history after explicit
 [organizer finalization](activity-finalization.md). LEFT stays excluded.
+The [waitlist contract](activity-waitlist.md) adds relation=waitlisted with private
+queue-entry time/position, separate from joined membership.
 The [check-in contract](activity-check-in.md) describes live counts, timing, proximity,
 and checked_in_at privacy; no separate attendance-history endpoint is introduced.
 Current combined verification and the migration chain are in the
@@ -35,8 +37,8 @@ No existing My Activities API function or React Query hook constrains the URL.
 The API client sends the sessionStorage access token. Existing query keys lack
 user identity, so personalized caches need explicit handling during integration.
 The TypeScript detail type still declares `current_user_participation: null`, which
-must become a JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union with
-joined_at and nullable confirmed_at/checked_in_at/completed_at/no_show_at.
+must become a WAITLISTED/JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union with
+nullable joined_at, waitlisted_at, waitlist_position, and attendance timestamps.
 Add can_finalize alongside can_cancel/cancelled_at. Existing checkin_* metadata and can_check_in
 types/panel can be reused; browser geolocation and actions still need integration.
 The existing confirmation_opens_at/confirmation_deadline_at and can_confirm fields
@@ -51,18 +53,19 @@ the access token and normal active-user checks apply.
 
 | Field | Contract |
 | --- | --- |
-| `relation` | Required, case-sensitive `organized` or `joined` |
+| `relation` | Required, case-sensitive `organized`, `joined`, or `waitlisted` |
 | `scope` | Optional, case-sensitive `upcoming` or `history`; omit for all times |
 | `limit` | Integer, default 20, inclusive range 1-100 |
 | `offset` | Integer, default 0, minimum 0 |
 
 There is no `relation=all`, `scope=all`, separate ongoing filter, arbitrary sort,
 or speculative discovery filter on this endpoint. The optional scope preserves
-the frontend's existing all-organized section without merging the two relations.
+the frontend's existing all-organized section without merging the relations.
 
 | Frontend section | Request query |
 | --- | --- |
 | Nadchodzące | `relation=joined&scope=upcoming` |
+| Waitlist | `relation=waitlisted&scope=upcoming` |
 | Organizowane przeze mnie | `relation=organized` (omit scope) |
 | Historia | `relation=joined&scope=history` |
 
@@ -75,6 +78,11 @@ rejoin reactivates the row. Ended/cancelled active memberships remain listed;
 cancellation blocks all participation actions. CHECKED_IN cannot leave even before
 end. A separate list of left activities
 is not implemented, including in history scope.
+Waitlisted selects only the caller's WAITLISTED rows and excludes organizer-owned
+activities. It preserves cancelled rows and uses the same end-time scopes, so
+upcoming includes ongoing waitlisted events and history retains stale waitlists.
+There is no expiry scheduler yet. WAITLISTED never appears in joined relation,
+never consumes participant capacity, and never becomes NO_SHOW/COMPLETED.
 No other user's membership is returned.
 
 A single timezone-aware UTC cutoff is captured after authentication and used for
@@ -181,7 +189,7 @@ appear in upcoming. Cancelled
 activities retain membership with all permissions false. Unlimited capacity returns null for both
 `max_participants` and `available_slots`. Participant counts exclude the organizer;
 participant_count remains the active capacity count and becomes zero after finalization.
-checked_in_count counts CHECKED_IN + COMPLETED and waitlist_count stays zero.
+checked_in_count counts CHECKED_IN + COMPLETED and waitlist_count counts WAITLISTED only.
 Current participation includes nullable confirmed_at/checked_in_at/completed_at/no_show_at
 belonging only to the caller, including final outcomes in direct detail/history.
 LEFT returns null current participation. Public confirmation timing is derived in
@@ -221,7 +229,8 @@ migration-file/database head was `20261018_0004`, using `localhost:5433`.
 The subsequent management migration adds cancelled_at, and lifecycle migration
 `20261018_0006` adds status/left_at/confirmed_at; 0007 adds checked_in_at and CHECKED_IN.
 Migration 0008 adds COMPLETED/NO_SHOW and completed_at/no_show_at.
-Current head is `20261018_0008`.
+Current head is `20261018_0009`; see the waitlist contract for nullable joined_at,
+waitlisted_at, FIFO index, unchanged-data upgrade, and lossy inactive-LEFT downgrade.
 The relation/scope query contract is unchanged; membership predicates/projections
 now distinguish upcoming current states from current/final history states in SQL.
 
@@ -292,5 +301,5 @@ No edit/cancel/delete controls currently exist in the frontend. The new
 hard deletion remains unimplemented. Timed attendance confirmation is implemented
 by the participation contract, with PostGIS check-in described separately.
 Explicit finalization implements final attendance; it does not run automatically.
-Waitlist, reviews, XP, rewards, ranks, achievements, chat,
+Reviews, XP, rewards, ranks, achievements, chat,
 notifications, and gallery features remain outside this milestone.

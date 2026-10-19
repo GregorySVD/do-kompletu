@@ -10,6 +10,7 @@ from app.schemas.activity import (
     ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
     ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE,
+    ACTIVITY_WAITLIST_RESPONSE_EXAMPLE,
     ActivityPermissionsRead,
 )
 
@@ -17,6 +18,7 @@ from app.schemas.activity import (
 class ActivityRelation(StrEnum):
     ORGANIZED = "organized"
     JOINED = "joined"
+    WAITLISTED = "waitlisted"
 
 
 class ActivityScope(StrEnum):
@@ -30,7 +32,7 @@ class MyActivitiesQuery(BaseModel):
     relation: ActivityRelation = Field(
         description=(
             "organized: you are the organizer; joined: current states before end, current or final COMPLETED/NO_SHOW states in history. LEFT excluded. "
-            "Organizer identity alone never counts as joined membership."
+            "waitlisted: only your WAITLISTED records, separate from joined. Organizer identity alone never counts as membership."
         ),
     )
     scope: ActivityScope | None = Field(
@@ -48,6 +50,10 @@ class MyActivitiesQuery(BaseModel):
 
 
 MY_ACTIVITIES_RESPONSE_EXAMPLES = {
+    "waitlisted": {
+        "summary": "Your FIFO queue position; no active place or attendance timestamps",
+        "value": [ACTIVITY_WAITLIST_RESPONSE_EXAMPLE],
+    },
     "completed_history": {
         "summary": "Your completed attendance after organizer finalization",
         "value": [ACTIVITY_COMPLETED_RESPONSE_EXAMPLE],
@@ -95,6 +101,8 @@ MY_ACTIVITIES_RESPONSE_EXAMPLES = {
                 "current_user_participation": {
                     "status": "JOINED",
                     "joined_at": "2025-08-01T12:00:00Z",
+                    "waitlisted_at": None,
+                    "waitlist_position": None,
                     "confirmed_at": None,
                     "checked_in_at": None,
                     "completed_at": None,

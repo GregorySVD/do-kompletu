@@ -22,7 +22,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
     response_model=list[ActivityRead],
     summary="List the current user's activities",
     description="""
-Read your organized or joined activities. An **access JWT is required**: use
+Read your organized, joined, or waitlisted activities. An **access JWT is required**: use
 Swagger **Authorize** (email or display name in `username`) or send
 `Authorization: Bearer <access_token>`. Refresh tokens are not accepted.
 Identity always comes from the JWT; `user_id` and other unknown query fields are
@@ -33,7 +33,8 @@ rejected with 422. This endpoint never exposes another caller's membership.
 `relation=organized` selects activities you organize, without treating you as a
 participant. `relation=joined` selects JOINED/CONFIRMED/CHECKED_IN before end;
 history also includes final COMPLETED/NO_SHOW outcomes. LEFT records and organizer
-activities are excluded. Relation is required; there is no combined/all relation.
+activities are excluded. `relation=waitlisted` selects only your WAITLISTED rows,
+separately from joined. Relation is required; there is no combined/all relation.
 
 ## TIME AND SORTING
 
@@ -49,6 +50,7 @@ instant belongs to history. There is no separate ongoing filter.
 ## FRONTEND SECTIONS AND PAGINATION
 
 Use `?relation=joined&scope=upcoming` for Nadchodzące,
+`?relation=waitlisted&scope=upcoming` for the Waitlist section,
 `?relation=organized` for Organizowane przeze mnie (all times), and
 `?relation=joined&scope=history` for Historia.
 
@@ -61,18 +63,26 @@ shift offsets; pagination does not freeze the dataset.
 
 ## STATE AND LIMITATIONS
 
+Waitlisted items include private waitlisted_at and 1-based waitlist_position
+(waitlisted_at ASC, user_id ASC), with joined_at=null. Promotion changes the row
+to JOINED, sets joined_at and preserves waitlisted_at; position becomes null.
+Waitlisted uses the same end-time scope as other relations, including ongoing
+or cancelled activities. Stale WAITLISTED rows remain historically after end;
+there is no scheduler/automatic expiry yet and finalization leaves them unchanged.
 Joined items include your own current or final state, joined_at, and nullable
 confirmed_at/checked_in_at/completed_at/no_show_at. LEFT is inactive and excluded.
 Organized items normally have null membership. Counts/capacity use only unresolved
 JOINED/CONFIRMED/CHECKED_IN states; organizers do not consume places, and unlimited
 activities have available_slots=null. Finalization reduces participant_count to
 zero, while checked_in_count preserves CHECKED_IN + COMPLETED.
-Cancelled activities remain in both relations and retain the same end-time scope;
+Cancelled activities remain in all relations and retain the same end-time scope;
 their status remains CANCELLED. can_edit/can_cancel follow organizer lifecycle rules;
 ended/cancelled/checked-in/final memberships cannot leave. Organizer can_finalize
 is true only for uncancelled ended activities with unresolved attendance. Explicit
 organizer finalization maps CHECKED_IN to COMPLETED and JOINED/CONFIRMED to NO_SHOW;
-cancelled activities cannot be finalized. Waitlist stays zero. Confirmation and
+cancelled activities cannot be finalized. waitlist_count counts WAITLISTED only,
+which never consumes capacity and cannot confirm/check in. can_join permits a
+JOINED or WAITLISTED result strictly before start, even when full. Confirmation and
 PostGIS check-in use their published windows. Deletion and rewards are not implemented. Responses are private and must not
 be cached by shared intermediaries. Scope client query caches to the current user.
 """,

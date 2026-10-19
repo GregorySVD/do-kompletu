@@ -83,7 +83,7 @@ attestation and makes no fraud-proof attendance claim.
   POST returns 409 without changing it. No second participation row is created.
 - `participant_count`/available_slots use centralized JOINED, CONFIRMED, CHECKED_IN
   active states, excluding final COMPLETED/NO_SHOW. checked_in_count counts
-  CHECKED_IN + COMPLETED to retain successful check-ins; waitlist_count stays zero.
+  CHECKED_IN + COMPLETED to retain successful check-ins; waitlist_count counts WAITLISTED only; queued users cannot confirm/check in and receive 409.
 - JOINED/CONFIRMED can leave under the existing uncancelled/before-end rule.
   CHECKED_IN cannot leave. LEFT rejoin resets joined_at and clears all lifecycle
   timestamps, including checked_in_at, for the new JOINED cycle.
@@ -184,7 +184,7 @@ identity. Retain the existing checkin_* field names. No frontend files were chan
 
 COMPLETED/NO_SHOW are now implemented by explicit finalization, with caller-only
 history/detail outcomes and no automatic scheduling. Automatic completion,
-manual attendance overrides, undo outcomes, rewards, reviews, waitlists, QR/NFC,
+manual attendance overrides, undo outcomes, rewards, reviews, QR/NFC,
 notifications, media, payment/refund, exact participant-location history, and a
 full participation event log remain unimplemented.
 

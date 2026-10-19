@@ -17,8 +17,9 @@ from sqlalchemy import (
     literal,
     or_,
     select,
+    tuple_,
 )
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, aliased, joinedload
 
 from app.core.config import get_settings
 from app.models.activity import Activity
@@ -26,8 +27,11 @@ from app.models.activity_participation import (
     ACTIVE_PARTICIPATION_STATUSES,
     CHECKED_IN_PARTICIPATION_STATES,
     CURRENT_PARTICIPATION_STATES,
+    LEAVABLE_PARTICIPATION_STATES,
     PARTICIPATION_HISTORY_STATES,
     SCHEDULE_PROTECTED_PARTICIPATION_STATUSES,
+    VISIBLE_PARTICIPATION_STATES,
+    WAITLIST_STATES,
     ActivityParticipation,
     ParticipationStatus,
 )
@@ -52,6 +56,7 @@ from app.services.participation_rules import (
     confirmation_window,
     is_check_in_window_open,
     is_confirmation_window_open,
+    waitlist_ordering,
 )
 
 
@@ -71,6 +76,9 @@ class ActivityResult:
     current_user_checked_in_at: datetime | None = None
     current_user_completed_at: datetime | None = None
     current_user_no_show_at: datetime | None = None
+    waitlist_count: int = 0
+    current_user_waitlisted_at: datetime | None = None
+    current_user_waitlist_position: int | None = None
 
 
 def create_activity(
@@ -175,6 +183,17 @@ def list_user_activities(
     statement = select(Activity).options(joinedload(Activity.organizer))
     if relation == ActivityRelation.ORGANIZED:
         statement = statement.where(Activity.organizer_id == current_user_id)
+    elif relation == ActivityRelation.WAITLISTED:
+        statement = statement.where(
+            select(ActivityParticipation.activity_id)
+            .where(
+                ActivityParticipation.activity_id == Activity.id,
+                ActivityParticipation.user_id == current_user_id,
+                ActivityParticipation.status.in_(WAITLIST_STATES),
+            )
+            .exists(),
+            Activity.organizer_id != current_user_id,
+        )
     else:
         membership = (
             select(ActivityParticipation.activity_id)
@@ -287,7 +306,7 @@ def activity_to_list_item(result: ActivityResult) -> ActivityListItem:
         max_participants=activity.max_participants,
         participant_count=participant_count,
         checked_in_count=result.checked_in_count,
-        waitlist_count=0,
+        waitlist_count=result.waitlist_count,
         available_slots=available_slots,
         status=_activity_status(
             start_at, end_at, as_of=result.as_of, cancelled_at=activity.cancelled_at
@@ -299,7 +318,7 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
     activity = result.activity
     list_item = activity_to_list_item(result)
     is_participant = (
-        result.current_user_participation_status in PARTICIPATION_HISTORY_STATES
+        result.current_user_participation_status in VISIBLE_PARTICIPATION_STATES
     )
     eligible_user = (
         result.current_user_id is not None
@@ -336,7 +355,13 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
         current_user_participation=(
             ActivityParticipationRead(
                 status=result.current_user_participation_status,
-                joined_at=_as_aware_utc(result.current_user_joined_at),
+                joined_at=_as_aware_utc(result.current_user_joined_at)
+                if result.current_user_joined_at is not None
+                else None,
+                waitlisted_at=_as_aware_utc(result.current_user_waitlisted_at)
+                if result.current_user_waitlisted_at is not None
+                else None,
+                waitlist_position=result.current_user_waitlist_position,
                 confirmed_at=_as_aware_utc(result.current_user_confirmed_at)
                 if result.current_user_confirmed_at is not None
                 else None,
@@ -361,15 +386,13 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
             and result.participant_count > 0,
             can_join=(
                 eligible_user
-                and is_open
+                and list_item.status == ActivityStatus.PUBLISHED
                 and not is_participant
-                and (list_item.available_slots is None or list_item.available_slots > 0)
             ),
             can_leave=eligible_user
             and is_open
-            and result.current_user_participation_status in CURRENT_PARTICIPATION_STATES
             and result.current_user_participation_status
-            != ParticipationStatus.CHECKED_IN,
+            in LEAVABLE_PARTICIPATION_STATES,
             can_confirm=(
                 eligible_user
                 and is_open
@@ -428,6 +451,41 @@ def _activity_results(
         .scalar_subquery()
     )
 
+    waitlist_count = (
+        select(func.count(ActivityParticipation.user_id))
+        .where(
+            ActivityParticipation.activity_id == Activity.id,
+            ActivityParticipation.status.in_(WAITLIST_STATES),
+        )
+        .correlate(Activity)
+        .scalar_subquery()
+    )
+    waitlist_position = literal(None)
+    if current_user_id is not None:
+        waiter = aliased(ActivityParticipation)
+        caller = aliased(ActivityParticipation)
+        waitlist_position = func.nullif(
+            select(func.count(waiter.user_id))
+            .select_from(waiter)
+            .join(
+                caller,
+                and_(
+                    caller.activity_id == waiter.activity_id,
+                    caller.user_id == current_user_id,
+                    caller.status.in_(WAITLIST_STATES),
+                ),
+            )
+            .where(
+                waiter.activity_id == Activity.id,
+                waiter.status.in_(WAITLIST_STATES),
+                tuple_(*waitlist_ordering(waiter))
+                <= tuple_(*waitlist_ordering(caller)),
+            )
+            .correlate(Activity)
+            .scalar_subquery(),
+            0,
+        )
+
     def caller_value(column, type_):
         if current_user_id is None:
             return literal(None, type_=type_)
@@ -436,7 +494,7 @@ def _activity_results(
             .where(
                 ActivityParticipation.activity_id == Activity.id,
                 ActivityParticipation.user_id == current_user_id,
-                ActivityParticipation.status.in_(PARTICIPATION_HISTORY_STATES),
+                ActivityParticipation.status.in_(VISIBLE_PARTICIPATION_STATES),
             )
             .correlate(Activity)
             .scalar_subquery()
@@ -446,6 +504,11 @@ def _activity_results(
         participant_count.label("participant_count"),
         schedule_protected_count.label("schedule_protected_count"),
         checked_in_count.label("checked_in_count"),
+        waitlist_count.label("waitlist_count"),
+        waitlist_position.label("waitlist_position"),
+        caller_value(
+            ActivityParticipation.waitlisted_at, DateTime(timezone=True)
+        ).label("waitlisted_at"),
         caller_value(ActivityParticipation.joined_at, DateTime(timezone=True)).label(
             "joined_at"
         ),
@@ -490,6 +553,9 @@ def _activity_results(
                 current_user_checked_in_at=row.checked_in_at,
                 current_user_completed_at=row.completed_at,
                 current_user_no_show_at=row.no_show_at,
+                waitlist_count=row.waitlist_count,
+                current_user_waitlisted_at=row.waitlisted_at,
+                current_user_waitlist_position=row.waitlist_position,
                 current_user_id=current_user_id,
                 as_of=as_of,
             )
@@ -510,6 +576,9 @@ def _activity_results(
             current_user_checked_in_at=row.checked_in_at,
             current_user_completed_at=row.completed_at,
             current_user_no_show_at=row.no_show_at,
+            waitlist_count=row.waitlist_count,
+            current_user_waitlisted_at=row.waitlisted_at,
+            current_user_waitlist_position=row.waitlist_position,
             current_user_id=current_user_id,
             as_of=as_of,
         )

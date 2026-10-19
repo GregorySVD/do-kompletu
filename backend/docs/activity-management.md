@@ -19,7 +19,7 @@ The management implementation started from a clean `backend` branch with
 migration-file/database head `20261018_0004`. Its historical baseline verification
 was 164 default tests and 20 separate PostgreSQL tests, with Ruff and lock validation
 passing. That describes the start of implementation, not the current working-tree
-status. Current migration-file/database head is `20261018_0008`; Compose uses host
+status. Current migration-file/database head is `20261018_0009`; Compose uses host
 port 5433. See the [README](../../README.md#testing) for the current combined checks.
 
 ## Persistent lifecycle and schema
@@ -39,6 +39,8 @@ The [check-in contract](activity-check-in.md) adds 0007, CHECKED_IN/checked_in_a
 and stronger location protections without changing cancellation identity.
 The [finalization contract](activity-finalization.md) adds 0008 terminal
 COMPLETED/NO_SHOW attendance and timestamps; Activity itself still becomes ENDED.
+The [waitlist contract](activity-waitlist.md) adds 0009 FIFO queues and atomic
+promotion on capacity edits before start, including limited-to-unlimited.
 
 Status priority is deterministic:
 
@@ -87,7 +89,7 @@ confirmed_at do not block schedule changes. Editing never silently clears confir
 | start_at, end_at | Timezone-aware, normalized to UTC; end > start; merged start remains future |
 | latitude, longitude | WGS 84 ranges; changing one preserves the other |
 | min_participants | 2-100, no greater than finite maximum |
-| has_participant_limit, max_participants | Finite max 2-100, at least minimum and active JOINED + CONFIRMED + CHECKED_IN count; LEFT excluded; null maximum for unlimited |
+| has_participant_limit, max_participants | Finite max 2-100, at least minimum and active JOINED + CONFIRMED + CHECKED_IN count; WAITLISTED/LEFT excluded; null maximum for unlimited |
 | price_type, price_amount | FREE/null or PAID/positive PLN amount with at most two decimal places |
 
 Omitted fields stay unchanged. Unknown fields, organizer_id, status, cancelled_at,
@@ -96,6 +98,13 @@ for max_participants and price_amount. The merged activity is validated with
 ActivityCreate, so partial requests cannot bypass existing cross-field rules.
 
 Transitions must explicitly supply consistent values:
+
+Capacity edits before start fill actual free places from WAITLISTED in FIFO order
+(`waitlisted_at`, then `user_id`). Increasing the maximum by N promotes up to N
+waiters when previously full; removing the maximum promotes all. The same parent
+lock spans PATCH, bulk promotion, response snapshot, and commit. A failed edit
+rolls back both capacity and promotions. Cancellation winning that lock prevents
+both edits and promotion. See [waitlist details](activity-waitlist.md).
 
 ```json
 {
@@ -207,7 +216,7 @@ another user, because the organizer is separate from membership.
 | Organized My Activities | Retained, with null organizer membership |
 | Joined My Activities | Retained for caller's JOINED/CONFIRMED/CHECKED_IN state; LEFT excluded |
 | Upcoming/history | Still split strictly by end_at; future cancelled activities remain upcoming; after end they are history with CANCELLED status |
-| Counts/capacity | Reflect all active membership including CHECKED_IN, excluding LEFT; checked_in_count is real, waitlist stays zero; cancelled places are not bookable |
+| Counts/capacity | Reflect all active membership including CHECKED_IN, excluding LEFT; checked_in_count is real, waitlist_count counts WAITLISTED; cancelled places are not bookable |
 | Join, leave, confirm, and check-in | All return 409 after cancellation, preserving every status/timestamp including checked_in_at |
 | Private state | Anonymous/unrelated callers receive null membership, never someone else's state |
 
@@ -271,7 +280,7 @@ change state after commit.
 
 Serial outcomes are defined and tested in both lock orders:
 
-- Capacity reduction first: join sees the smaller capacity and fails if full.
+- Capacity reduction first: join sees the smaller capacity and becomes WAITLISTED if full.
 - Join first: unsafe reduction sees the new count and fails with 409.
 - Cancellation first: a later join fails; no membership is inserted after it wins.
 - Join first: join may succeed, then cancellation preserves that membership.
@@ -338,7 +347,9 @@ error handling, and cache refresh too; its passive timing panel already exists.
 There is no hard deletion, DRAFT, uncancel, cancellation reason, edit audit/version
 token, notifications, or payment/refund processing. Writes to the same field use
 the last successful writer. Editing a field does not notify participants.
-Waitlist, reviews, XP, ranks, achievements, chat, and media remain unimplemented.
+Reviews, XP, ranks, achievements, chat, and media remain unimplemented. FIFO
+waitlists are implemented; capacity increases and limited-to-unlimited edits
+promote earliest waiters in the same activity-locked transaction before start.
 Retained participation, timed confirmation/PostGIS check-in, and explicit terminal
 COMPLETED/NO_SHOW outcomes are implemented. There is no scheduler, manual attendance
 override, or undo outcome. Cancelled events retain their evidence and cannot be

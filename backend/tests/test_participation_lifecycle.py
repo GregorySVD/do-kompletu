@@ -125,7 +125,7 @@ def test_leave_retains_cycle_and_rejoin_resets_it(
     }
 
 
-@pytest.mark.parametrize("block", ["full", "ended", "cancelled"])
+@pytest.mark.parametrize("block", ["started", "ended", "cancelled"])
 def test_rejoin_revalidates_and_does_not_mutate_left_row(
     client, db_session, context, monkeypatch, block
 ):
@@ -133,9 +133,8 @@ def test_rejoin_revalidates_and_does_not_mutate_left_row(
     assert request(client, context, "leave").status_code == 200
     row = stored(db_session, context)
     old_times = (row.joined_at, row.left_at, row.confirmed_at)
-    if block == "full":
-        for user in (2, 3, 4):
-            assert request(client, context, "join", user).status_code == 201
+    if block == "started":
+        freeze(monkeypatch, START)
     elif block == "cancelled":
         assert request(client, context, "cancel", 0).status_code == 200
     else:
@@ -144,7 +143,7 @@ def test_rejoin_revalidates_and_does_not_mutate_left_row(
     assert result.status_code == 409
     assert result.json() == {
         "detail": {
-            "full": "Activity is full",
+            "started": "Activity has started",
             "ended": "Activity has ended",
             "cancelled": "Activity is cancelled",
         }[block]
@@ -390,7 +389,9 @@ def test_capacity_edit_counts_confirmed_but_excludes_left(client, context):
         path(context), headers=context[2][0], json={"max_participants": 2}
     )
     assert response.status_code == 200 and response.json()["participant_count"] == 2
-    assert request(client, context, "join", 3).status_code == 409
+    queued = request(client, context, "join", 3)
+    assert queued.status_code == 201
+    assert queued.json()["current_user_participation"]["status"] == "WAITLISTED"
 
 
 @pytest.mark.parametrize("hours", [0, -1, 8761, "invalid"])

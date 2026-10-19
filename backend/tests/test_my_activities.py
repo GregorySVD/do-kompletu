@@ -114,6 +114,8 @@ def test_joined_list_requires_own_membership_and_excludes_organized_activities(
     for item in items:
         assert item["organizer"]["id"] != str(data.users[0].id)
         assert item["current_user_participation"] == {
+            "waitlisted_at": None,
+            "waitlist_position": None,
             "status": "JOINED",
             "joined_at": (AS_OF - timedelta(days=4)).isoformat().replace("+00:00", "Z"),
             "confirmed_at": None,

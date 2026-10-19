@@ -334,12 +334,12 @@ class ActivityPermissionsRead(BaseModel):
         default=False,
         description=(
             "True for authenticated non-organizers with no membership or LEFT, never a final COMPLETED/NO_SHOW outcome, while the "
-            "activity is PUBLISHED/ONGOING and capacity remains."
+            "activity is PUBLISHED (strictly before start_at) and uncancelled. Full limited activities are eligible: the request may return JOINED or WAITLISTED. This does not guarantee an immediate place."
         ),
     )
     can_leave: bool = Field(
         default=False,
-        description="True for a JOINED/CONFIRMED non-organizer before end_at, unless cancelled.",
+        description="True for a JOINED/CONFIRMED/WAITLISTED non-organizer before end_at, unless cancelled. Waitlist leave frees no capacity.",
     )
     can_confirm: bool = Field(
         default=False,
@@ -380,13 +380,13 @@ class ActivityListItem(BaseModel):
     min_participants: int
     max_participants: int | None
     participant_count: int = Field(
-        description="Active capacity count: JOINED + CONFIRMED + CHECKED_IN. LEFT/COMPLETED/NO_SHOW and organizer excluded, including after end/finalization."
+        description="Active capacity count: JOINED + CONFIRMED + CHECKED_IN. WAITLISTED/LEFT/COMPLETED/NO_SHOW and organizer excluded, including after end/finalization."
     )
     checked_in_count: int = Field(
         description="Historical successful check-in count: CHECKED_IN + COMPLETED. CONFIRMED/NO_SHOW do not count."
     )
     waitlist_count: int = Field(
-        description="Waitlist count; currently 0 until waitlists are implemented."
+        description="Persisted count of WAITLISTED records only; excludes active/LEFT/final states. Historical waitlists remain until a future lifecycle milestone."
     )
     available_slots: int | None = Field(
         description=(
@@ -403,14 +403,23 @@ class ActivityListItem(BaseModel):
 
 
 class ActivityParticipationRead(BaseModel):
-    status: Literal["JOINED", "CONFIRMED", "CHECKED_IN", "COMPLETED", "NO_SHOW"] = (
-        Field(
-            default="JOINED",
-            description="Caller's current or final attendance state. COMPLETED means checked in then explicitly finalized after end; NO_SHOW means unresolved JOINED/CONFIRMED finalized without check-in. LEFT is null current participation.",
-        )
+    status: Literal[
+        "WAITLISTED", "JOINED", "CONFIRMED", "CHECKED_IN", "COMPLETED", "NO_SHOW"
+    ] = Field(
+        default="JOINED",
+        description="Caller's current or final state. WAITLISTED has no active place and cannot confirm/check in. COMPLETED means checked in then explicitly finalized after end; NO_SHOW means unresolved JOINED/CONFIRMED finalized without check-in. LEFT is null current participation.",
     )
-    joined_at: datetime = Field(
-        description="UTC time the current user's latest active join cycle began."
+    joined_at: datetime | None = Field(
+        description="UTC time the caller obtained a place in the latest cycle, including promotion time. Null while WAITLISTED."
+    )
+    waitlisted_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC queue-entry time for this cycle, preserved after promotion; null for a direct join.",
+    )
+    waitlist_position: int | None = Field(
+        default=None,
+        ge=1,
+        description="Caller-only 1-based FIFO position by waitlisted_at ASC then user_id ASC; null outside WAITLISTED. A snapshot, not a reserved position.",
     )
     confirmed_at: datetime | None = Field(
         default=None,
@@ -472,7 +481,7 @@ class ActivityRead(ActivityListItem):
     current_user_participation: ActivityParticipationRead | None = Field(
         default=None,
         description=(
-            "The authenticated caller's current or final attendance, or null for anonymous "
+            "The authenticated caller's current, waitlisted, or final attendance, or null for anonymous "
             "users, organizers, non-members, and inactive LEFT records. Never another user's membership."
         ),
     )
@@ -535,11 +544,42 @@ ACTIVITY_LEAVE_RESPONSE_EXAMPLE = {
     "current_user_participation": None,
     "permissions": ActivityPermissionsRead(can_join=True).model_dump(),
 }
+ACTIVITY_WAITLIST_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+        "participant_count": 12,
+        "available_slots": 0,
+        "waitlist_count": 3,
+        "current_user_participation": {
+            "status": "WAITLISTED",
+            "joined_at": None,
+            "waitlisted_at": "2030-08-01T12:05:00Z",
+            "waitlist_position": 3,
+        },
+        "permissions": ActivityPermissionsRead(can_leave=True).model_dump(),
+    }
+).model_dump(mode="json")
+ACTIVITY_PROMOTED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+        "participant_count": 12,
+        "available_slots": 0,
+        "waitlist_count": 2,
+        "current_user_participation": {
+            "status": "JOINED",
+            "joined_at": "2030-08-02T10:00:00Z",
+            "waitlisted_at": "2030-08-01T12:00:00Z",
+            "waitlist_position": None,
+        },
+    }
+).model_dump(mode="json")
 ACTIVITY_CONFIRM_RESPONSE_EXAMPLE = {
     **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     "current_user_participation": {
         "status": "CONFIRMED",
         "joined_at": "2030-08-01T12:00:00Z",
+        "waitlisted_at": None,
+        "waitlist_position": None,
         "confirmed_at": "2030-08-07T16:00:00Z",
         "checked_in_at": None,
         "completed_at": None,

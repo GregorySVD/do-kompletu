@@ -15,7 +15,10 @@ from app.core.security import create_access_token
 from app.db.session import get_db
 from app.main import app
 from app.models.activity import Activity
-from app.models.activity_participation import ActivityParticipation
+from app.models.activity_participation import (
+    ACTIVE_PARTICIPATION_STATUSES,
+    ActivityParticipation,
+)
 from app.models.user import User
 from app.schemas.activity import ACTIVITY_CREATE_EXAMPLE, ActivityCreate
 from app.schemas.activity_management import ActivityUpdate
@@ -311,6 +314,7 @@ def test_postgres_management_races_obey_both_lock_orders(
             .select_from(ActivityParticipation)
             .where(
                 ActivityParticipation.activity_id == activity_id,
+                ActivityParticipation.status.in_(ACTIVE_PARTICIPATION_STATUSES),
             )
         )
         assert body.participant_count == count <= body.max_participants
@@ -325,7 +329,7 @@ def test_postgres_management_races_obey_both_lock_orders(
                     (201, None),
                 ]
                 if reverse
-                else [(200, None), (409, "Activity is full")]
+                else [(200, None), (201, None)]
             )
             assert (body.max_participants, count) == ((3, 3) if reverse else (2, 2))
         elif scenario == "cancel_join":

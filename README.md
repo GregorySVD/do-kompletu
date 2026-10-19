@@ -13,7 +13,9 @@ creation/discovery/details, persisted participation, My Activities, organizer
 editing, soft cancellation, persistent participation, timed confirmation, and
 geographic check-in for confirmed participants. PostgreSQL/PostGIS is authoritative
 for proximity validation. Organizer-triggered attendance finalization records
-terminal COMPLETED and NO_SHOW outcomes after activity end.
+terminal COMPLETED and NO_SHOW outcomes after activity end. FIFO waitlists now
+queue full-activity requests and promote users atomically on active leave or
+capacity increase before start; no scheduler/confirmation expiry is implemented.
 
 Frontend authentication, profile display, discovery, details, categories, and
 creation use real APIs. My Activities still uses fixtures, and join/leave/confirm/check-in and
@@ -148,26 +150,30 @@ body, and return updated `ActivityRead`.
 
 - The organizer is separate from participants, cannot join/leave their own
   activity, and never consumes a participant place.
-- One participation row persists per activity/user, with `status`, `joined_at`,
+- One participation row persists per activity/user, with `status`, nullable `joined_at`, `waitlisted_at`,
   `left_at`, `confirmed_at`, `checked_in_at`, `completed_at`, and `no_show_at`.
-  JOINED, CONFIRMED, and CHECKED_IN consume places; LEFT and final outcomes do not.
+  JOINED, CONFIRMED, and CHECKED_IN consume places; WAITLISTED, LEFT and final outcomes do not.
   `participant_count` counts only active rows; finite
   `available_slots` reflects remaining capacity, while unlimited capacity is null.
-- Non-organizers can join/leave before or during an uncancelled activity, strictly
-  before `end_at`. Full activities reject new joins. Duplicate joins return 409,
-  including when full; leaving without membership, including repeated DELETE, is 409.
+- Non-organizers may join/rejoin strictly before `start_at`; at/after start is
+  409. Full limited activities succeed as WAITLISTED (201), without consuming a
+  place. Leave remains allowed until `end_at`. Duplicate joins return 409,
+  including queued duplicates; leaving without membership, including repeated DELETE, is 409.
 - Leaving transitions JOINED/CONFIRMED to LEFT and sets `left_at`; the row,
   `joined_at`, and previous `confirmed_at` remain. Eligible rejoin reuses that row,
-  resets status to JOINED, updates `joined_at`, and clears lifecycle timestamps.
+  selects JOINED or WAITLISTED from capacity and resets the appropriate cycle timestamps.
   CHECKED_IN cannot leave. Duplicate active-state joins remain 409. Ended and
   cancelled records remain persisted. Cancellation blocks join, leave, confirm, and check-in
   with 409, preserving that history. Organizer join/leave is always a 409 conflict.
 
 `current_user_participation` is null for anonymous/non-member/LEFT callers, or
-an object with status JOINED, CONFIRMED, CHECKED_IN, COMPLETED, or NO_SHOW for the
+an object with status WAITLISTED, JOINED, CONFIRMED, CHECKED_IN, COMPLETED, or NO_SHOW for the
 caller only. It includes joined_at and nullable confirmed_at, checked_in_at,
 completed_at, and no_show_at. Final outcomes permit no participation mutations.
-No waitlist exists. The retained row captures the latest
+WAITLISTED adds waitlisted_at and 1-based waitlist_position, with joined_at=null.
+Promotion preserves queue time and sets joined_at to promotion time; LEFT rejoin
+starts a fresh active/queued cycle. waitlist_count is real. See the
+[waitlist contract](backend/docs/activity-waitlist.md). The retained row captures the latest
 cycle, not an immutable audit of every join/leave. See the
 [full participation contract](backend/docs/activity-participation.md).
 
@@ -247,7 +253,7 @@ that user; no client user ID is accepted.
 
 | Parameter | Behavior |
 | --- | --- |
-| `relation` | Required: `organized` (caller owns activity) or `joined` (current JOINED/CONFIRMED/CHECKED_IN before end; history also includes COMPLETED/NO_SHOW; LEFT and owned activities excluded) |
+| `relation` | Required: `organized` (caller owns activity), `waitlisted` (caller WAITLISTED only), or `joined` (current JOINED/CONFIRMED/CHECKED_IN before end; history also includes COMPLETED/NO_SHOW; LEFT and owned activities excluded) |
 | `scope` | Optional: `upcoming` or `history`; omit for all times, including all organized activities |
 | `limit`, `offset` | Default 20/0; limit 1–100, offset ≥ 0 |
 
@@ -255,8 +261,11 @@ One UTC cutoff drives filtering and serialization for the entire page. Upcoming
 means `end_at > cutoff`, including ongoing activities, sorted by start then UUID
 ascending. History means `end_at <= cutoff`, sorted by end descending then UUID
 ascending. Omitted scope puts upcoming first, then history, using those same sorts.
-Cancelled activities remain in either relation and use the same end-time scopes;
+Cancelled activities remain in all relations and use the same end-time scopes;
 their status remains CANCELLED.
+The Waitlist section uses `relation=waitlisted&scope=upcoming`; it may include
+ongoing records because scopes still follow end time. Historical waitlists remain
+until a later scheduler/lifecycle milestone; joining and promotion close at start.
 
 The response is an array of `ActivityRead`, with no total-count/page/`has_more`
 wrapper. Unknown query parameters and literal `relation=all`/`scope=all` return
@@ -271,8 +280,10 @@ fields, internal fields, and explicit nulls other than `max_participants` and
 rules. Both the existing and proposed start must be strictly in the future:
 ongoing, ended, or cancelled activities cannot be edited.
 
-Capacity cannot be reduced below active membership (409), including CHECKED_IN; LEFT rows do
-not count. Actual changes to `start_at` or `end_at` return 409 while any participant
+Capacity cannot be reduced below active membership (409), including CHECKED_IN;
+WAITLISTED and LEFT do not count. Capacity increases promote earliest waiters into
+new places in the same locked transaction before start. Switching to unlimited
+promotes the entire queue. Actual changes to `start_at` or `end_at` return 409 while any participant
 is CONFIRMED or CHECKED_IN. Once anyone is CHECKED_IN, latitude, longitude,
 location_name, and address changes also return 409. Unchanged values and other allowed fields can still be submitted;
 historical confirmations on LEFT rows do not block schedule edits. Confirmations
@@ -313,7 +324,7 @@ Only `cancelled_at` is persisted as cancellation metadata. There is no arbitrary
 mutable status column or DRAFT workflow. Cancellation is soft cancellation.
 For uncancelled activities, organizers can edit before start and cancel before
 end, and finalize unresolved attendance at/after end. Other users can join/leave
-subject to membership/capacity before end; final outcomes allow no participant action.
+with join/rejoin restricted to before start and leave to before end; final outcomes allow no participant action.
 `can_delete` and unsupported future-action permissions remain false.
 
 ## API overview
@@ -331,7 +342,7 @@ generated contract is at `/openapi.json`.
 | POST | `/api/v1/auth/refresh` | Refresh JWT in JSON | Obtain a new access token |
 | GET | `/api/v1/users/me` | Access JWT | Read own profile |
 | PATCH | `/api/v1/users/me` | Access JWT | Update own display name/avatar |
-| GET | `/api/v1/users/me/activities` | Access JWT | Organized/joined activities by scope |
+| GET | `/api/v1/users/me/activities` | Access JWT | Organized/joined/waitlisted activities by scope |
 | GET | `/api/v1/categories` | Public | Canonical category reference data |
 | POST | `/api/v1/activities` | Access JWT | Create as authenticated organizer |
 | GET | `/api/v1/activities` | Public | Filtered, paginated discovery |
@@ -339,7 +350,7 @@ generated contract is at `/openapi.json`.
 | PATCH | `/api/v1/activities/{activity_id}` | Organizer access JWT | Edit before existing start |
 | POST | `/api/v1/activities/{activity_id}/cancel` | Organizer access JWT | Soft-cancel before end |
 | POST | `/api/v1/activities/{activity_id}/finalize` | Organizer access JWT | Resolve attendance at/after end; uncancelled only |
-| POST | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Join membership |
+| POST | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Request JOINED or FIFO WAITLISTED |
 | DELETE | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Leave membership |
 | POST | `/api/v1/activities/{activity_id}/confirm` | Access JWT; JOINED non-organizer | Confirm attendance inside the window |
 | POST | `/api/v1/activities/{activity_id}/check-in` | Access JWT; CONFIRMED non-organizer | Time- and PostGIS-validated check-in |
@@ -508,7 +519,8 @@ For the repository's local Compose development database:
 
 ```powershell
 $env:POSTGRES_TEST_DATABASE_URL = 'postgresql+psycopg://postgres:postgres@localhost:5433/do_kompletu'
-uv run pytest -v tests/test_activities_postgres.py tests/test_participation_postgres.py tests/test_my_activities_postgres.py tests/test_activity_management_postgres.py tests/test_participation_lifecycle_postgres.py tests/test_participation_lifecycle_migration_postgres.py tests/test_check_in_postgres.py tests/test_check_in_migration_postgres.py tests/test_activity_finalization_postgres.py tests/test_activity_finalization_migration_postgres.py
+$postgresTests = @(rg --files tests -g '*postgres.py')
+uv run pytest -v @postgresTests
 Remove-Item Env:POSTGRES_TEST_DATABASE_URL
 ```
 
@@ -525,14 +537,15 @@ The lifecycle, check-in, and finalization migration tests exercise
 `0007 → 0008 → 0007 → 0008`; none downgrades the normal database. Isolated
 check-in tests stub proximity explicitly; only real PostGIS tests validate geography.
 
-Verified on 2026-10-18 after the finalization milestone:
+Verified on 2026-10-19 after the waitlist milestone (baseline: 404 isolated and 98 PostgreSQL tests passed):
 
 | Check | Current result |
 | --- | --- |
-| Default `uv run pytest -v` without integration URL | 404 passed, 98 PostgreSQL tests skipped |
-| Separate ten-module PostgreSQL run | 98 passed |
+| Default `uv run pytest -v` without integration URL | 460 passed, 122 PostgreSQL tests skipped |
+| Separate twelve-module PostgreSQL run | 122 passed |
 | Ruff, compileall, `uv lock --check` | Passed |
-| Migration files and development database | `20261018_0008` is head |
+| Migration files and development database | `20261018_0009` is head |
+| Waitlist migration cycle in a generated temporary database | `0008 → 0009 → 0008 → 0009` passed, preserving rows and enforcing timestamp constraints |
 | `git diff --check` | Passed |
 | `git diff -- frontend` | Empty |
 
@@ -555,7 +568,8 @@ The verified linear chain and current head are:
 | `20261018_0005` | `20261018_0005_add_activity_cancellation.py` | Nullable activity cancelled_at |
 | `20261018_0006` | `20261018_0006_add_participation_lifecycle.py` | Backfilled JOINED status, left_at/confirmed_at, lifecycle CHECK constraints |
 | `20261018_0007` | `20261018_0007_add_participation_check_in.py` | Nullable checked_in_at, CHECKED_IN status and updated timestamp CHECKs |
-| `20261018_0008` | `20261018_0008_add_final_attendance_outcomes.py` | Nullable completed_at/no_show_at, terminal COMPLETED/NO_SHOW and consistent timestamp CHECKs; **current head** |
+| `20261018_0008` | `20261018_0008_add_final_attendance_outcomes.py` | Nullable completed_at/no_show_at, terminal COMPLETED/NO_SHOW and consistent timestamp CHECKs |
+| `20261018_0009` | `20261018_0009_add_activity_waitlist.py` | WAITLISTED, waitlisted_at, nullable joined_at with state CHECKs, FIFO index; **current head** |
 
 Check file history with `uv run alembic history` and file heads with
 `uv run alembic heads`. `uv run alembic current` checks the configured database.
@@ -570,6 +584,10 @@ Finalization migration 0008 preserves all old states/timestamps. Downgrade maps
 COMPLETED to CHECKED_IN, and NO_SHOW to CONFIRMED only if confirmed_at exists,
 otherwise JOINED. It drops only finalization timestamps, retains every row, and
 never fabricates confirmation evidence to satisfy the old constraint.
+Waitlist migration 0009 preserves existing data and adds queue timestamps, nullable
+joined_at with status CHECKs, and the FIFO index. Downgrade retains WAITLISTED as
+inactive LEFT and uses queue-entry time for legacy mandatory joined_at on never-
+joined rows; it loses queue history. See the waitlist contract for this compromise.
 Historical upgrade/downgrade probes are recorded in the contracts; normal onboarding uses
 `upgrade head`.
 
@@ -577,6 +595,7 @@ Historical upgrade/downgrade probes are recorded in the contracts; normal onboar
 
 - [Activity participation contract](backend/docs/activity-participation.md):
   retained lifecycle, join/leave/rejoin/confirm, timing, full responses, privacy, and concurrency.
+- [FIFO waitlist contract](backend/docs/activity-waitlist.md): admission, queue timestamps/position, atomic promotion, migration/downgrade, frontend follow-up.
 - [My Activities contract](backend/docs/my-activities.md): relation/scope semantics,
   sorting/pagination, full responses, query strategy, and frontend integration.
 - [Activity management/cancellation contract](backend/docs/activity-management.md):
@@ -603,7 +622,7 @@ this milestone.
 | Creation | Real form, category/location/time/price/capacity validation, POST, activity-query invalidation, navigation to new detail | Extend mutation/cache coverage for the actions below |
 | My Activities | Protected page and three sections exist | Replace mock activities/static membership IDs with authenticated relation/scope queries, loading/errors, and pagination |
 | Organizer management | Backend edit/cancel/finalize API ready | Edit form/actions, API functions/hooks, cancellation/finalization pending/result/error handling, status/cancelled_at rendering, can_finalize-driven action |
-| Types and caching | Activity status union includes CANCELLED; check-in counts/timing/radius/can_check_in already declared | Membership JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union with joined_at and nullable confirmed_at/checked_in_at/completed_at/no_show_at, `can_cancel`, `can_finalize`, `cancelled_at`; user-scoped query keys and invalidation/removal on auth changes and mutations |
+| Types and caching | Activity status union includes CANCELLED; check-in counts/timing/radius/can_check_in already declared | Membership WAITLISTED/JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union with nullable joined_at, waitlisted_at, waitlist_position and attendance timestamps, `can_cancel`, `can_finalize`, `cancelled_at`; user-scoped query keys and invalidation/removal on auth changes and mutations |
 
 Current detail queries use activity ID without user identity and stay fresh for
 60 seconds; auth changes do not clear query caches. Account changes therefore
@@ -622,7 +641,7 @@ the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled 
 
 ## Current limitations / not implemented yet
 
-- Waitlists, scheduled/automatic finalization, organizer manual attendance overrides,
+- Scheduled/automatic finalization, waitlist expiry and confirmation-timeout promotion, organizer manual attendance overrides,
   undo completion/no-show, and separate cancelled-event attendance/refund policy.
 - Reviews, ratings, XP/points progression, ranks, and achievements.
 - Notifications, chat, photo galleries/uploads, and media workflows.
@@ -634,7 +653,7 @@ the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled 
   not implement these features. Administrator role-based authorization is absent.
 
 Placeholder fields do not imply implemented features: `tags` is empty,
-`distance_m` is null, `waitlist_count` is zero, and unsupported gallery/photo/delete
+`distance_m` is null, and unsupported gallery/photo/delete
 permissions remain false. Check-in timing/radius and checked_in_count are now real.
 My Activities has no total-count wrapper or cross-page snapshot guarantee.
 There is no unconfirm, undo check-in, automatic confirmation expiry, immutable participation event
@@ -644,11 +663,11 @@ log, or schedule-edit notification. Confirmation is a self-declared intent to at
 
 | State | Milestone |
 | --- | --- |
-| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization |
+| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization; FIFO waitlists/promotion |
 | Next frontend integration | Real My Activities and final history outcomes; join/leave/rejoin/confirm/check-in; geolocation; organizer edit/cancel/finalize; state/window/error UI; identity-aware caching and invalidation |
-| Recommended next backend milestone | Define review eligibility and XP/reward product policies using COMPLETED, then implement one bounded feature with duplicate-award/review protection |
+| Recommended next backend milestone | Define scheduler/lifecycle policy for stale WAITLISTED and confirmation deadlines, then add expiry and timeout-driven FIFO promotion with the same activity lock |
 | Potential later sequence | Reviews/ratings → XP/points → ranks/achievements, after eligibility and cancelled-event policies are defined |
-| Later product work | Waitlists, notifications/chat, galleries, nearby search; payment handling if required |
+| Later product work | Notifications/chat, galleries, nearby search; payment handling if required |
 
 Future sequencing is a proposal, not an implemented contract or fixed architecture.
 

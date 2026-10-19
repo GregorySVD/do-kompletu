@@ -241,20 +241,15 @@ def test_lifecycle_writers_obey_both_postgres_lock_orders(
             if row.status == "CONFIRMED":
                 assert row.confirmed_at is not None
         if scenario in {"final_slot", "rejoin_join"}:
-            assert outcomes.count((201, None)) == 1
-            assert outcomes.count((409, "Activity is full")) == 1
+            assert outcomes.count((201, None)) == 2
             assert len(active) == 3
             if scenario == "rejoin_join":
                 rejoined = session.get(ActivityParticipation, (activity_id, users[3]))
-                assert rejoined.status == ("LEFT" if reverse else "JOINED")
-                assert len(rows) == (4 if reverse else 3)
+                assert rejoined.status == ("WAITLISTED" if reverse else "JOINED")
+                assert len(rows) == 4
         elif scenario == "leave_join":
-            assert outcomes == (
-                [(200, None), (409, "Activity is full")]
-                if reverse
-                else [(200, None), (201, None)]
-            )
-            assert member.status == "LEFT" and len(active) == (2 if reverse else 3)
+            assert outcomes == [(200, None), (201, None)]
+            assert member.status == "LEFT" and len(active) == 3
         elif scenario == "confirm_leave":
             assert outcomes == (
                 [(409, "Not participating in this activity"), (200, None)]
@@ -299,7 +294,7 @@ def test_lifecycle_writers_obey_both_postgres_lock_orders(
                     (201, None),
                 ]
                 if reverse
-                else [(200, None), (409, "Activity is full")]
+                else [(200, None), (201, None)]
             )
             assert member.status == "CONFIRMED"
             assert (body.max_participants, len(active)) == (

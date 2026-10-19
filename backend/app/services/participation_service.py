@@ -13,7 +13,9 @@ from app.models.activity import Activity
 from app.models.activity_participation import (
     ACTIVE_PARTICIPATION_STATUSES,
     FINAL_ATTENDANCE_STATES,
+    LEAVABLE_PARTICIPATION_STATES,
     PARTICIPATION_PRIMARY_KEY,
+    REQUESTED_PARTICIPATION_STATES,
     ActivityParticipation,
     ParticipationStatus,
 )
@@ -25,6 +27,10 @@ from app.services.activity_service import (
     get_activity_for_update,
 )
 from app.services.participation_rules import check_in_window, confirmation_window
+from app.services.waitlist_service import (
+    active_participant_count,
+    promote_waitlisted_participants,
+)
 
 
 class ParticipationError(Exception):
@@ -86,31 +92,32 @@ def join_activity(session: Session, activity_id: UUID, user_id: UUID) -> Activit
         participation = _mutable_participation(session, activity_id, user_id)
         if (
             participation is not None
-            and participation.status in ACTIVE_PARTICIPATION_STATUSES
+            and participation.status in REQUESTED_PARTICIPATION_STATES
         ):
             raise ParticipationError("Already joined this activity")
         now = datetime.now(UTC)
         _require_open(activity, now)
-        count = session.scalar(
-            select(func.count())
-            .select_from(ActivityParticipation)
-            .where(
-                ActivityParticipation.activity_id == activity_id,
-                ActivityParticipation.status.in_(ACTIVE_PARTICIPATION_STATUSES),
-            )
+        if now >= _as_aware_utc(activity.start_at):
+            raise ParticipationError("Activity has started")
+        full = (
+            activity.max_participants is not None
+            and active_participant_count(session, activity) >= activity.max_participants
         )
-        if activity.max_participants is not None and count >= activity.max_participants:
-            raise ParticipationError("Activity is full")
         if participation is None:
             participation = ActivityParticipation(
                 activity_id=activity_id, user_id=user_id
             )
             session.add(participation)
-        participation.status = ParticipationStatus.JOINED
-        participation.joined_at = now
+        participation.status = (
+            ParticipationStatus.WAITLISTED if full else ParticipationStatus.JOINED
+        )
+        participation.joined_at = None if full else now
+        participation.waitlisted_at = now if full else None
         participation.left_at = None
         participation.confirmed_at = None
         participation.checked_in_at = None
+        participation.completed_at = None
+        participation.no_show_at = None
         session.flush()
         result = _snapshot(session, activity_id, user_id, now)
         session.commit()
@@ -137,17 +144,21 @@ def leave_activity(
         participation = _mutable_participation(session, activity_id, user_id)
         if (
             participation is None
-            or participation.status not in ACTIVE_PARTICIPATION_STATUSES
+            or participation.status not in REQUESTED_PARTICIPATION_STATES
         ):
             raise ParticipationError("Not participating in this activity")
         now = datetime.now(UTC)
         _require_open(activity, now)
         if participation.status == ParticipationStatus.CHECKED_IN:
             raise ParticipationError("Checked-in participants cannot leave")
+        assert participation.status in LEAVABLE_PARTICIPATION_STATES
+        freed_place = participation.status in ACTIVE_PARTICIPATION_STATUSES
         participation.status = ParticipationStatus.LEFT
         participation.left_at = now
-        # Retain joined_at and any confirmed_at as evidence of the last cycle.
+        # Retain last-cycle evidence, including queue time for a never-joined user.
         session.flush()
+        if freed_place:
+            promote_waitlisted_participants(session, activity, now)
         result = _snapshot(session, activity_id, user_id, now)
         session.commit()
         return result

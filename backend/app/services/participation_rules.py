@@ -3,13 +3,18 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from app.core.config import get_settings
-from app.models.activity_participation import ParticipationStatus
+from app.models.activity_participation import ActivityParticipation, ParticipationStatus
 
 FINALIZATION_TRANSITIONS = {
     ParticipationStatus.JOINED: ParticipationStatus.NO_SHOW,
     ParticipationStatus.CONFIRMED: ParticipationStatus.NO_SHOW,
     ParticipationStatus.CHECKED_IN: ParticipationStatus.COMPLETED,
 }
+
+
+def waitlist_ordering(participation=ActivityParticipation):
+    """Canonical FIFO key, shared by promotion and caller-only SQL position."""
+    return participation.waitlisted_at, participation.user_id
 
 
 def _shift_time(value: datetime, duration: timedelta) -> datetime:

@@ -95,7 +95,9 @@ not a historical attendance total.
 checked_in_count counts CHECKED_IN + COMPLETED, so finalizing successful attendance
 does not erase the public count of people who checked in. No completed_count,
 no_show_count, participant roster, or other public attendance analytics is added.
-waitlist_count remains zero.
+waitlist_count counts retained WAITLISTED rows. Finalization never converts them
+to COMPLETED/NO_SHOW: they had no place. No scheduler expires historical queues
+yet; see [waitlist contract](activity-waitlist.md).
 
 Joined My Activities uses current JOINED/CONFIRMED/CHECKED_IN states before end,
 and those unresolved states plus COMPLETED/NO_SHOW at/after end. LEFT is always
@@ -121,6 +123,10 @@ the server still enforces every rule.
 nullable completed_at and no_show_at TIMESTAMPTZ columns and replaces the status
 and state/timestamp CHECKs. No existing row/status/timestamp, key, index, or foreign
 key is changed by upgrade.
+
+This table describes migration 0008. Current 0009 additionally supports WAITLISTED
+with only waitlisted_at, and LEFT with waitlisted_at/left_at but no joined_at when
+the user never received a place. Active/final requirements below are unchanged.
 
 | State | Required timestamps | Required nulls |
 | --- | --- | --- |

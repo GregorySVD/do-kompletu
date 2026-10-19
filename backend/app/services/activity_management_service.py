@@ -22,6 +22,7 @@ from app.services.activity_service import (
     get_activity_for_update,
 )
 from app.services.participation_rules import FINALIZATION_TRANSITIONS
+from app.services.waitlist_service import promote_waitlisted_participants
 
 
 class ActivityManagementError(Exception):
@@ -119,6 +120,8 @@ def update_activity(
                 session, validated.latitude, validated.longitude
             )
         session.flush()
+        if {"max_participants", "has_participant_limit"} & payload.model_fields_set:
+            promote_waitlisted_participants(session, activity, now)
         result = _snapshot(session, activity_id, user_id, now)
         session.commit()
         return result

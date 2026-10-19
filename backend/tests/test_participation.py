@@ -122,21 +122,23 @@ def test_full_activity_permissions_and_duplicate_precedence(client, activity_con
     assert join(client, activity_context, 1).json() == {
         "detail": "Already joined this activity"
     }
-    response = join(client, activity_context, 3)
-    assert response.status_code == 409
-    assert response.json() == {"detail": "Activity is full"}
     outsider = client.get(
         detail_path(activity_context), headers=activity_context[2][3]
     ).json()
     assert outsider["participant_count"] == 2
     assert outsider["available_slots"] == 0
-    assert outsider["permissions"]["can_join"] is False
+    assert outsider["permissions"]["can_join"] is True
+    response = join(client, activity_context, 3)
+    assert response.status_code == 201
+    assert response.json()["current_user_participation"]["status"] == "WAITLISTED"
     participant = client.get(
         detail_path(activity_context), headers=activity_context[2][1]
     ).json()
     assert participant["permissions"]["can_leave"] is True
     assert leave(client, activity_context, 1).status_code == 200
-    assert join(client, activity_context, 3).status_code == 201
+    promoted = client.get(detail_path(activity_context), headers=activity_context[2][3])
+    assert promoted.json()["current_user_participation"]["status"] == "JOINED"
+    assert join(client, activity_context, 3).status_code == 409
 
 
 def test_unlimited_activity_has_no_capacity_ceiling(
@@ -260,10 +262,13 @@ def test_lifecycle_boundary(client, db_session, activity_context, monkeypatch, e
     assert member["status"] == ("ENDED" if elapsed else "ONGOING")
     assert member["current_user_participation"]["status"] == "JOINED"
     assert member["permissions"]["can_leave"] is not elapsed
-    assert outsider["permissions"]["can_join"] is not elapsed
+    assert outsider["permissions"]["can_join"] is False
     joined = join(client, activity_context, 2)
     left = leave(client, activity_context, 1)
-    assert joined.status_code == (409 if elapsed else 201)
+    assert joined.status_code == 409
+    assert joined.json() == {
+        "detail": "Activity has ended" if elapsed else "Activity has started"
+    }
     assert left.status_code == (409 if elapsed else 200)
     if elapsed:
         assert joined.json() == left.json() == {"detail": "Activity has ended"}
