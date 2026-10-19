@@ -1,0 +1,37 @@
+.activity-organizer-actions {
+  margin-top: var(--space-4);
+}
+
+.activity-organizer-actions__content {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.activity-organizer-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.activity-organizer-actions__dialog-error {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 30rem) {
+  .activity-organizer-actions__buttons {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .activity-organizer-actions__dialog-actions.MuiDialogActions-root {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    padding: var(--space-4) var(--space-6) var(--space-5);
+  }
+
+  .activity-organizer-actions__dialog-actions .MuiButton-root {
+    width: 100%;
+    min-height: var(--touch-target-min);
+    margin: 0;
+  }
+}

@@ -1,6 +1,7 @@
 import type { ActivityDetails } from '../../../../types/activity'
 import ActivityDetailsSummary from '../ActivityDetailsSummary/ActivityDetailsSummary'
 import ActivityLifecycleInfo from '../ActivityLifecycleInfo/ActivityLifecycleInfo'
+import ActivityOrganizerActions from '../ActivityOrganizerActions/ActivityOrganizerActions'
 import ActivityOrganizerInfo from '../ActivityOrganizerInfo/ActivityOrganizerInfo'
 import ActivityParticipantsInfo from '../ActivityParticipantsInfo/ActivityParticipantsInfo'
 import ActivityScheduleLocation from '../ActivityScheduleLocation/ActivityScheduleLocation'
@@ -14,6 +15,7 @@ function ActivityDetailsContent({ activity }: ActivityDetailsContentProps) {
   return (
     <>
       <ActivityDetailsSummary activity={activity} />
+      <ActivityOrganizerActions activity={activity} />
 
       <div className="activity-details-content__grid">
         <ActivityScheduleLocation activity={activity} />

@@ -41,3 +41,23 @@ export async function createActivity(
 
   return response.data
 }
+
+export async function cancelActivity(
+  activityId: string,
+): Promise<ActivityDetails> {
+  const response = await apiClient.post<ActivityDetails>(
+    `/api/v1/activities/${activityId}/cancel`,
+  )
+
+  return response.data
+}
+
+export async function finalizeActivity(
+  activityId: string,
+): Promise<ActivityDetails> {
+  const response = await apiClient.post<ActivityDetails>(
+    `/api/v1/activities/${activityId}/finalize`,
+  )
+
+  return response.data
+}

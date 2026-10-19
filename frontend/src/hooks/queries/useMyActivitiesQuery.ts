@@ -8,13 +8,18 @@ import { useAuth } from '../../context/auth'
 
 const myActivitiesLimit = 100
 const myActivitiesOffset = 0
+export const myActivitiesQueryKey = ['my-activities'] as const
+
+export function getMyActivitiesUserQueryKey(userId: string) {
+  return [...myActivitiesQueryKey, userId] as const
+}
 
 export function getMyActivitiesQueryKey(
   userId: string | undefined,
   relation: ActivityRelation,
   scope?: ActivityScope,
 ) {
-  return ['my-activities', userId, relation, scope ?? 'all'] as const
+  return [...myActivitiesQueryKey, userId, relation, scope ?? 'all'] as const
 }
 
 export function useMyActivitiesQuery(
