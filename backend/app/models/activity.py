@@ -53,6 +53,9 @@ class Activity(Base):
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     location_name: Mapped[str] = mapped_column(String(120), nullable=False)
     address: Mapped[str] = mapped_column(String(300), nullable=False)
     location: Mapped[WKBElement | str] = mapped_column(LOCATION_TYPE, nullable=False)

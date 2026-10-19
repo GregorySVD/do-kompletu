@@ -4,10 +4,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+Latitude = Annotated[float, Field(ge=-90, le=90, allow_inf_nan=False)]
+Longitude = Annotated[float, Field(ge=-180, le=180, allow_inf_nan=False)]
 
 
 class ActivityCategoryId(StrEnum):
@@ -30,6 +33,7 @@ class ActivityStatus(StrEnum):
     PUBLISHED = "PUBLISHED"
     ONGOING = "ONGOING"
     ENDED = "ENDED"
+    CANCELLED = "CANCELLED"
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,7 +173,9 @@ class ActivityCreate(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
-            "examples": [example["value"] for example in ACTIVITY_CREATE_EXAMPLES.values()]
+            "examples": [
+                example["value"] for example in ACTIVITY_CREATE_EXAMPLES.values()
+            ]
         },
     )
 
@@ -205,14 +211,10 @@ class ActivityCreate(BaseModel):
         max_length=300,
         description="Human-readable street or venue address.",
     )
-    latitude: float = Field(
-        ge=-90,
-        le=90,
+    latitude: Latitude = Field(
         description="WGS 84 latitude in the inclusive range -90 to 90.",
     )
-    longitude: float = Field(
-        ge=-180,
-        le=180,
+    longitude: Longitude = Field(
         description="WGS 84 longitude in the inclusive range -180 to 180.",
     )
     min_participants: int = Field(
@@ -299,7 +301,9 @@ class ActivityCategoryRead(BaseModel):
 
 class ActivityOrganizerRead(BaseModel):
     id: UUID = Field(description="Public identifier of the activity organizer.")
-    display_name: str = Field(description="Organizer display name safe for public display.")
+    display_name: str = Field(
+        description="Organizer display name safe for public display."
+    )
     avatar_url: str | None = Field(description="Organizer avatar URL, when configured.")
 
 
@@ -312,7 +316,15 @@ class ActivityTagRead(BaseModel):
 class ActivityPermissionsRead(BaseModel):
     can_edit: bool = Field(
         default=False,
-        description="Whether the current user may edit the activity; currently always false.",
+        description="True for the organizer before start_at, unless cancelled.",
+    )
+    can_cancel: bool = Field(
+        default=False,
+        description="True for the organizer strictly before end_at, unless already cancelled.",
+    )
+    can_finalize: bool = Field(
+        default=False,
+        description="True only for the organizer of an ended, uncancelled activity with unresolved JOINED/CONFIRMED/CHECKED_IN attendance.",
     )
     can_delete: bool = Field(
         default=False,
@@ -320,19 +332,22 @@ class ActivityPermissionsRead(BaseModel):
     )
     can_join: bool = Field(
         default=False,
-        description="Whether the current user may join the activity; currently always false.",
+        description=(
+            "True for authenticated non-organizers with no membership or LEFT, never a final COMPLETED/NO_SHOW outcome, while the "
+            "activity is PUBLISHED/ONGOING and capacity remains."
+        ),
     )
     can_leave: bool = Field(
         default=False,
-        description="Whether the current user may leave the activity; currently always false.",
+        description="True for a JOINED/CONFIRMED non-organizer before end_at, unless cancelled.",
     )
     can_confirm: bool = Field(
         default=False,
-        description="Whether the current user may confirm attendance; currently always false.",
+        description="True only for a JOINED non-organizer inside the confirmation window, unless cancelled. False after confirmation or leaving.",
     )
     can_check_in: bool = Field(
         default=False,
-        description="Whether the current user may check in; currently always false.",
+        description="True for a CONFIRMED non-organizer inside the check-in window unless cancelled/ended. Allows attempting check-in; submitted coordinates must still pass PostGIS proximity validation.",
     )
     can_view_gallery: bool = Field(
         default=False,
@@ -365,10 +380,10 @@ class ActivityListItem(BaseModel):
     min_participants: int
     max_participants: int | None
     participant_count: int = Field(
-        description="Confirmed participant count; currently 0 until participation is implemented."
+        description="Active capacity count: JOINED + CONFIRMED + CHECKED_IN. LEFT/COMPLETED/NO_SHOW and organizer excluded, including after end/finalization."
     )
     checked_in_count: int = Field(
-        description="Checked-in count; currently 0 until check-in is implemented."
+        description="Historical successful check-in count: CHECKED_IN + COMPLETED. CONFIRMED/NO_SHOW do not count."
     )
     waitlist_count: int = Field(
         description="Waitlist count; currently 0 until waitlists are implemented."
@@ -381,13 +396,45 @@ class ActivityListItem(BaseModel):
     )
     status: ActivityStatus = Field(
         description=(
-            "Time-derived status: PUBLISHED before start_at, ONGOING from start_at "
-            "until end_at, and ENDED afterward."
+            "CANCELLED whenever cancelled_at is set, regardless of time. Otherwise "
+            "PUBLISHED before start_at, ONGOING from start_at until end_at, and ENDED afterward."
         )
     )
 
 
+class ActivityParticipationRead(BaseModel):
+    status: Literal["JOINED", "CONFIRMED", "CHECKED_IN", "COMPLETED", "NO_SHOW"] = (
+        Field(
+            default="JOINED",
+            description="Caller's current or final attendance state. COMPLETED means checked in then explicitly finalized after end; NO_SHOW means unresolved JOINED/CONFIRMED finalized without check-in. LEFT is null current participation.",
+        )
+    )
+    joined_at: datetime = Field(
+        description="UTC time the current user's latest active join cycle began."
+    )
+    confirmed_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC confirmation time for this cycle, or null.",
+    )
+    checked_in_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC time of successful check-in, or null. No participant coordinates are returned.",
+    )
+    completed_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC finalization time for COMPLETED, otherwise null.",
+    )
+    no_show_at: datetime | None = Field(
+        default=None,
+        description="Caller-only UTC finalization time for NO_SHOW, otherwise null.",
+    )
+
+
 class ActivityRead(ActivityListItem):
+    cancelled_at: datetime | None = Field(
+        default=None,
+        description="UTC time of organizer cancellation, or null. Cancellation preserves memberships.",
+    )
     description: str = Field(description="Organizer-provided activity description.")
     organizer: ActivityOrganizerRead = Field(
         description="Public, safe organizer information."
@@ -398,23 +445,23 @@ class ActivityRead(ActivityListItem):
     )
     confirmation_opens_at: datetime | None = Field(
         default=None,
-        description="Reserved confirmation-window start; currently null.",
+        description="Derived UTC opening: start_at minus configured confirmation window (default 24 hours), inclusive.",
     )
     confirmation_deadline_at: datetime | None = Field(
         default=None,
-        description="Reserved confirmation deadline; currently null.",
+        description="Derived UTC confirmation deadline equal to start_at, exclusive. Nominal timing remains visible after cancellation/end.",
     )
     checkin_opens_at: datetime | None = Field(
         default=None,
-        description="Reserved check-in-window start; currently null.",
+        description="Derived inclusive UTC opening: start_at minus configured minutes (default 30).",
     )
     checkin_closes_at: datetime | None = Field(
         default=None,
-        description="Reserved check-in-window end; currently null.",
+        description="Derived exclusive UTC deadline: earlier of start_at plus configured minutes (default 60) and end_at.",
     )
     checkin_radius_m: int | None = Field(
         default=None,
-        description="Reserved geographic check-in radius; currently null.",
+        description="Public configured proximity radius in meters (default 150), enforced by PostGIS ST_DWithin.",
     )
     price_amount: float | None = Field(
         description="Price in PLN for PAID activities, otherwise null."
@@ -422,11 +469,122 @@ class ActivityRead(ActivityListItem):
     currency: str | None = Field(
         description="Currency code for paid activities (`PLN`), otherwise null."
     )
-    current_user_participation: None = Field(
+    current_user_participation: ActivityParticipationRead | None = Field(
         default=None,
-        description="Reserved participation state for the current user; currently null.",
+        description=(
+            "The authenticated caller's current or final attendance, or null for anonymous "
+            "users, organizers, non-members, and inactive LEFT records. Never another user's membership."
+        ),
     )
     permissions: ActivityPermissionsRead = Field(
         default_factory=ActivityPermissionsRead,
-        description="Current user's permissions; all values are currently false.",
+        description=(
+            "Caller-specific edit/cancel/finalize/join/leave/confirm/check-in permissions. Final outcomes allow no participant mutations. Check-in still requires location validation; unsupported actions remain false."
+        ),
     )
+
+
+# Complete valid response examples; all participation mutations return ActivityRead.
+ACTIVITY_JOIN_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        "id": "d54112d9-43cf-4986-8679-b6c236ac522c",
+        "title": ACTIVITY_CREATE_EXAMPLE["title"],
+        "description": ACTIVITY_CREATE_EXAMPLE["description"],
+        "category": {
+            "id": ActivityCategoryId.TEAM_SPORT.value,
+            "name": ACTIVITY_CATEGORIES[ActivityCategoryId.TEAM_SPORT].name,
+            "slug": ACTIVITY_CATEGORIES[ActivityCategoryId.TEAM_SPORT].slug,
+        },
+        "start_at": ACTIVITY_CREATE_EXAMPLE["start_at"],
+        "end_at": ACTIVITY_CREATE_EXAMPLE["end_at"],
+        "location_name": ACTIVITY_CREATE_EXAMPLE["location_name"],
+        "address": ACTIVITY_CREATE_EXAMPLE["address"],
+        "latitude": 52.4232,
+        "longitude": 16.9461,
+        "price_type": "FREE",
+        "price_amount": None,
+        "currency": None,
+        "min_participants": 4,
+        "max_participants": 12,
+        "participant_count": 1,
+        "checked_in_count": 0,
+        "waitlist_count": 0,
+        "available_slots": 11,
+        "status": "PUBLISHED",
+        "organizer": {
+            "id": "bb1aedb3-54f4-45c4-ab10-2fb0a07b53ca",
+            "display_name": "Organizer",
+            "avatar_url": None,
+        },
+        "current_user_participation": {
+            "status": "JOINED",
+            "joined_at": "2030-08-01T12:00:00Z",
+        },
+        "confirmation_opens_at": "2030-08-07T16:00:00Z",
+        "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+        "checkin_opens_at": "2030-08-08T15:30:00Z",
+        "checkin_closes_at": "2030-08-08T17:00:00Z",
+        "checkin_radius_m": 150,
+        "permissions": {"can_leave": True},
+    }
+).model_dump(mode="json")
+ACTIVITY_LEAVE_RESPONSE_EXAMPLE = {
+    **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+    "participant_count": 0,
+    "available_slots": 12,
+    "current_user_participation": None,
+    "permissions": ActivityPermissionsRead(can_join=True).model_dump(),
+}
+ACTIVITY_CONFIRM_RESPONSE_EXAMPLE = {
+    **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+    "current_user_participation": {
+        "status": "CONFIRMED",
+        "joined_at": "2030-08-01T12:00:00Z",
+        "confirmed_at": "2030-08-07T16:00:00Z",
+        "checked_in_at": None,
+        "completed_at": None,
+        "no_show_at": None,
+    },
+    "permissions": ActivityPermissionsRead(can_leave=True).model_dump(),
+}
+ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE = {
+    **ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
+    "checked_in_count": 1,
+    "current_user_participation": {
+        **ACTIVITY_CONFIRM_RESPONSE_EXAMPLE["current_user_participation"],
+        "status": "CHECKED_IN",
+        "checked_in_at": "2030-08-08T15:45:00Z",
+    },
+    "permissions": ActivityPermissionsRead().model_dump(),
+}
+ACTIVITY_COMPLETED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        **ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE,
+        "status": "ENDED",
+        "participant_count": 0,
+        "available_slots": 12,
+        "current_user_participation": {
+            **ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE["current_user_participation"],
+            "status": "COMPLETED",
+            "completed_at": "2030-08-08T18:00:00Z",
+        },
+    }
+).model_dump(mode="json")
+ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE = ActivityRead.model_validate(
+    {
+        **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
+        "status": "ENDED",
+        "participant_count": 0,
+        "available_slots": 12,
+        "current_user_participation": {
+            **ACTIVITY_JOIN_RESPONSE_EXAMPLE["current_user_participation"],
+            "status": "NO_SHOW",
+            "no_show_at": "2030-08-08T18:00:00Z",
+        },
+        "permissions": ActivityPermissionsRead().model_dump(),
+    }
+).model_dump(mode="json")
+ACTIVITY_FINALIZE_RESPONSE_EXAMPLE = {
+    **ACTIVITY_COMPLETED_RESPONSE_EXAMPLE,
+    "current_user_participation": None,
+}

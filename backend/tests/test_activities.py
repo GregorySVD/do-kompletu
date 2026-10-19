@@ -187,9 +187,7 @@ def test_created_activity_appears_in_public_list(client):
 
     assert created.status_code == 201
     assert response.status_code == 200
-    assert [activity["id"] for activity in response.json()] == [
-        created.json()["id"]
-    ]
+    assert [activity["id"] for activity in response.json()] == [created.json()["id"]]
 
 
 def test_activity_list_matches_card_and_map_contract(client):
@@ -223,7 +221,8 @@ def test_get_activity_details_returns_organizer_without_password(client):
     assert body["organizer"]["display_name"] == "Activity Organizer"
     assert body["tags"] == []
     assert body["permissions"]["can_join"] is False
-    assert body["confirmation_opens_at"] is None
+    assert body["confirmation_opens_at"] == "2030-08-07T16:00:00Z"
+    assert body["confirmation_deadline_at"] == body["start_at"]
     assert "password_hash" not in str(body)
 
 

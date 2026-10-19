@@ -17,11 +17,19 @@ def _is_sqlite(database_url: str) -> bool:
 @lru_cache(maxsize=4)
 def get_engine(database_url: str | None = None) -> Engine:
     resolved_database_url = database_url or get_settings().database_url
-    connect_args = {"check_same_thread": False} if _is_sqlite(resolved_database_url) else {}
+    connect_args = (
+        {"check_same_thread": False} if _is_sqlite(resolved_database_url) else {}
+    )
+    engine_options = {}
+    if resolved_database_url.startswith("postgresql"):
+        # Membership row-locking relies on a fresh snapshot after acquiring the
+        # activity lock, even if a deployment changes the database's default.
+        engine_options["isolation_level"] = "READ COMMITTED"
     return create_engine(
         resolved_database_url,
         connect_args=connect_args,
         future=True,
+        **engine_options,
     )
 
 
