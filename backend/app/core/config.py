@@ -10,6 +10,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 ENV_FILE = BACKEND_DIR / ".env"
+DEVELOPMENT_JWT_SECRET = "change-me-in-development"
+UNSAFE_JWT_SECRETS = {
+    DEVELOPMENT_JWT_SECRET,
+    "replace-me-with-a-long-random-secret",
+}
+PRODUCTION_JWT_SECRET_MIN_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -21,13 +27,14 @@ class Settings(BaseSettings):
         case_sensitive=False,
         enable_decoding=False,
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     app_name: str = "Do Kompletu API"
     app_version: str = "0.1.0"
     environment: Literal["development", "test", "production"] = "development"
     database_url: str
-    jwt_secret: str = "change-me-in-development"
+    jwt_secret: str = DEVELOPMENT_JWT_SECRET
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -43,6 +50,9 @@ class Settings(BaseSettings):
     activity_check_in_open_minutes_before: int = Field(default=30, ge=0, le=525600)
     activity_check_in_close_minutes_after: int = Field(default=60, ge=0, le=525600)
     activity_check_in_radius_meters: int = Field(default=150, ge=1, le=100000)
+    activity_check_in_max_accuracy_meters: float = Field(
+        default=100, gt=0, allow_inf_nan=False
+    )
     bootstrap_user_email: str | None = None
     bootstrap_user_display_name: str | None = None
     bootstrap_user_password: str | None = None
@@ -60,6 +70,20 @@ class Settings(BaseSettings):
             raise ValueError(
                 "confirmation open minutes must exceed deadline minutes before start"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_production_jwt_secret(self):
+        if self.environment == "production":
+            normalized_secret = self.jwt_secret.strip()
+            if (
+                normalized_secret in UNSAFE_JWT_SECRETS
+                or len(normalized_secret) < PRODUCTION_JWT_SECRET_MIN_LENGTH
+            ):
+                raise ValueError(
+                    "production jwt_secret must be a non-default secret with at least "
+                    f"{PRODUCTION_JWT_SECRET_MIN_LENGTH} characters"
+                )
         return self
 
     @field_validator("jwt_secret")

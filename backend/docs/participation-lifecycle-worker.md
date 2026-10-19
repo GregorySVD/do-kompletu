@@ -233,6 +233,7 @@ lack identity, use 60-second staleTime, and have no periodic refetch interval.
 - Scope caches to identity, clear on account changes, and invalidate/refetch all
   affected activity/personal views after mutations and observed lifecycle changes.
 
-The recommended next backend milestone is the separately scoped hardening work:
-ENDED discovery filtering, check-in accuracy_m, readiness, auth refresh exception
-cleanup, and production JWT-secret validation. None is implemented here.
+The subsequent backend hardening milestone adds ENDED discovery filtering,
+check-in accuracy_m, database readiness, auth refresh exception cleanup, and
+production JWT-secret validation. These changes preserve the worker lifecycle
+described here; see the [README](../../README.md) for the current API contracts.

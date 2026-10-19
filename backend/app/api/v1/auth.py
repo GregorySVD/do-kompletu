@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.core.security import InvalidTokenError
 from app.db.session import get_db
 from app.schemas.auth import (
     AccessTokenResponse,
@@ -215,7 +216,7 @@ def refresh(
 ) -> AccessTokenResponse:
     try:
         return refresh_access_token(session, payload.refresh_token)
-    except Exception as exc:
+    except InvalidTokenError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate refresh token",

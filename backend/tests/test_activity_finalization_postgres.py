@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 )
 END = datetime(2030, 8, 8, 18, tzinfo=UTC)
 START = END - timedelta(minutes=15)
-AT_VENUE = ActivityCheckIn(latitude=52.4232, longitude=16.9461)
+AT_VENUE = ActivityCheckIn(latitude=52.4232, longitude=16.9461, accuracy_m=20)
 
 
 @pytest.fixture

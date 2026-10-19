@@ -39,6 +39,7 @@ def context(client, db_session, monkeypatch):
         "ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE": "30",
         "ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER": "60",
         "ACTIVITY_CHECK_IN_RADIUS_METERS": "150",
+        "ACTIVITY_CHECK_IN_MAX_ACCURACY_METERS": "100",
     }.items():
         monkeypatch.setenv(name, value)
     get_settings.cache_clear()
@@ -238,14 +239,22 @@ def test_check_in_does_not_implicitly_confirm(client, context, state):
     "payload",
     [
         {},
-        {"latitude": 0},
-        {"longitude": 0},
-        {"latitude": 91, "longitude": 0},
-        {"latitude": -91, "longitude": 0},
-        {"latitude": 0, "longitude": 181},
-        {"latitude": 0, "longitude": -181},
-        {"latitude": None, "longitude": 0},
-        {"latitude": "invalid", "longitude": 0},
+        {"latitude": 0, "accuracy_m": 20},
+        {"longitude": 0, "accuracy_m": 20},
+        {"latitude": 0, "longitude": 0},
+        {**COORDINATES, "latitude": 91},
+        {**COORDINATES, "latitude": -91},
+        {**COORDINATES, "longitude": 181},
+        {**COORDINATES, "longitude": -181},
+        {**COORDINATES, "latitude": None},
+        {**COORDINATES, "latitude": "invalid"},
+        {**COORDINATES, "accuracy_m": 0},
+        {**COORDINATES, "accuracy_m": -1},
+        {**COORDINATES, "accuracy_m": None},
+        {**COORDINATES, "accuracy_m": "invalid"},
+        {**COORDINATES, "accuracy_m": "NaN"},
+        {**COORDINATES, "accuracy_m": "Infinity"},
+        {**COORDINATES, "accuracy_m": "-Infinity"},
         {**COORDINATES, "user_id": str(uuid4())},
     ],
 )
@@ -262,10 +271,95 @@ def test_missing_check_in_body_is_validation_error(client, context):
 
 @pytest.mark.parametrize(
     "payload",
-    [{"latitude": -90, "longitude": -180}, {"latitude": 90, "longitude": 180}],
+    [
+        {"latitude": -90, "longitude": -180, "accuracy_m": 20},
+        {"latitude": 90, "longitude": 180, "accuracy_m": 20},
+    ],
 )
 def test_coordinate_extremes_are_valid_schema_values(payload):
     assert ActivityCheckIn.model_validate(payload).model_dump() == payload
+
+
+@pytest.mark.parametrize("accuracy", [float("nan"), float("inf"), float("-inf")])
+def test_nonfinite_accuracy_is_rejected_by_schema(accuracy):
+    with pytest.raises(ValidationError):
+        ActivityCheckIn.model_validate({**COORDINATES, "accuracy_m": accuracy})
+
+
+@pytest.mark.parametrize(
+    "raw_accuracy,sanitized_input",
+    [("NaN", "nan"), ("Infinity", "inf"), ("-Infinity", "-inf"), ("1e999", "inf")],
+)
+def test_raw_nonfinite_accuracy_returns_serializable_validation_error(
+    client, context, raw_accuracy, sanitized_input
+):
+    response = client.post(
+        path(context) + "/check-in",
+        headers={**context[2][1], "Content-Type": "application/json"},
+        content=(
+            '{"latitude":52.4232,"longitude":16.9461,"accuracy_m":'
+            + raw_accuracy
+            + "}"
+        ),
+    )
+    assert response.status_code == 422
+    error = response.json()["detail"][0]
+    assert error["type"] == "finite_number"
+    assert error["loc"] == ["body", "accuracy_m"]
+    assert error["input"] == sanitized_input
+
+
+def test_nonfinite_nested_extra_field_has_serializable_validation_error(client, context):
+    response = client.post(
+        path(context) + "/check-in",
+        headers={**context[2][1], "Content-Type": "application/json"},
+        content=(
+            '{"latitude":52.4232,"longitude":16.9461,"accuracy_m":20,'
+            '"extra":{"values":[NaN,Infinity,-Infinity]}}'
+        ),
+    )
+    assert response.status_code == 422
+    error = response.json()["detail"][0]
+    assert error["type"] == "extra_forbidden"
+    assert error["loc"] == ["body", "extra"]
+    assert error["input"] == {"values": ["nan", "inf", "-inf"]}
+
+
+@pytest.mark.parametrize(
+    "maximum,accuracy,accepted",
+    [
+        (100, 20, True),
+        (100, 100, True),
+        (100, 100.0001, False),
+        (37.5, 37.5, True),
+        (37.5, 37.5001, False),
+    ],
+)
+def test_configured_accuracy_limit_precedes_geographic_validation(
+    client, db_session, context, monkeypatch, maximum, accuracy, accepted
+):
+    prepare(client, context)
+    monkeypatch.setenv("ACTIVITY_CHECK_IN_MAX_ACCURACY_METERS", str(maximum))
+    get_settings.cache_clear()
+    geographic_calls = []
+
+    def geographic_check(*args):
+        geographic_calls.append(args)
+        return True
+
+    monkeypatch.setattr(service, "_within_check_in_radius", geographic_check)
+    response = action(
+        client, context, "check-in", json={**COORDINATES, "accuracy_m": accuracy}
+    )
+    assert response.status_code == (200 if accepted else 409)
+    assert len(geographic_calls) == int(accepted)
+    row = stored(db_session, context)
+    assert row.status == ("CHECKED_IN" if accepted else "CONFIRMED")
+    assert (row.checked_in_at is not None) is accepted
+    if not accepted:
+        assert response.json() == {
+            "detail": "Location accuracy is insufficient for check-in"
+        }
 
 
 def test_location_rejection_preserves_state_even_when_can_check_in_is_true(
@@ -447,6 +541,11 @@ def test_checked_in_history_preserves_state(client, context, monkeypatch, cancel
         ("activity_check_in_radius_meters", 0),
         ("activity_check_in_radius_meters", -1),
         ("activity_check_in_radius_meters", "invalid"),
+        ("activity_check_in_max_accuracy_meters", 0),
+        ("activity_check_in_max_accuracy_meters", -1),
+        ("activity_check_in_max_accuracy_meters", "invalid"),
+        ("activity_check_in_max_accuracy_meters", float("nan")),
+        ("activity_check_in_max_accuracy_meters", float("inf")),
         ("activity_check_in_open_minutes_before", 525601),
     ],
 )
@@ -535,6 +634,8 @@ def test_check_in_openapi_examples_and_privacy_contract(client):
     )
     fields = schema["components"]["schemas"]["ActivityCheckIn"]
     assert fields["additionalProperties"] is False
-    assert set(fields["required"]) == {"latitude", "longitude"}
+    assert set(fields["required"]) == {"latitude", "longitude", "accuracy_m"}
     assert fields["properties"]["latitude"]["minimum"] == -90
     assert fields["properties"]["longitude"]["maximum"] == 180
+    assert fields["properties"]["accuracy_m"]["exclusiveMinimum"] == 0
+    assert "accuracy_m" not in schema["components"]["schemas"]["ActivityRead"]["properties"]

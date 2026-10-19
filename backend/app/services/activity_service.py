@@ -125,10 +125,11 @@ def list_activities(
     category_id: ActivityCategoryId | None = None,
     price_type: PriceType | None = None,
 ) -> list[ActivityResult]:
+    # Reuse one aware cutoff for SQL filtering and each returned status/permission.
     now = datetime.now(UTC)
     statement = (
         select(Activity)
-        .where(Activity.cancelled_at.is_(None))
+        .where(Activity.cancelled_at.is_(None), Activity.end_at > now)
         .options(joinedload(Activity.organizer))
     )
 

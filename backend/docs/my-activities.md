@@ -3,6 +3,8 @@
 Organizer editing and cancellation are now implemented by the subsequent
 [management milestone](activity-management.md). Cancelled rows remain in all
 relations and keep the end-time scopes described here; discovery excludes them.
+Ended activities are also excluded from public discovery, while personal history
+and directly addressed detail retain them under the rules below.
 The [participation lifecycle](activity-participation.md) now retains LEFT records
 internally; joined lists include current JOINED/CONFIRMED/CHECKED_IN records before
 end and also COMPLETED/NO_SHOW in history after explicit

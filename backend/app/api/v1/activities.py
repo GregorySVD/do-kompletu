@@ -398,8 +398,10 @@ def finalize(
     response_model=list[ActivityListItem],
     summary="List activities",
     description=(
-        "Return public activity cards/map items, excluding cancelled activities. Results are stable: active and "
-        "upcoming activities first, then start time and UUID. `distance_m` remains "
+        "Return public activity cards/map items, excluding CANCELLED and ENDED activities. "
+        "PUBLISHED and ONGOING activities are included only when cancelled_at is null "
+        "and end_at is strictly later than one UTC cutoff captured for the request. "
+        "Filtering precedes pagination. Results remain stable by start time and UUID. `distance_m` remains "
         "null until nearby search is implemented."
     ),
     response_description="A paginated array of activity list/map projections.",
@@ -763,7 +765,8 @@ def confirm(
     summary="Check in as a confirmed participant near the activity",
     description="""
 Use **Authorize** or Authorization: Bearer <access_token>. Submit WGS 84 latitude
-(-90..90) and longitude (-180..180). Only a CONFIRMED non-organizer may check in;
+(-90..90), longitude (-180..180), and required accuracy_m, a finite positive
+client-reported location accuracy radius in meters. Only a CONFIRMED non-organizer may check in;
 JOINED is not implicitly confirmed, WAITLISTED has no place and is rejected with
 409, LEFT is inactive, duplicate CHECKED_IN is 409.
 
@@ -772,16 +775,22 @@ checkin_closes_at: start minus ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE (default 30
 through the earlier of start plus ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER (default
 60) or activity end. Cancelled/ended activities cannot check in.
 
-Under the shared activity-row lock, PostgreSQL/PostGIS ST_DWithin compares the
+Under the shared activity-row lock, accuracy_m above
+ACTIVITY_CHECK_IN_MAX_ACCURACY_METERS (default 100) returns 409 with
+"Location accuracy is insufficient for check-in"; exactly the limit is allowed.
+This helps reject naturally poor GPS fixes, but the accuracy is client-reported
+and does not prove coordinates are genuine or prevent GPS spoofing.
+
+After accuracy validation, PostgreSQL/PostGIS ST_DWithin compares the
 stored Geography(Point,4326) with Point(longitude,latitude), in meters using the
 spheroid. Distance <= ACTIVITY_CHECK_IN_RADIUS_METERS (default 150) is accepted;
 outside returns 409. No Python/SQLite geographic fallback authorizes attendance.
 
 Success transitions CONFIRMED to CHECKED_IN, sets checked_in_at once, preserves
 joined_at/confirmed_at, and returns ActivityRead with real checked_in_count.
-Coordinates and distance are used transiently and are not stored or returned.
+Submitted coordinates, accuracy_m, and distance are used transiently and are not stored or returned.
 The caller's timestamps are private; public timing/radius/counts are safe metadata.
-can_check_in means state/time allow an attempt; POST still validates proximity.
+can_check_in means state/time allow an attempt; POST still validates accuracy and proximity.
 
 CHECKED_IN remains active and consumes capacity; it cannot leave or confirm again.
 Schedule/location edits are protected, and cancellation preserves check-in evidence.
@@ -806,13 +815,14 @@ No rewards or undo check-in exists.
             "Activity has ended",
             "Check-in window has not opened",
             "Check-in window has closed",
+            "Location accuracy is insufficient for check-in",
             "Outside check-in radius",
         ),
         503: {
             "description": "Check-in requires PostgreSQL/PostGIS; there is no approximate fallback."
         },
         422: {
-            "description": "Invalid activity UUID or coordinate body; latitude/longitude are required, finite, and range-checked. Unknown fields are rejected."
+            "description": "Invalid activity UUID or location body; latitude/longitude are required, finite, and range-checked. accuracy_m is required, finite, and greater than zero. Unknown fields are rejected."
         },
     },
 )
@@ -823,7 +833,7 @@ def check_in(
         Body(
             openapi_examples={
                 "at_venue": {
-                    "summary": "Coordinates at the example venue",
+                    "summary": "Coordinates at the example venue with a 20-meter accuracy radius",
                     "value": ACTIVITY_CHECK_IN_REQUEST_EXAMPLE,
                 }
             }

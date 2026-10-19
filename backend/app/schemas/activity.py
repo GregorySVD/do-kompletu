@@ -347,7 +347,7 @@ class ActivityPermissionsRead(BaseModel):
     )
     can_check_in: bool = Field(
         default=False,
-        description="True for a CONFIRMED non-organizer inside the check-in window unless cancelled/ended. Allows attempting check-in; submitted coordinates must still pass PostGIS proximity validation.",
+        description="True for a CONFIRMED non-organizer inside the check-in window unless cancelled/ended. Allows attempting check-in; submitted accuracy must pass the configured limit and coordinates must pass PostGIS proximity validation.",
     )
     can_view_gallery: bool = Field(
         default=False,

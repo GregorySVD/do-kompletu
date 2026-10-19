@@ -145,7 +145,8 @@ No existing scope is silently redefined around start time.
 
 Cancellation retains WAITLISTED/timestamps, keeps direct detail and personal
 waitlisted listings with existing end-time scopes, and blocks every mutation.
-Discovery still excludes cancelled activities. Finalization leaves WAITLISTED
+Discovery excludes cancelled and ended activities; direct detail and personal
+history remain accessible under their existing rules. Finalization leaves WAITLISTED
 unchanged: a person who never received a place becomes neither NO_SHOW nor
 COMPLETED. An ended waitlist-only event has no unresolved attendance to finalize.
 

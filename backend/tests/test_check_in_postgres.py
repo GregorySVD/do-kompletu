@@ -45,7 +45,7 @@ pytestmark = pytest.mark.skipif(
     POSTGRES_TEST_DATABASE_URL is None,
     reason="POSTGRES_TEST_DATABASE_URL is not configured",
 )
-AT_VENUE = ActivityCheckIn(latitude=52.4232, longitude=16.9461)
+AT_VENUE = ActivityCheckIn(latitude=52.4232, longitude=16.9461, accuracy_m=20)
 
 
 @pytest.fixture
@@ -70,6 +70,7 @@ def context(pg_engine, monkeypatch):
         "ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE": "30",
         "ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER": "60",
         "ACTIVITY_CHECK_IN_RADIUS_METERS": "150",
+        "ACTIVITY_CHECK_IN_MAX_ACCURACY_METERS": "100",
         "ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE": "1440",
         "ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE": "0",
     }.items():
@@ -127,7 +128,7 @@ def projected_coordinates(session, activity_id, distance):
     latitude, longitude = session.execute(
         select(func.ST_Y(point), func.ST_X(point)).where(Activity.id == activity_id)
     ).one()
-    return {"latitude": latitude, "longitude": longitude}
+    return {"latitude": latitude, "longitude": longitude, "accuracy_m": 20}
 
 
 @pytest.mark.parametrize(
@@ -167,6 +168,62 @@ def test_postgis_geodesic_radius_inside_and_near_boundary(
         assert (row.checked_in_at is not None) is accepted
 
 
+@pytest.mark.parametrize("accuracy,accepted", [(20, True), (100, True), (100.0001, False)])
+def test_postgis_inside_radius_still_requires_acceptable_accuracy(
+    pg_engine, context, accuracy, accepted
+):
+    activity_id, users, _ = context
+    with pg_client(pg_engine) as client:
+        response = client.post(
+            f"/api/v1/activities/{activity_id}/check-in",
+            headers={"Authorization": f"Bearer {create_access_token(users[1])}"},
+            json={**AT_VENUE.model_dump(), "accuracy_m": accuracy},
+        )
+    assert response.status_code == (200 if accepted else 409)
+    if not accepted:
+        assert response.json() == {
+            "detail": "Location accuracy is insufficient for check-in"
+        }
+    with Session(pg_engine) as session:
+        row = session.get(ActivityParticipation, (activity_id, users[1]))
+        assert row.status == ("CHECKED_IN" if accepted else "CONFIRMED")
+        assert (row.checked_in_at is not None) is accepted
+
+
+def test_postgis_submitted_location_and_accuracy_are_transient(pg_engine, context):
+    activity_id, users, _ = context
+    with Session(pg_engine) as session:
+        payload = projected_coordinates(session, activity_id, 50)
+    with pg_client(pg_engine) as client:
+        response = client.post(
+            f"/api/v1/activities/{activity_id}/check-in",
+            headers={"Authorization": f"Bearer {create_access_token(users[1])}"},
+            json=payload,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["latitude"] == AT_VENUE.latitude
+        assert body["longitude"] == AT_VENUE.longitude
+        assert body["longitude"] != payload["longitude"]
+        assert "accuracy_m" not in body
+        assert "accuracy_m" not in body["current_user_participation"]
+    with Session(pg_engine) as session:
+        venue = cast(
+            Activity.location,
+            Geometry(geometry_type="POINT", srid=4326, spatial_index=False),
+        )
+        latitude, longitude = session.execute(
+            select(func.ST_Y(venue), func.ST_X(venue)).where(Activity.id == activity_id)
+        ).one()
+        assert (latitude, longitude) == (AT_VENUE.latitude, AT_VENUE.longitude)
+        row = session.get(ActivityParticipation, (activity_id, users[1]))
+        assert row.status == "CHECKED_IN"
+        assert not {"latitude", "longitude", "accuracy_m"} & set(
+            ActivityParticipation.__table__.columns.keys()
+        )
+        assert "accuracy_m" not in Activity.__table__.columns
+
+
 def test_postgis_longitude_latitude_order_is_not_interchangeable(pg_engine, context):
     activity_id, users, _ = context
     with Session(pg_engine, expire_on_commit=False) as session:
@@ -176,7 +233,9 @@ def test_postgis_longitude_latitude_order_is_not_interchangeable(pg_engine, cont
                 activity_id,
                 users[1],
                 ActivityCheckIn(
-                    latitude=AT_VENUE.longitude, longitude=AT_VENUE.latitude
+                    latitude=AT_VENUE.longitude,
+                    longitude=AT_VENUE.latitude,
+                    accuracy_m=20,
                 ),
             )
         assert (
@@ -199,7 +258,7 @@ def test_postgis_geography_handles_antimeridian(pg_engine, context):
                 session,
                 activity_id,
                 users[1],
-                ActivityCheckIn(latitude=0, longitude=-179.9999),
+                ActivityCheckIn(latitude=0, longitude=-179.9999, accuracy_m=20),
             )
         )
         assert body.checked_in_count == 1  # About 22 meters across the date line.

@@ -17,6 +17,10 @@ terminal COMPLETED and NO_SHOW outcomes after activity end. FIFO waitlists now
 queue full-activity requests and promote users atomically on active leave or
 capacity increase before start. A lifespan worker now expires overdue reservations,
 promotes FIFO waiters with late-confirmation grace, and expires remaining queues at start.
+Public discovery excludes ended/cancelled activities, check-in requires a usable
+client-reported GPS accuracy, `/ready` checks database connectivity, and production
+startup validates the JWT secret. Refresh authentication errors remain 401 while
+infrastructure failures follow the normal server-error path.
 
 Frontend authentication, profile display, discovery, details, categories, and
 creation use real APIs. My Activities still uses fixtures, and join/leave/confirm/check-in and
@@ -105,7 +109,9 @@ Content-Type: application/json
 
 The JSON key `email` is not accepted in place of `identifier`. Login returns an
 access/refresh token pair. Refresh accepts `{"refresh_token":"<refresh-token>"}`
-and returns a new access token. Sample settings use 30-minute access and 7-day
+and returns a new access token. Invalid/expired tokens, wrong token types, and
+unavailable users return 401; database or unexpected application failures are not
+misclassified as authentication errors. Sample settings use 30-minute access and 7-day
 refresh lifetimes. Protected endpoints accept
 `Authorization: Bearer <access_token>`; refresh tokens cannot authorize them.
 Swagger uses the separate OAuth2 form endpoint described below.
@@ -133,15 +139,19 @@ The organizer comes exclusively from the access JWT; client-supplied
 Public discovery returns an array of `ActivityListItem` cards/map items with real
 membership counts. Filters are `query` (title, venue, address, category name/slug),
 `category_id`, and `price_type`. Pagination uses `limit` (default 20, range 1–100)
-and `offset` (default 0, minimum 0). Cancelled rows are excluded before pagination;
-upcoming/ongoing rows come first, then start time ascending and UUID ascending.
-Ended activities can still appear.
+and `offset` (default 0, minimum 0). Each list request uses one UTC-aware cutoff:
+`cancelled_at IS NULL AND end_at > cutoff`. PUBLISHED and ONGOING activities are
+included; CANCELLED and ENDED activities, including an exact `end_at == cutoff`,
+are excluded. Lifecycle and requested filters run before ordering and pagination.
+Existing start-time ascending and UUID ascending ordering is preserved for the
+remaining records.
 
 Detail returns `ActivityRead`, including safe public organizer identity, nullable
 `cancelled_at`, caller membership, and action permissions. Authentication is
 optional: absent credentials mean anonymous; supplied invalid/expired credentials
 return 401. Only the caller's membership is exposed. Public discovery has no
-personalized membership/permissions fields.
+personalized membership/permissions fields. Direct detail still returns ended and
+cancelled activities, and My Activities/history retains its existing visibility.
 
 ### Participation
 
@@ -216,7 +226,9 @@ for state, shutdown, migration, testability, and deployment details.
 ### Check-in
 
 POST `/api/v1/activities/{activity_id}/check-in` requires an access token and JSON
-`{"latitude":52.4232,"longitude":16.9461}`. Only CONFIRMED non-organizers may
+`{"latitude":52.4232,"longitude":16.9461,"accuracy_m":20}`. All three fields are
+required and finite; `accuracy_m` is a positive client-reported accuracy radius in
+meters. Unknown fields are rejected. Only CONFIRMED non-organizers may
 transition to CHECKED_IN (200); JOINED is not implicitly confirmed. Successful
 check-in sets checked_in_at, preserves joined_at/confirmed_at, and consumes the
 same existing place. Duplicate check-in, leave after check-in, and confirmation
@@ -227,6 +239,9 @@ The default window opens 30 minutes before start and closes at the earlier of
 Configure `ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE` and
 `ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER` (integers 0–525600), and
 `ACTIVITY_CHECK_IN_RADIUS_METERS` (integer 1–100000, default 150).
+`ACTIVITY_CHECK_IN_MAX_ACCURACY_METERS` defaults to 100 and must be finite and
+positive. Accuracy equal to that limit is accepted; larger values return 409
+`Location accuracy is insufficient for check-in` before the PostGIS radius query.
 Existing public detail fields `checkin_opens_at`, `checkin_closes_at`, and
 `checkin_radius_m` now carry this metadata.
 
@@ -234,12 +249,15 @@ PostgreSQL/PostGIS `ST_DWithin` checks the submitted point as `(longitude, latit
 against the stored activity geography, using meters and the spheroid. The allowed
 radius is inclusive, subject to geospatial floating-point precision. Outside the
 radius, wrong state, closed window, cancellation, or end returns 409. Invalid
-coordinates/body return 422. `can_check_in` means state/time permit an attempt;
-POST must still validate proximity. No SQLite/Python fallback can authorize check-in.
+coordinates, missing/nonpositive/nonfinite accuracy, or invalid bodies return 422.
+`can_check_in` means state/time permit an attempt; POST must still validate accuracy
+and proximity. No SQLite/Python fallback can authorize check-in.
 
-Only checked_in_at is stored; submitted coordinates and distance are neither
-persisted nor returned. Coordinates can be spoofed: server proximity validation
-does not attest device GPS. See the [check-in contract](backend/docs/activity-check-in.md).
+Only checked_in_at is stored; submitted coordinates, accuracy, and computed distance
+are neither persisted nor returned. Client-reported accuracy helps reject naturally
+poor GPS fixes; it does not prove coordinates are genuine or prevent GPS spoofing.
+PostGIS remains authoritative for the separate radius check. See the
+[check-in contract](backend/docs/activity-check-in.md).
 
 ### Final attendance outcomes
 
@@ -352,9 +370,17 @@ All currently implemented application operations are listed below. “Access JWT
 also requires an active existing user. Interactive docs are at `/docs` and the
 generated contract is at `/openapi.json`.
 
+`GET /health` is lightweight process liveness and does not access the database.
+`GET /ready` uses the normal database session to execute only `SELECT 1`:
+200 `{"status":"ok"}` when reachable, or 503 `{"detail":"Database unavailable"}`
+for recognized database connectivity/pool failures. It does not inspect schema or
+PostGIS readiness. Connection details and exception text are not returned;
+unexpected programming failures follow normal server-error handling.
+
 | Method | Endpoint | Authentication | Purpose |
 | --- | --- | --- | --- |
 | GET | `/health` | Public | API process liveness; does not check database readiness |
+| GET | `/ready` | Public | PostgreSQL connectivity readiness via SELECT 1 |
 | POST | `/api/v1/auth/register` | Public | Register an account |
 | POST | `/api/v1/auth/login` | Identifier/password in JSON | Obtain access and refresh tokens |
 | POST | `/api/v1/auth/token` | Username/password form | Swagger OAuth2 access token |
@@ -364,7 +390,7 @@ generated contract is at `/openapi.json`.
 | GET | `/api/v1/users/me/activities` | Access JWT | Organized/joined/waitlisted activities by scope |
 | GET | `/api/v1/categories` | Public | Canonical category reference data |
 | POST | `/api/v1/activities` | Access JWT | Create as authenticated organizer |
-| GET | `/api/v1/activities` | Public | Filtered, paginated discovery |
+| GET | `/api/v1/activities` | Public | Filtered, paginated discovery excluding ENDED/CANCELLED |
 | GET | `/api/v1/activities/{activity_id}` | Optional access JWT | Public detail plus caller state |
 | PATCH | `/api/v1/activities/{activity_id}` | Organizer access JWT | Edit before existing start |
 | POST | `/api/v1/activities/{activity_id}/cancel` | Organizer access JWT | Soft-cancel before end |
@@ -402,11 +428,18 @@ PARTICIPATION_LIFECYCLE_SWEEP_INTERVAL_SECONDS=60
 ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE=30
 ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER=60
 ACTIVITY_CHECK_IN_RADIUS_METERS=150
+ACTIVITY_CHECK_IN_MAX_ACCURACY_METERS=100
 ```
 
 Replace the JWT placeholder with a long random secret. Settings always load
 `backend/.env`, independent of the launch directory. The CORS setting accepts
 comma-separated origins or a JSON array.
+
+With `ENVIRONMENT=production`, settings refuse startup for a missing/blank JWT
+secret, recognized development/example placeholders, or fewer than 32 characters
+after trimming whitespace. Configure a random non-default secret of at least that
+length. Validation does not print the secret. Development/test keep their existing
+local-secret conventions; this production rule adds no setup requirement there.
 
 ### Docker/PostgreSQL and migrations
 
@@ -481,7 +514,8 @@ this root document describes the current project setup.
    confirmation testing, create the activity 30–60 minutes ahead and call
    `/confirm`; check CONFIRMED/confirmed_at and that schedule changes now return 409.
    For check-in, create within 30 minutes of start, confirm first, and POST your
-   coordinates to `/check-in`. Check CHECKED_IN/checked_in_at, checked_in_count,
+   coordinates and positive `accuracy_m` no greater than the configured maximum to
+   `/check-in`. Check CHECKED_IN/checked_in_at, checked_in_count,
    blocked leave, and protected location edits. Swagger examples use an illustrative
    venue; submitted coordinates must be within the actual activity's radius.
 7. Reauthorize as organizer and cancel. Verify discovery omits the activity,
@@ -560,12 +594,13 @@ The lifecycle, check-in, and finalization migration tests exercise
 `0007 → 0008 → 0007 → 0008`; none downgrades the normal database. Isolated
 check-in tests stub proximity explicitly; only real PostGIS tests validate geography.
 
-Verified on 2026-10-19 after the automated lifecycle milestone (baseline: 460 default and 122 PostgreSQL tests passed):
+Verified on 2026-10-19 after backend hardening (baseline rerun: 518 default and
+146 PostgreSQL/PostGIS tests passed):
 
 | Check | Current result |
 | --- | --- |
-| Default `uv run pytest -v` without integration URL | 518 passed, 146 PostgreSQL tests skipped |
-| Separate fourteen-module PostgreSQL run | 146 passed |
+| Default `uv run pytest -v` without integration URL | 613 passed, 153 PostgreSQL tests skipped |
+| Separate fifteen-module PostgreSQL/PostGIS run in an isolated test database | 153 passed |
 | Ruff, compileall, `uv lock --check` | Passed |
 | Migration files and development database | `20261019_0010` is head |
 | Waitlist migration cycle in a generated temporary database | `0008 → 0009 → 0008 → 0009` passed, preserving rows and enforcing timestamp constraints |
@@ -573,9 +608,10 @@ Verified on 2026-10-19 after the automated lifecycle milestone (baseline: 460 de
 | `git diff --check` | Passed |
 | `git diff -- frontend` | Empty |
 
-The [53-point lifecycle report](backend/docs/participation-lifecycle-milestone-report.md)
-records the implementation decisions, exact files/status, validation, deployment
-limits, and remaining frontend integration.
+The [35-point hardening report](backend/docs/backend-hardening-milestone-report.md)
+records the current implementation, exact files/status, validation, and frontend
+follow-up. The [previous lifecycle report](backend/docs/participation-lifecycle-milestone-report.md)
+retains the earlier worker/deployment decisions.
 
 The tests report an existing Starlette TestClient/httpx deprecation warning and
 local pytest-cache permission warnings. Git may also report an unreadable root
@@ -645,10 +681,10 @@ this milestone.
 
 | Area | Works now | Remaining integration |
 | --- | --- | --- |
-| Authentication | Registration, JSON login with correct `identifier` key, access/refresh storage in sessionStorage, session restoration, route protection | Refresh/retry on API 401 beyond session restoration |
+| Authentication | Registration, JSON login with correct `identifier` key, access/refresh storage in sessionStorage, session restoration, route protection; refresh JSON contract unchanged | Refresh/retry on API 401 beyond session restoration; distinguish temporary network/5xx failures from authentication rejection during session restoration |
 | Profile | Real `/users/me` profile displayed through auth context | Profile editing UI for the existing PATCH endpoint |
-| Discovery/map/cards | Real activity/category APIs, coordinates, membership counts | Server filtering and pagination beyond the first `limit=100, offset=0` page; lifecycle-aware availability |
-| Details | Real optional-auth detail, organizer display, can_join-based button, passive checkin window/radius display; timing/can_confirm/can_check_in types exist | Wire join/leave/confirm/check-in and organizer actions; geolocation permission/coordinates, mutation pending/error/success states, live window eligibility |
+| Discovery/map/cards | Real activity/category APIs, coordinates, membership counts; backend now excludes ENDED/CANCELLED without client filtering changes | Server filtering and pagination beyond the first `limit=100, offset=0` page; lifecycle-aware availability |
+| Details | Real optional-auth detail, organizer display, can_join-based button, passive checkin window/radius display; timing/can_confirm/can_check_in types exist | Wire join/leave/confirm/check-in and organizer actions; geolocation permission/coordinates/accuracy, mutation pending/error/success states, live window eligibility |
 | Creation | Real form, category/location/time/price/capacity validation, POST, activity-query invalidation, navigation to new detail | Extend mutation/cache coverage for the actions below |
 | My Activities | Protected page and three sections exist | Replace mock activities/static membership IDs with authenticated relation/scope queries, loading/errors, and pagination |
 | Organizer management | Backend edit/cancel/finalize API ready | Edit form/actions, API functions/hooks, cancellation/finalization pending/result/error handling, status/cancelled_at rendering, can_finalize-driven action |
@@ -661,7 +697,14 @@ Add a confirm API function, mutation hook, and permission-aware button with pend
 error, and already-confirmed states. LEFT is null current participation and may
 rejoin; it must not appear in joined lists. Add check-in API/mutation and browser
 geolocation permission/error handling. CHECKED_IN cannot leave and no longer offers
-confirm/check-in actions. Handle outside-radius and expired-window errors.
+confirm/check-in actions. Submit `position.coords.latitude`,
+`position.coords.longitude`, and `accuracy_m: position.coords.accuracy`; handle poor
+accuracy, outside-radius, and expired-window errors. No check-in API/geolocation
+utility currently exists in the frontend. Discovery has no manual ENDED exclusion
+to remove. The existing backend status gate calls `/health` and remains a liveness
+check; `/ready` requires no user-facing frontend integration. The current session
+restore clears tokens on any refresh failure, including network/5xx errors; the
+backend fix preserves that distinction for future client resilience work.
 After join/leave/confirm/check-in/edit/cancel/finalize, refresh discovery, detail,
 and relevant personal lists. Render caller attendance outcomes in history/detail,
 separately from activity ENDED, and keep every participant action disabled for
@@ -693,9 +736,8 @@ log, or schedule-edit notification. Confirmation is a self-declared intent to at
 
 | State | Milestone |
 | --- | --- |
-| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization; FIFO waitlists/promotion; autonomous confirmation/waitlist expiry with grace |
+| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization; FIFO waitlists/promotion; autonomous confirmation/waitlist expiry with grace; discovery/accuracy/readiness/auth/production-secret hardening |
 | Next frontend integration | Real My Activities and final history outcomes; join/leave/rejoin/confirm/check-in; geolocation; organizer edit/cancel/finalize; state/window/error UI; identity-aware caching and invalidation |
-| Recommended next backend milestone | Final scoped hardening: ENDED discovery filtering, check-in accuracy_m, /ready, auth refresh exception cleanup, production JWT-secret validation |
 | Potential later sequence | Reviews/ratings → XP/points → ranks/achievements, after eligibility and cancelled-event policies are defined |
 | Later product work | Notifications/chat, galleries, nearby search; payment handling if required |
 
@@ -716,5 +758,6 @@ use `Cache-Control: private, no-store` and `Vary: Authorization`; mutation respo
 also use `private, no-store`. JWT refresh is stateless: no token revocation/logout
 endpoint or refresh-token rotation is currently implemented.
 
-Check-in validates submitted coordinates, not the authenticity of a device GPS
-reading. No anti-spoofing, device attestation, or location history is implemented.
+Check-in validates client-reported accuracy and submitted coordinates, not the
+authenticity of a device GPS reading. No anti-spoofing, device attestation, or
+location history is implemented.

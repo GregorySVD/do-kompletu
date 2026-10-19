@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
+from jose import jwt
+from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
-from app.core.security import create_access_token
+from app.core.config import get_settings
+from app.core.security import create_access_token, create_refresh_token
 from app.models.user import User
 
 
@@ -312,6 +316,152 @@ def test_access_token_cannot_be_used_as_refresh_token(client):
     )
 
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize("token_kind", ["malformed", "expired", "invalid-signature"])
+def test_refresh_rejects_invalid_tokens_with_generic_unauthorized(client, token_kind):
+    settings = get_settings()
+    tokens = {
+        "malformed": "not-a-real-token",
+        "expired": create_refresh_token(uuid4(), expires_delta=timedelta(seconds=-10)),
+        "invalid-signature": jwt.encode(
+            {"sub": str(uuid4()), "type": "refresh"},
+            "different-test-signing-secret",
+            algorithm=settings.jwt_algorithm,
+        ),
+    }
+
+    response = client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": tokens[token_kind]}
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Could not validate refresh token"}
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+@pytest.mark.parametrize(
+    "claims",
+    [
+        {"type": "refresh"},
+        {"sub": 123, "type": "refresh"},
+        {"sub": "invalid-user-uuid", "type": "refresh"},
+        {"sub": str(uuid4()), "type": "unknown"},
+        {"sub": str(uuid4()), "type": "refresh", "exp": "invalid-expiry"},
+    ],
+)
+def test_refresh_rejects_invalid_authentication_claims(client, claims):
+    settings = get_settings()
+    token = jwt.encode(claims, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+    response = client.post("/api/v1/auth/refresh", json={"refresh_token": token})
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Could not validate refresh token"}
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+@pytest.mark.parametrize("decode_error", [JWTError, JWTClaimsError, ExpiredSignatureError])
+def test_refresh_handles_known_jwt_decode_exceptions(client, monkeypatch, decode_error):
+    refresh_token = create_refresh_token(uuid4())
+
+    def reject_token(*args, **kwargs):
+        raise decode_error("Rejected by the JWT decoder")
+
+    monkeypatch.setattr("app.core.security.jwt.decode", reject_token)
+
+    response = client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Could not validate refresh token"}
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+@pytest.mark.parametrize("claim_name", ["iat", "nbf", "exp"])
+@pytest.mark.parametrize(
+    "invalid_value", [None, [], {}, float("nan"), float("inf"), -float("inf")]
+)
+def test_refresh_rejects_invalid_numeric_date_claims(client, claim_name, invalid_value):
+    settings = get_settings()
+    refresh_token = jwt.encode(
+        {"sub": str(uuid4()), "type": "refresh", claim_name: invalid_value},
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
+
+    response = client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Could not validate refresh token"}
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+@pytest.mark.parametrize("value_kind", ["integer", "finite-float", "integer-string"])
+def test_refresh_preserves_supported_numeric_date_values(client, value_kind):
+    registration = register_user(client)
+    settings = get_settings()
+    now = int(datetime.now(UTC).timestamp())
+    time_claims = {"iat": now - 10, "nbf": now - 10, "exp": now + 60}
+    if value_kind == "finite-float":
+        time_claims = {name: value + 0.5 for name, value in time_claims.items()}
+    elif value_kind == "integer-string":
+        time_claims = {name: str(value) for name, value in time_claims.items()}
+    refresh_token = jwt.encode(
+        {"sub": registration.json()["id"], "type": "refresh", **time_claims},
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
+
+    response = client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["access_token"]
+
+
+def test_refresh_does_not_mask_unexpected_jwt_decoder_failure(client, monkeypatch):
+    refresh_token = create_refresh_token(uuid4())
+    failure = TypeError("Unexpected decoder programming error")
+
+    def broken_decoder(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr("app.core.security.jwt.decode", broken_decoder)
+
+    with pytest.raises(TypeError) as error:
+        client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+
+    assert error.value is failure
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        OperationalError("SELECT 1", {}, RuntimeError("Database unavailable")),
+        RuntimeError("Unexpected service failure"),
+    ],
+)
+def test_refresh_does_not_mask_database_or_service_failures(client, monkeypatch, failure):
+    refresh_token = create_refresh_token(uuid4())
+
+    def unavailable_user_lookup(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(
+        "app.services.auth_service.get_user_by_id", unavailable_user_lookup
+    )
+
+    # This client propagates server exceptions; the original failure must escape
+    # refresh's authentication handler instead of becoming a 401 response.
+    with pytest.raises(type(failure)) as error:
+        client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+
+    assert error.value is failure
 
 
 def test_patch_current_user_updates_allowed_profile_fields(client):

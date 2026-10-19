@@ -276,11 +276,14 @@ def check_in_activity(
             raise ParticipationError("Check-in window has not opened")
         if now >= deadline_at:
             raise ParticipationError("Check-in window has closed")
+        settings = get_settings()
+        if payload.accuracy_m > settings.activity_check_in_max_accuracy_meters:
+            raise ParticipationError("Location accuracy is insufficient for check-in")
         if not _within_check_in_radius(
             session,
             activity_id,
             payload,
-            get_settings().activity_check_in_radius_meters,
+            settings.activity_check_in_radius_meters,
         ):
             raise ParticipationError("Outside check-in radius")
         participation.status = ParticipationStatus.CHECKED_IN

@@ -364,7 +364,7 @@ def test_expired_private_detail_terminal_mutations_and_personal_lists(
         method = client.delete if operation == "leave" else client.post
         suffix = "join" if operation == "leave" else operation
         kwargs = (
-            {"json": {"latitude": 52.4, "longitude": 16.9}}
+            {"json": {"latitude": 52.4, "longitude": 16.9, "accuracy_m": 20}}
             if operation == "check-in"
             else {}
         )

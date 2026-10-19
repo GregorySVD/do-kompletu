@@ -343,7 +343,7 @@ def test_capacity_reduction_cannot_evict_active_members(client, queue):
 def test_waitlisted_cannot_confirm_or_check_in(client, queue, operation):
     fill(client, queue)
     kwargs = (
-        {"json": {"latitude": 52.4, "longitude": 16.9}}
+        {"json": {"latitude": 52.4, "longitude": 16.9, "accuracy_m": 20}}
         if operation == "check-in"
         else {}
     )
