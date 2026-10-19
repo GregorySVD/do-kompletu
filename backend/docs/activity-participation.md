@@ -2,7 +2,7 @@
 
 ## Scope and compatibility
 
-The current lifecycle replaces row-existence membership with retained JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW/LEFT
+The current lifecycle replaces row-existence membership with retained WAITLISTED/JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW/LEFT
 state. Existing join (201), leave (200), ActivityRead responses, organizer separation,
 JWT authentication, and cancellation rules remain. Leave keeps its DELETE URL but
 now changes state instead of deleting the record. New confirmation uses
@@ -10,7 +10,7 @@ now changes state instead of deleting the record. New confirmation uses
 PostGIS check-in adds `POST /api/v1/activities/{activity_id}/check-in` with coordinate
 JSON. Its detailed window, proximity, privacy, and error contract is in
 [Activity check-in](activity-check-in.md). Organizer-triggered
-[finalization](activity-finalization.md) resolves attendance after end; current head is 0008.
+[finalization](activity-finalization.md) resolves attendance after end; current head is 0010. See the [automated lifecycle contract](participation-lifecycle-worker.md) for worker and deadline details. The [waitlist contract](activity-waitlist.md) adds FIFO admission and promotion.
 
 The [README](../../README.md#testing) records current verification. Related contracts
 cover [My Activities](my-activities.md) and [organizer management](activity-management.md).
@@ -27,7 +27,7 @@ details already render a passive timing/radius panel. There is no geolocation ut
 
 | Frontend area | Current behavior | Required integration |
 | --- | --- | --- |
-| Activity types | current_user_participation is typed as exactly null | Add JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union, joined_at and all nullable lifecycle timestamps; add can_cancel/can_finalize/cancelled_at |
+| Activity types | current_user_participation is typed as exactly null | Add WAITLISTED/JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union, nullable joined_at, waitlisted_at, waitlist_position, and lifecycle timestamps; add can_cancel/can_finalize/cancelled_at |
 | Detail | Real API; join button reads can_join but has no handler | Join/leave/rejoin/confirm API functions and hooks; pending/error states, confirmed indication, window UI |
 | My Activities | Static mockActivities and mockUserActivities IDs, browser-clock sections | Real relation/scope queries, loading/errors/pagination; COMPLETED/NO_SHOW history badges, LEFT excluded, server time boundaries authoritative |
 | Timing/mocks | Passive check-in panel and types exist; fixtures also contain future-feature fields | Use live timing/radius/can_check_in; add geolocation and check-in mutation/actions/errors; fixture dates are not business rules |
@@ -45,30 +45,40 @@ internal inactive record, not a new status to render as current participation.
 
 | Column | Persistence |
 | --- | --- |
-| status | VARCHAR(16), NOT NULL, server/Python default JOINED |
-| joined_at | Existing NOT NULL timestamptz; latest active-cycle join time |
+| status | VARCHAR(24) since 0010, NOT NULL, server/Python default JOINED |
+| joined_at | Nullable since 0009; latest actual place acquisition/promotion time; required for active/final states |
+| waitlisted_at | Added by 0009; queue-entry time; preserved on promotion |
 | left_at | Nullable timestamptz; required for LEFT |
 | confirmed_at | Nullable timestamptz; required for CONFIRMED; preserved after leaving |
 | checked_in_at | Added by 0007; nullable timestamptz required for CHECKED_IN and COMPLETED; no participant location columns |
 | completed_at | Added by 0008; nullable timestamptz required only for COMPLETED |
 | no_show_at | Added by 0008; nullable timestamptz required only for NO_SHOW |
+| confirmation_expired_at | Added by 0010; actual UTC sweep time, required only for CONFIRMATION_EXPIRED |
+| waitlist_expired_at | Added by 0010; actual UTC sweep time, required only for WAITLIST_EXPIRED |
 
 The existing `(activity_id, user_id)` primary key, CASCADE foreign keys, and user
 index remain. Existing rows become JOINED with original joined_at and null new
 timestamps. A VARCHAR plus CHECK avoids PostgreSQL native-enum migration coupling;
 future states can be added through an explicit migration and shared active-state
-definition. JOINED, CONFIRMED, CHECKED_IN, COMPLETED, NO_SHOW, and LEFT are accepted now.
+definition. Current states additionally include CONFIRMATION_EXPIRED and
+WAITLIST_EXPIRED. Both are terminal, inactive, and excluded from joined/waitlisted
+personal relations, while visible privately on direct detail.
 
 Database CHECKs enforce valid status and state/timestamp consistency:
 
-- JOINED: left_at, confirmed_at, and checked_in_at are null.
+- WAITLISTED: waitlisted_at present; joined_at and every attendance/left timestamp null.
+- JOINED: joined_at present; left_at, confirmed_at, and checked_in_at are null.
 - CONFIRMED: left_at/checked_in_at are null and confirmed_at is present.
 - CHECKED_IN: confirmed_at/checked_in_at are present and left_at is null.
 - COMPLETED: confirmed_at/checked_in_at/completed_at present; left_at/no_show_at null.
 - NO_SHOW: no_show_at present; left_at/checked_in_at/completed_at null; confirmed_at optional.
-- LEFT: left_at is present, checked_in_at is null; confirmed_at may retain last-cycle confirmation.
+- LEFT: left_at present; checked_in_at null. Previously active users retain joined_at/optional confirmed_at; never-joined users instead require waitlisted_at and null confirmed_at.
+- CONFIRMATION_EXPIRED: joined_at/confirmation_expired_at present; waitlist history optional; no left/confirmation/check-in/final attendance/waitlist-expiry evidence.
+- WAITLIST_EXPIRED: waitlisted_at/waitlist_expired_at present; joined_at and all left/attendance/confirmation-expiry timestamps null.
 
 Every non-final state requires null completed_at/no_show_at.
+Every original state requires null system-expiry timestamps. See the worker
+contract for the row-preserving 0009/0010 downgrade mappings.
 
 Upgrade is additive. Downgrade to 0005 **deletes LEFT records** so that the old
 row-existence model does not reactivate them, retains JOINED/CONFIRMED rows, and
@@ -86,10 +96,13 @@ dropped; see the finalization contract for the temporary 0007/0008 cycle.
 
 | State | Active / consumes a place | Current participation | Joined My Activities |
 | --- | --- | --- | --- |
+| WAITLISTED | No | WAITLISTED + waitlisted_at + 1-based waitlist_position, joined_at null | Separate waitlisted relation |
 | JOINED | Yes | JOINED + joined_at + null confirmed_at | Included |
 | CONFIRMED | Yes | CONFIRMED + joined_at + confirmed_at | Included |
 | CHECKED_IN | Yes | CHECKED_IN + joined_at + confirmed_at + checked_in_at | Included |
 | COMPLETED | No | Caller-only final state and completed_at, with prior check-in evidence | History only |
+| CONFIRMATION_EXPIRED | No | Caller-only joined/queue evidence and confirmation_expired_at; terminal | Excluded |
+| WAITLIST_EXPIRED | No | Caller-only queue evidence and waitlist_expired_at; terminal | Excluded |
 | NO_SHOW | No | Caller-only final state and no_show_at, confirmed_at if it existed | History only |
 | LEFT | No | null | Excluded, including history scope |
 
@@ -98,7 +111,7 @@ CURRENT_PARTICIPATION_STATES, FINAL_ATTENDANCE_STATES, and history/check-in grou
 ACTIVE_PARTICIPATION_STATUSES remains an internal alias for capacity states.
 `participant_count` is JOINED + CONFIRMED + CHECKED_IN, excluding the organizer and
 all final states. It becomes zero after finalization; it is not a historical
-attendance total. checked_in_count counts CHECKED_IN + COMPLETED; waitlist_count remains zero.
+attendance total. checked_in_count counts CHECKED_IN + COMPLETED; waitlist_count counts WAITLISTED only.
 Finite available_slots is maximum minus that count; unlimited remains null.
 LEFT frees a seat even though its record remains stored. Cancellation does not
 change participation statuses; its preserved active rows still count.
@@ -106,30 +119,37 @@ change participation statuses; its preserved active rows still count.
 | Transition | Endpoint | Stored changes |
 | --- | --- | --- |
 | No row → JOINED | POST /api/v1/activities/{activity_id}/join | Insert joined_at; null left_at/confirmed_at |
+| No row / LEFT → WAITLISTED | Same POST, limited activity full before start | Queue-entry waitlisted_at; joined_at null; reset attendance/left timestamps |
+| WAITLISTED → JOINED | Active leave or capacity edit before start, same transaction | FIFO promotion; joined_at set now; waitlisted_at retained; no auto-confirm |
+| WAITLISTED → LEFT | DELETE join before end unless cancelled | Preserve queue timestamp, set left_at; no capacity freed or promotion |
 | LEFT → JOINED | Same POST | Reuse the row, replace joined_at, clear left_at/confirmed_at/checked_in_at |
 | JOINED → CONFIRMED | POST /api/v1/activities/{activity_id}/confirm | Set confirmed_at; preserve joined_at |
 | JOINED/CONFIRMED → LEFT | DELETE /api/v1/activities/{activity_id}/join | Set left_at; preserve joined_at and confirmed_at |
 | CONFIRMED → CHECKED_IN | POST /api/v1/activities/{activity_id}/check-in | Set checked_in_at after time/PostGIS validation |
 
 Finalization maps CHECKED_IN to COMPLETED and JOINED/CONFIRMED to NO_SHOW at/after
-end through the organizer-only POST finalize endpoint, preserving LEFT/final rows.
+end through the organizer-only POST finalize endpoint, preserving WAITLISTED/LEFT/final rows.
 Only check-in requires a coordinate body; join/leave/confirm/finalize take no body.
 CHECKED_IN cannot leave, rejoin, confirm, or check in again. Leaving/rejoining is not an immutable event
 log: one row describes the latest cycle and loses earlier-cycle evidence on rejoin.
-There is no unconfirm, undo check-in/finalization, automatic expiry/removal,
-scheduler, waitlist, or rewards. JOINED after the confirmation deadline remains
-unresolved until explicit finalization; confirmation is self-declared intent.
+There is no unconfirm, undo check-in/finalization, or rewards. A lifespan worker
+automatically expires overdue JOINED, promotes FIFO waiters before start, and
+expires remaining waitlists at start. Confirmation is self-declared intent;
+attendance finalization remains explicit and is never run by this worker.
 COMPLETED/NO_SHOW are terminal, even if activity dates were changed outside the API.
 
 ## Confirmation window and permissions
 
-`ACTIVITY_CONFIRMATION_WINDOW_HOURS` is an integer setting, default 24, range
-1–8760. It is documented in backend/.env.example. One shared rule derives:
+Opening/deadline offsets default to 60/30 minutes before start and require
+open > deadline >= 0. Late place acquisition uses positive grace (default 10
+minutes), capped at start. The old hours setting is removed; new settings are
+documented in backend/.env.example and the worker contract. Shared helpers derive:
 
 ```text
-confirmation_opens_at = start_at - configured window
-confirmation_deadline_at = start_at
-allowed exactly when opens_at <= now < deadline_at
+confirmation_opens_at = start_at - open_minutes
+confirmation_deadline_at = start_at - deadline_minutes  # public normal deadline
+effective_deadline = normal_deadline if joined_at < normal_deadline else min(joined_at + grace, start_at)
+allowed exactly when opens_at <= now < effective_deadline
 ```
 
 All comparisons use timezone-aware UTC. Very early supported dates clamp the
@@ -141,9 +161,9 @@ the application reloads settings; no database timing columns are introduced.
 
 | Permission | True only when |
 | --- | --- |
-| can_join | Authenticated non-organizer, no row or LEFT (never final outcomes), uncancelled, before end, capacity available/unlimited |
-| can_leave | Authenticated non-organizer with JOINED/CONFIRMED, uncancelled, before end |
-| can_confirm | Authenticated non-organizer with JOINED, uncancelled, inside the confirmation window |
+| can_join | Authenticated non-organizer, no row or LEFT (never final or system-expired outcomes), uncancelled, strictly before start; full activities may return WAITLISTED |
+| can_leave | Authenticated non-organizer with JOINED/CONFIRMED/WAITLISTED, uncancelled, before end; JOINED must also precede effective confirmation deadline |
+| can_confirm | Authenticated non-organizer with JOINED, uncancelled, inside the effective confirmation window |
 | can_check_in | CONFIRMED non-organizer, uncancelled, within check-in window before end; allows an attempt, not a proximity guarantee |
 | can_finalize | Organizer, uncancelled, at/after end, at least one unresolved JOINED/CONFIRMED/CHECKED_IN row |
 
@@ -162,8 +182,8 @@ lifecycle rules; can_edit does not promise every proposed field change is valid.
 | 409 | `Activity is cancelled` |
 | 409 | `Activity has ended` |
 | 409 | `Attendance outcome is final` for terminal membership mutations (confirm/check-in normally encounter the existing ended check first) |
-| 409 | `Already joined this activity` for duplicate JOINED/CONFIRMED/CHECKED_IN POST, including when full |
-| 409 | `Activity is full` for new join or LEFT rejoin |
+| 409 | `Already joined this activity` for duplicate WAITLISTED/JOINED/CONFIRMED/CHECKED_IN POST, including when full |
+| 409 | `Activity has started` for new join or LEFT rejoin at/after start (full activities queue before start) |
 | 409 | `Not participating in this activity` for leave/confirm without active membership, including repeated leave |
 | 409 | `Already confirmed attendance` |
 | 409 | `Already checked in` for confirm/check-in after CHECKED_IN |
@@ -174,7 +194,7 @@ lifecycle rules; can_edit does not promise every proposed field change is valid.
 
 Domain errors use `{"detail":"message"}`. After input validation/authentication,
 all mutations check activity existence, organizer identity, then cancellation.
-Join/leave next check membership, end time, then capacity for join. Confirmation
+Join/leave next check membership and end time; join additionally rejects at/after start, then chooses JOINED or WAITLISTED from actual capacity. Confirmation
 checks end time, active membership, already-confirmed state, then its window.
 All conflict paths roll back; failed rejoin leaves the LEFT row untouched.
 
@@ -198,7 +218,7 @@ Unchanged equivalent timestamps and other permitted edits remain valid. LEFT row
 with historical confirmed_at do not block schedule changes. Capacity changes use
 the same active-state count; no confirmations are silently cleared.
 
-Cancellation retains JOINED, CONFIRMED, CHECKED_IN, and LEFT records and timestamps, excludes
+Cancellation retains WAITLISTED, JOINED, CONFIRMED, CHECKED_IN, and LEFT records and timestamps, excludes
 the activity from discovery, retains direct detail/organized lists and active
 joined lists, and blocks join/rejoin/leave/confirm/check-in. Scope still follows end_at.
 Cancelled activities also reject finalization (409), even after planned end,
@@ -207,7 +227,7 @@ preserving check-in evidence without COMPLETED/NO_SHOW conversion.
 Counts and caller state remain correlated SQL projections, with eager-loaded
 organizer identity. No participant lists are loaded merely to count. Public lists
 remain one SELECT and My Activities two including auth, independent of page size.
-PATCH remains four SELECTs and cancel three including auth; confirm has three
+PATCH without capacity fields remains four SELECTs and cancel three including auth; capacity edits additionally count actual occupancy before bulk promotion; confirm has three
 SELECTs in the service (lock, membership, response), plus HTTP authentication.
 Finalization uses three HTTP SELECTs including auth and one bulk UPDATE, independent
 of participant count. It never loads a participant collection.
@@ -238,7 +258,7 @@ remain future work. Current combined results are in the README.
 
 ## Complete response examples
 
-Examples use illustrative IDs/dates and the default 24-hour window. Swagger includes
+Examples use illustrative IDs/dates and the default 60/30-minute normal window. Swagger includes
 the same complete responses and error choices. The caller is a participant, not
 the organizer. The following snapshots show joined, left, and confirmed responses.
 
@@ -276,8 +296,8 @@ the organizer. The following snapshots show joined, left, and confirmed response
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -340,8 +360,8 @@ the organizer. The following snapshots show joined, left, and confirmed response
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -397,8 +417,8 @@ the organizer. The following snapshots show joined, left, and confirmed response
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -407,7 +427,7 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "current_user_participation": {
     "status": "CONFIRMED",
     "joined_at": "2030-08-01T12:00:00Z",
-    "confirmed_at": "2030-08-07T16:00:00Z",
+    "confirmed_at": "2030-08-08T15:05:00Z",
     "checked_in_at": null,
     "completed_at": null,
     "no_show_at": null
@@ -461,8 +481,8 @@ the organizer. The following snapshots show joined, left, and confirmed response
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -471,7 +491,7 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "current_user_participation": {
     "status": "CHECKED_IN",
     "joined_at": "2030-08-01T12:00:00Z",
-    "confirmed_at": "2030-08-07T16:00:00Z",
+    "confirmed_at": "2030-08-08T15:05:00Z",
     "checked_in_at": "2030-08-08T15:45:00Z",
     "completed_at": null,
     "no_show_at": null

@@ -77,6 +77,15 @@ def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
     settings = get_settings()
 
     try:
+        unverified_claims = jwt.get_unverified_claims(token)
+        for claim_name in ("iat", "nbf", "exp"):
+            if claim_name in unverified_claims:
+                # python-jose also uses int(), but does not normalize every
+                # invalid JSON value. Signature verification remains below.
+                try:
+                    int(unverified_claims[claim_name])
+                except (TypeError, ValueError, OverflowError) as exc:
+                    raise InvalidTokenError("Token has an invalid time claim") from exc
         payload = jwt.decode(
             token,
             settings.jwt_secret,

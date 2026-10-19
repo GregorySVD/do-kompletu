@@ -38,7 +38,8 @@ def freeze(monkeypatch, now):
 
 @pytest.fixture
 def context(client, db_session, monkeypatch):
-    monkeypatch.setenv("ACTIVITY_CONFIRMATION_WINDOW_HOURS", "24")
+    monkeypatch.setenv("ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE", "1440")
+    monkeypatch.setenv("ACTIVITY_CONFIRMATION_DEADLINE_MINUTES_BEFORE", "0")
     get_settings.cache_clear()
     freeze(monkeypatch, NOW)
     users = [
@@ -125,7 +126,7 @@ def test_leave_retains_cycle_and_rejoin_resets_it(
     }
 
 
-@pytest.mark.parametrize("block", ["full", "ended", "cancelled"])
+@pytest.mark.parametrize("block", ["started", "ended", "cancelled"])
 def test_rejoin_revalidates_and_does_not_mutate_left_row(
     client, db_session, context, monkeypatch, block
 ):
@@ -133,9 +134,8 @@ def test_rejoin_revalidates_and_does_not_mutate_left_row(
     assert request(client, context, "leave").status_code == 200
     row = stored(db_session, context)
     old_times = (row.joined_at, row.left_at, row.confirmed_at)
-    if block == "full":
-        for user in (2, 3, 4):
-            assert request(client, context, "join", user).status_code == 201
+    if block == "started":
+        freeze(monkeypatch, START)
     elif block == "cancelled":
         assert request(client, context, "cancel", 0).status_code == 200
     else:
@@ -144,7 +144,7 @@ def test_rejoin_revalidates_and_does_not_mutate_left_row(
     assert result.status_code == 409
     assert result.json() == {
         "detail": {
-            "full": "Activity is full",
+            "started": "Activity has started",
             "ended": "Activity has ended",
             "cancelled": "Activity is cancelled",
         }[block]
@@ -390,16 +390,18 @@ def test_capacity_edit_counts_confirmed_but_excludes_left(client, context):
         path(context), headers=context[2][0], json={"max_participants": 2}
     )
     assert response.status_code == 200 and response.json()["participant_count"] == 2
-    assert request(client, context, "join", 3).status_code == 409
+    queued = request(client, context, "join", 3)
+    assert queued.status_code == 201
+    assert queued.json()["current_user_participation"]["status"] == "WAITLISTED"
 
 
-@pytest.mark.parametrize("hours", [0, -1, 8761, "invalid"])
-def test_confirmation_window_setting_rejects_invalid_values(hours):
+@pytest.mark.parametrize("minutes", [0, -1, 525601, "invalid"])
+def test_confirmation_window_setting_rejects_invalid_values(minutes):
     with pytest.raises(ValidationError):
         Settings(
             _env_file=None,
             database_url="sqlite://",
-            activity_confirmation_window_hours=hours,
+            activity_confirmation_open_minutes_before=minutes,
         )
 
 
@@ -407,7 +409,7 @@ def test_window_setting_is_shared_by_metadata_permissions_and_mutation(
     client, context, monkeypatch
 ):
     request(client, context, "join")
-    monkeypatch.setenv("ACTIVITY_CONFIRMATION_WINDOW_HOURS", "2")
+    monkeypatch.setenv("ACTIVITY_CONFIRMATION_OPEN_MINUTES_BEFORE", "120")
     get_settings.cache_clear()
     body = client.get(path(context), headers=context[2][1]).json()
     assert datetime.fromisoformat(body["confirmation_opens_at"]) == START - timedelta(

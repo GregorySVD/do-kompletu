@@ -221,8 +221,8 @@ def test_get_activity_details_returns_organizer_without_password(client):
     assert body["organizer"]["display_name"] == "Activity Organizer"
     assert body["tags"] == []
     assert body["permissions"]["can_join"] is False
-    assert body["confirmation_opens_at"] == "2030-08-07T16:00:00Z"
-    assert body["confirmation_deadline_at"] == body["start_at"]
+    assert body["confirmation_opens_at"] == "2030-08-08T15:00:00Z"
+    assert body["confirmation_deadline_at"] == "2030-08-08T15:30:00Z"
     assert "password_hash" not in str(body)
 
 

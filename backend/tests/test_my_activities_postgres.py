@@ -107,7 +107,7 @@ def test_postgres_scoped_membership_counts_state_and_postgis_coordinates(
         full = by_id[data.ids("joined_ongoing")[0]]
         assert full["participant_count"] == 2
         assert full["available_slots"] == 0
-        assert full["permissions"]["can_leave"] is True
+        assert full["permissions"]["can_leave"] is False
         unlimited = by_id[data.ids("joined_unlimited")[0]]
         assert unlimited["participant_count"] == 1
         assert unlimited["max_participants"] is unlimited["available_slots"] is None

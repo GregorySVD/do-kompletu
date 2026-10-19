@@ -116,12 +116,15 @@ def test_postgres_membership_schema(pg_engine):
         "checked_in_at",
         "completed_at",
         "no_show_at",
+        "waitlisted_at",
+        "confirmation_expired_at",
+        "waitlist_expired_at",
     }
     assert all(
-        not columns[name]["nullable"]
-        for name in ("activity_id", "user_id", "joined_at", "status")
+        not columns[name]["nullable"] for name in ("activity_id", "user_id", "status")
     )
     assert columns["left_at"]["nullable"] and columns["confirmed_at"]["nullable"]
+    assert columns["joined_at"]["nullable"] and columns["waitlisted_at"]["nullable"]
     assert "JOINED" in columns["status"]["default"]
     assert columns["joined_at"]["type"].timezone is True
     assert columns["joined_at"]["default"] is not None
@@ -313,18 +316,16 @@ def test_postgres_concurrent_membership_serializes_on_activity(
         assert result.available_slots == 2 - count
         if scenario == "join_leave":
             assert outcomes[0] == 200
-            assert outcomes[1] in [201, (409, "Activity is full")]
-            assert count == (2 if outcomes[1] == 201 else 1)
+            assert outcomes[1] == 201
+            assert count == 2
             assert (
                 session.get(ActivityParticipation, (activity_id, users[1])).status
                 == "LEFT"
             )
-        else:
-            expected_error = (
-                "Already joined this activity"
-                if scenario == "duplicate"
-                else "Activity is full"
-            )
+        elif scenario == "duplicate":
             assert outcomes.count(201) == 1
-            assert outcomes.count((409, expected_error)) == 1
+            assert outcomes.count((409, "Already joined this activity")) == 1
             assert count == 2
+        else:
+            assert outcomes.count(201) == 2
+            assert count == 2 and result.waitlist_count == 1

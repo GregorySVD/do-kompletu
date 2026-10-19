@@ -58,7 +58,7 @@ def context(client, db_session, monkeypatch):
         client.post(
             base + "/check-in",
             headers=headers[3],
-            json={"latitude": 52.4232, "longitude": 16.9461},
+            json={"latitude": 52.4232, "longitude": 16.9461, "accuracy_m": 20},
         ).status_code
         == 200
     )
@@ -308,9 +308,8 @@ def test_final_detail_and_history_are_private_and_left_stays_excluded(
     assert anonymous["current_user_participation"] is None
     assert "no_show_count" not in anonymous and "completed_count" not in anonymous
     assert "no_show_at" not in str(anonymous) and "completed_at" not in str(anonymous)
-    card = client.get("/api/v1/activities").json()[0]
-    assert card["participant_count"] == 0 and card["checked_in_count"] == 1
-    assert "current_user_participation" not in card
+    assert anonymous["participant_count"] == 0 and anonymous["checked_in_count"] == 1
+    assert client.get("/api/v1/activities").json() == []
 
 
 @pytest.mark.parametrize("user", [1, 3])
@@ -330,7 +329,7 @@ def test_final_outcomes_cannot_be_mutated_even_with_inconsistent_future_activity
     db_session.commit()
     method = client.delete if mutation == "leave" else client.post
     kwargs = (
-        {"json": {"latitude": 52.4232, "longitude": 16.9461}}
+        {"json": {"latitude": 52.4232, "longitude": 16.9461, "accuracy_m": 20}}
         if mutation == "check-in"
         else {}
     )
@@ -375,7 +374,7 @@ def test_after_end_only_finalization_can_change_attendance(
     else:
         method = client.delete if mutation == "leave" else client.post
         kwargs = (
-            {"json": {"latitude": 52.4232, "longitude": 16.9461}}
+            {"json": {"latitude": 52.4232, "longitude": 16.9461, "accuracy_m": 20}}
             if mutation == "check-in"
             else {}
         )

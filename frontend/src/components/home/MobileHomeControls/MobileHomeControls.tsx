@@ -10,12 +10,14 @@ export type ViewMode = 'list' | 'map'
 
 interface MobileHomeControlsProps {
   viewMode: ViewMode
+  showFiltersButton?: boolean
   onViewModeChange: (value: ViewMode) => void
   onOpenFilters: () => void
 }
 
 function MobileHomeControls({
   viewMode,
+  showFiltersButton = true,
   onViewModeChange,
   onOpenFilters,
 }: MobileHomeControlsProps) {
@@ -43,15 +45,17 @@ function MobileHomeControls({
         </ToggleButton>
       </ToggleButtonGroup>
 
-      <Button
-        className="home-page__filters-button"
-        aria-haspopup="dialog"
-        startIcon={<FilterList />}
-        variant="outlined"
-        onClick={onOpenFilters}
-      >
-        Filtry
-      </Button>
+      {showFiltersButton && (
+        <Button
+          className="home-page__filters-button"
+          aria-haspopup="dialog"
+          startIcon={<FilterList />}
+          variant="outlined"
+          onClick={onOpenFilters}
+        >
+          Filtry
+        </Button>
+      )}
     </div>
   )
 }
