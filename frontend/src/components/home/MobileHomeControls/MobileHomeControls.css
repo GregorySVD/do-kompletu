@@ -40,7 +40,7 @@
   border-radius: var(--radius-pill);
 }
 
-@media (min-width: 64rem) {
+@media (min-width: 75rem) {
   .home-page__mobile-tools {
     display: none;
   }

@@ -1,5 +1,6 @@
 import { useMediaQuery } from '@mui/material'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import ActivityCategoryBar from '../../components/home/ActivityCategoryBar/ActivityCategoryBar'
 import ActivityListPanel from '../../components/home/ActivityListPanel/ActivityListPanel'
 import HomeMapPanel from '../../components/home/HomeMapPanel/HomeMapPanel'
 import MapVisibilityToggle from '../../components/home/MapVisibilityToggle/MapVisibilityToggle'
@@ -25,17 +26,22 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [isDesktopMapVisible, setIsDesktopMapVisible] = useState(true)
   const activitiesListRef = useRef<HTMLDivElement>(null)
-  const isDesktopLayout = useMediaQuery('(min-width: 64rem)')
+  const isWideDesktopLayout = useMediaQuery('(min-width: 75rem)')
+  const isCompactFiltersLayout = useMediaQuery(
+    '(min-width: 64rem) and (max-width: 74.99rem)',
+  )
   const activitiesQuery = useActivitiesQuery()
   const categoriesQuery = useActivityCategoriesQuery()
   const {
     selectedCategoryId,
     priceFilter,
+    timeFilter,
     availabilityOnly,
     filteredActivities,
     hasActiveFilters,
     toggleCategory,
     setPriceFilter,
+    setTimeFilter,
     setAvailabilityOnly,
     clearFilters,
   } = useActivityFilters({
@@ -46,23 +52,49 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
 
   useActivityWheelRouting({
     activitiesListRef,
-    enabled: isDesktopLayout,
+    enabled: isWideDesktopLayout,
   })
 
-  const isMapVisible = isDesktopLayout
+  const isMapVisible = isWideDesktopLayout
     ? isDesktopMapVisible
     : viewMode === 'map'
-  const shouldRenderMap = !isDesktopLayout || isDesktopMapVisible
-  const filterProps = {
-    categories: categoriesQuery.data ?? [],
+  const categoryBarItems = useMemo(() => {
+    const categoryCounts = new Map<string, number>()
+
+    for (const activity of activitiesQuery.data ?? []) {
+      categoryCounts.set(
+        activity.category.id,
+        (categoryCounts.get(activity.category.id) ?? 0) + 1,
+      )
+    }
+
+    return (categoriesQuery.data ?? []).map((category) => ({
+      ...category,
+      count: categoryCounts.get(category.id) ?? 0,
+    }))
+  }, [activitiesQuery.data, categoriesQuery.data])
+  const categoryFilterProps = {
+    categories: categoryBarItems,
     selectedCategoryId,
+    onToggleCategory: toggleCategory,
+  }
+  const baseFilterProps = {
     priceFilter,
+    timeFilter,
     availabilityOnly,
     hasActiveFilters,
-    onToggleCategory: toggleCategory,
     onPriceFilterChange: setPriceFilter,
+    onTimeFilterChange: setTimeFilter,
     onAvailabilityChange: setAvailabilityOnly,
     onClearFilters: clearFilters,
+  }
+  const listFilterProps = {
+    ...baseFilterProps,
+    ...(isCompactFiltersLayout && { categoryFilterProps }),
+  }
+  const mobileFilterProps = {
+    ...baseFilterProps,
+    categoryFilterProps,
   }
   const isInitialLoading =
     activitiesQuery.isPending || categoriesQuery.isPending
@@ -99,8 +131,17 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
 
   return (
     <main className="home-page">
+      {isWideDesktopLayout && (
+        <ActivityCategoryBar
+          categories={categoryBarItems}
+          selectedCategoryId={selectedCategoryId}
+          onToggleCategory={toggleCategory}
+        />
+      )}
+
       <MobileHomeControls
         viewMode={viewMode}
+        showFiltersButton={!isCompactFiltersLayout}
         onViewModeChange={setViewMode}
         onOpenFilters={() => setFiltersOpen(true)}
       />
@@ -110,31 +151,32 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
       >
         <ActivityListPanel
           activities={filteredActivities}
-          filterProps={filterProps}
+          filterProps={listFilterProps}
           isMobileHidden={viewMode === 'map'}
           scrollContainerRef={activitiesListRef}
         />
 
-        {shouldRenderMap && (
-          <HomeMapPanel
-            activities={filteredActivities}
-            isMobileHidden={viewMode === 'list'}
-            isVisible={isMapVisible}
-            mode={mode}
-          />
-        )}
+        <HomeMapPanel
+          activities={filteredActivities}
+          isDesktopHidden={!isDesktopMapVisible}
+          isMobileHidden={viewMode === 'list'}
+          isVisible={isMapVisible}
+          mode={mode}
+          onHideMap={() => setIsDesktopMapVisible(false)}
+        />
       </div>
 
-      <MapVisibilityToggle
-        isMapVisible={isDesktopMapVisible}
-        onToggle={() => setIsDesktopMapVisible((isVisible) => !isVisible)}
-      />
+      {!isDesktopMapVisible && (
+        <MapVisibilityToggle onShow={() => setIsDesktopMapVisible(true)} />
+      )}
 
-      <MobileFiltersDrawer
-        filterProps={filterProps}
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-      />
+      {!isWideDesktopLayout && !isCompactFiltersLayout && (
+        <MobileFiltersDrawer
+          filterProps={mobileFilterProps}
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+        />
+      )}
     </main>
   )
 }
