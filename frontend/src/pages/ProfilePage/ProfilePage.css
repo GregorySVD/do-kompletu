@@ -8,6 +8,10 @@
   margin-top: var(--space-6);
 }
 
+.profile-page__success {
+  margin-top: var(--space-4);
+}
+
 .profile-card__content {
   display: flex;
   align-items: flex-start;
@@ -26,6 +30,20 @@
   font-size: var(--font-size-h2);
 }
 
-.profile-card__activities-link {
+.profile-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
   margin-top: var(--space-4);
+}
+
+@media (max-width: 30rem) {
+  .profile-card__content {
+    flex-direction: column;
+  }
+
+  .profile-card__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
