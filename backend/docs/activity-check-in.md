@@ -11,12 +11,16 @@ CHECKED_IN is active and consumes the same place; LEFT remains inactive.
 ```json
 {
   "latitude": 52.4232,
-  "longitude": 16.9461
+  "longitude": 16.9461,
+  "accuracy_m": 20
 }
 ```
 
 Both coordinates are required, finite WGS 84 numbers with the existing creation
 ranges: latitude −90..90 and longitude −180..180. Unknown fields are rejected.
+`accuracy_m` is also required: a finite number strictly greater than zero,
+representing the client-reported location accuracy radius in meters. There is no
+fixed schema upper bound; values above the configured business maximum return 409.
 The organizer cannot check in merely because they own the activity.
 
 ## Window and public metadata
@@ -26,6 +30,7 @@ The organizer cannot check in merely because they own the activity.
 | ACTIVITY_CHECK_IN_OPEN_MINUTES_BEFORE | 30 | Integer 0–525600 |
 | ACTIVITY_CHECK_IN_CLOSE_MINUTES_AFTER | 60 | Integer 0–525600 |
 | ACTIVITY_CHECK_IN_RADIUS_METERS | 150 | Integer 1–100000 |
+| ACTIVITY_CHECK_IN_MAX_ACCURACY_METERS | 100 | Finite number greater than zero |
 
 Settings are listed in backend/.env.example. The shared participation_rules helper
 derives UTC timing without persisted window columns:
@@ -46,14 +51,18 @@ frontend contract; no duplicate `check_in_*` timing fields are added. Metadata i
 nominal and remains readable after cancellation/end. Discovery's shape is unchanged.
 
 `permissions.can_check_in` means authenticated CONFIRMED non-organizer state and
-time/lifecycle allow an **attempt**. It cannot know the user's location before POST.
-The endpoint must still validate proximity. CHECKED_IN cannot join, leave, confirm,
-or check in again. There is no undo check-in.
+time/lifecycle allow an **attempt**. It cannot know the user's location/accuracy
+before POST. The endpoint must still validate accuracy and proximity. CHECKED_IN
+cannot join, leave, confirm, or check in again. There is no undo check-in.
 
 ## Authoritative proximity and privacy
 
-The service acquires the existing activity-row lock, validates state/time, then
-executes PostGIS `ST_DWithin(activity.location, submitted_geography, radius, true)`.
+The service acquires the existing activity-row lock and validates state/time, then
+rejects `accuracy_m > ACTIVITY_CHECK_IN_MAX_ACCURACY_METERS` with 409
+`Location accuracy is insufficient for check-in`. Accuracy exactly at the limit is
+accepted. A poor fix is rejected even when submitted coordinates are at the venue,
+without executing the radius query. After accuracy passes, the authoritative radius
+check remains PostGIS `ST_DWithin(activity.location, submitted_geography, radius, true)`.
 The submitted point is built as `ST_MakePoint(longitude, latitude)`, SRID 4326,
 cast to Geography. Geography uses meters and spheroidal distance; see the
 [official ST_DWithin contract](https://postgis.net/docs/ST_DWithin.html).
@@ -66,16 +75,19 @@ with [ST_Project](https://postgis.net/docs/ST_Project.html), including points 0.
 inside/outside the 150 m radius; they do not rely on fragile exact-float equality.
 Coordinate ordering and crossing the date line are tested independently.
 
-Only checked_in_at is persisted. Submitted coordinates and computed distance are
-not stored or returned. The activity's public venue coordinates remain public.
+Only checked_in_at is persisted. Submitted coordinates, `accuracy_m`, and computed
+distance are transient validation data, neither stored nor returned. The activity's
+public venue coordinates remain public. No schema migration is needed for accuracy;
+Alembic head remains `20261019_0010`.
 Current-user participation adds nullable checked_in_at beside joined_at/confirmed_at;
 only the caller's current/final timestamps are exposed. Anonymous/unrelated/LEFT callers
 receive null participation. Aggregate checked_in_count and nominal timing/radius
 are public. Responses use the existing private/no-store cache policy.
 
-The server validates submitted coordinates, **not the authenticity of device GPS**.
-Clients can spoof coordinates. This milestone provides no anti-spoofing/device
-attestation and makes no fraud-proof attendance claim.
+Client-reported `accuracy_m` helps reject naturally poor GPS fixes. It does not
+prove that coordinates are genuine and does not prevent GPS spoofing. The server
+validates submitted coordinates, **not the authenticity of device GPS**. No
+anti-spoofing/device attestation or fraud-proof attendance claim is introduced.
 
 ## State, counts, management, and cancellation
 
@@ -83,8 +95,10 @@ attestation and makes no fraud-proof attendance claim.
   POST returns 409 without changing it. No second participation row is created.
 - `participant_count`/available_slots use centralized JOINED, CONFIRMED, CHECKED_IN
   active states, excluding final COMPLETED/NO_SHOW. checked_in_count counts
-  CHECKED_IN + COMPLETED to retain successful check-ins; waitlist_count stays zero.
-- JOINED/CONFIRMED can leave under the existing uncancelled/before-end rule.
+  CHECKED_IN + COMPLETED to retain successful check-ins; waitlist_count counts WAITLISTED only; queued users cannot confirm/check in and receive 409.
+- CONFIRMED may leave before end unless cancelled. JOINED must also precede its
+  effective confirmation deadline, even before the worker persists expiry. Both
+  system-expired states cannot confirm/check in and never consume capacity.
   CHECKED_IN cannot leave. LEFT rejoin resets joined_at and clears all lifecycle
   timestamps, including checked_in_at, for the new JOINED cycle.
 - Joined My Activities includes CHECKED_IN, excludes LEFT, and keeps the existing
@@ -104,7 +118,8 @@ After end, the organizer may explicitly [finalize attendance](activity-finalizat
 CHECKED_IN becomes COMPLETED, retaining checked_in_at and gaining completed_at;
 JOINED/CONFIRMED become NO_SHOW. These terminal states cannot check in, confirm,
 leave, or rejoin. At exact end, check-in is already forbidden (exclusive deadline),
-while finalization is allowed. Activity status stays ENDED. No scheduler runs.
+while finalization is allowed. Activity status stays ENDED. The participation
+worker expires reservations/queues only; it never performs attendance finalization.
 
 See [management](activity-management.md) and [My Activities](my-activities.md) for
 the unchanged ownership, pagination, and visibility contracts.
@@ -113,7 +128,7 @@ the unchanged ownership, pagination, and visibility contracts.
 
 Domain errors use `{"detail":"message"}`. After normal payload/auth validation,
 the service checks existence, organizer, cancellation, end time, membership/status,
-window, then proximity. Time/state are read after acquiring the parent lock.
+window, accuracy, then proximity. Time/state are read after acquiring the parent lock.
 
 | Status | Exact detail / meaning |
 | --- | --- |
@@ -127,10 +142,11 @@ window, then proximity. Time/state are read after acquiring the parent lock.
 | 409 | Activity has ended |
 | 409 | Check-in window has not opened |
 | 409 | Check-in window has closed |
+| 409 | Location accuracy is insufficient for check-in |
 | 409 | Outside check-in radius |
 | 409 | Checked-in participants cannot leave (DELETE join) |
 | 409 | Cannot change location after participants have checked in (PATCH) |
-| 422 | Standard validation details for invalid UUID/body/coordinates |
+| 422 | Standard validation details for invalid UUID/body/coordinates; missing, nonfinite, zero, or negative accuracy_m; unknown fields |
 | 503 | Check-in requires PostgreSQL/PostGIS (no approximate fallback) |
 
 Failed check-in rolls back without changing status or timestamps. Confirming a
@@ -176,15 +192,17 @@ geolocation utility, check-in API/mutation, action button, or CHECKED_IN members
 union. The existing membership type remains exactly null; My Activities is mocked.
 
 Add the current/final participation union and checked_in_at/completed_at/no_show_at,
-can_finalize, browser permission/coordinate
+can_finalize, browser permission/coordinate/accuracy
 flow, timeout/denial/unavailable-location handling, mutation/pending/success UI,
-outside-radius/window error handling, and permission-driven actions. Refresh
+poor-accuracy/outside-radius/window error handling, and permission-driven actions.
+Send browser `position.coords.latitude`, `position.coords.longitude`, and
+`accuracy_m: position.coords.accuracy` in the check-in request. Refresh
 discovery/detail/personal caches after check-in and scope personalized keys to
 identity. Retain the existing checkin_* field names. No frontend files were changed.
 
 COMPLETED/NO_SHOW are now implemented by explicit finalization, with caller-only
 history/detail outcomes and no automatic scheduling. Automatic completion,
-manual attendance overrides, undo outcomes, rewards, reviews, waitlists, QR/NFC,
+manual attendance overrides, undo outcomes, rewards, reviews, QR/NFC,
 notifications, media, payment/refund, exact participant-location history, and a
 full participation event log remain unimplemented.
 
@@ -226,8 +244,8 @@ Illustrative IDs/date and default settings; Swagger provides the same full examp
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -236,7 +254,7 @@ Illustrative IDs/date and default settings; Swagger provides the same full examp
   "current_user_participation": {
     "status": "CHECKED_IN",
     "joined_at": "2030-08-01T12:00:00Z",
-    "confirmed_at": "2030-08-07T16:00:00Z",
+    "confirmed_at": "2030-08-08T15:05:00Z",
     "checked_in_at": "2030-08-08T15:45:00Z",
     "completed_at": null,
     "no_show_at": null

@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 )
 END = datetime(2030, 8, 8, 18, tzinfo=UTC)
 START = END - timedelta(minutes=15)
-AT_VENUE = ActivityCheckIn(latitude=52.4232, longitude=16.9461)
+AT_VENUE = ActivityCheckIn(latitude=52.4232, longitude=16.9461, accuracy_m=20)
 
 
 @pytest.fixture
@@ -242,16 +242,18 @@ def test_finalization_races_respect_both_lock_orders_at_end(
             assert outcomes[1] == (409, "Activity has ended")
         elif scenario == "join":
             assert outcomes[1] == (
-                (201, None) if reverse else (409, "Activity has ended")
+                (409, "Activity has started")
+                if reverse
+                else (409, "Activity has ended")
             )
-            assert (users[5] in rows) is reverse
-            if reverse:
-                assert rows[users[5]].status == "NO_SHOW"
+            assert users[5] not in rows
         elif scenario == "leave":
             assert outcomes[1] == (
-                (200, None) if reverse else (409, "Attendance outcome is final")
+                (409, "Confirmation window has closed")
+                if reverse
+                else (409, "Attendance outcome is final")
             )
-            assert rows[users[1]].status == ("LEFT" if reverse else "NO_SHOW")
+            assert rows[users[1]].status == "NO_SHOW"
         else:
             assert outcomes[1][0] == 409
             assert rows[users[1]].status == "NO_SHOW"

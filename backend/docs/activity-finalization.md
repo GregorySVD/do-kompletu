@@ -20,7 +20,7 @@ terminal: join/rejoin, leave, confirm, and check-in cannot change them. There is
 no manual attendance override or undo. Existing ended editing/cancellation rules
 remain in force.
 
-No scheduler architecture exists in this repository. Explicit finalization fits
+The participation lifecycle worker automates expiry/promotion only. Explicit finalization fits
 the existing organizer management API, is deterministic, and makes the write and
 its transaction visible. Reaching end_at alone does not mutate participation.
 An organizer who never finalizes leaves unresolved states in history. COMPLETED
@@ -95,7 +95,11 @@ not a historical attendance total.
 checked_in_count counts CHECKED_IN + COMPLETED, so finalizing successful attendance
 does not erase the public count of people who checked in. No completed_count,
 no_show_count, participant roster, or other public attendance analytics is added.
-waitlist_count remains zero.
+waitlist_count counts retained WAITLISTED rows. Finalization never converts them
+to COMPLETED/NO_SHOW: they had no place. The lifecycle worker expires remaining
+queues at start, except cancelled activities. Both CONFIRMATION_EXPIRED and
+WAITLIST_EXPIRED are excluded from finalization transitions; see the
+[worker contract](participation-lifecycle-worker.md).
 
 Joined My Activities uses current JOINED/CONFIRMED/CHECKED_IN states before end,
 and those unresolved states plus COMPLETED/NO_SHOW at/after end. LEFT is always
@@ -121,6 +125,10 @@ the server still enforces every rule.
 nullable completed_at and no_show_at TIMESTAMPTZ columns and replaces the status
 and state/timestamp CHECKs. No existing row/status/timestamp, key, index, or foreign
 key is changed by upgrade.
+
+This table describes migration 0008. Current 0009 additionally supports WAITLISTED
+with only waitlisted_at, and LEFT with waitlisted_at/left_at but no joined_at when
+the user never received a place. Active/final requirements below are unchanged.
 
 | State | Required timestamps | Required nulls |
 | --- | --- | --- |
@@ -178,7 +186,7 @@ separate from participation COMPLETED and avoid displaying participant_count as
 historical attendance. Future review/XP UI must wait for actual product/API support;
 the existing profile only displays points_total.
 
-Limits remain: no scheduler, manual override, undo, immutable attendance audit log,
+Limits remain: no automatic attendance finalization, manual override, undo, immutable attendance audit log,
 rewards/reviews, cancelled-event refund policy, or GPS anti-spoofing. The next
 practical milestone is frontend integration of the implemented lifecycle; a later
 backend milestone can define review/XP eligibility and duplicate protection using
@@ -223,8 +231,8 @@ organizer receives no other user's membership.
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -282,8 +290,8 @@ The participant's own subsequent GET detail (or item in joined history):
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,
@@ -292,7 +300,7 @@ The participant's own subsequent GET detail (or item in joined history):
   "current_user_participation": {
     "status": "COMPLETED",
     "joined_at": "2030-08-01T12:00:00Z",
-    "confirmed_at": "2030-08-07T16:00:00Z",
+    "confirmed_at": "2030-08-08T15:05:00Z",
     "checked_in_at": "2030-08-08T15:45:00Z",
     "completed_at": "2030-08-08T18:00:00Z",
     "no_show_at": null
@@ -348,8 +356,8 @@ A separate activity with an originally JOINED participant and no check-in:
     "avatar_url": null
   },
   "tags": [],
-  "confirmation_opens_at": "2030-08-07T16:00:00Z",
-  "confirmation_deadline_at": "2030-08-08T16:00:00Z",
+  "confirmation_opens_at": "2030-08-08T15:00:00Z",
+  "confirmation_deadline_at": "2030-08-08T15:30:00Z",
   "checkin_opens_at": "2030-08-08T15:30:00Z",
   "checkin_closes_at": "2030-08-08T17:00:00Z",
   "checkin_radius_m": 150,

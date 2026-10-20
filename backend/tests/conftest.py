@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("JWT_SECRET", "test-secret")
+os.environ.setdefault("PARTICIPATION_LIFECYCLE_WORKER_ENABLED", "false")
 
 from app.db.base import Base
 from app.db.session import get_db, reset_db_state

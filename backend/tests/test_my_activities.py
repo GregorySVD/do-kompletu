@@ -114,6 +114,15 @@ def test_joined_list_requires_own_membership_and_excludes_organized_activities(
     for item in items:
         assert item["organizer"]["id"] != str(data.users[0].id)
         assert item["current_user_participation"] == {
+            "confirmation_expired_at": None,
+            "waitlist_expired_at": None,
+            "effective_confirmation_deadline_at": (
+                datetime.fromisoformat(item["start_at"]) - timedelta(minutes=30)
+            )
+            .isoformat()
+            .replace("+00:00", "Z"),
+            "waitlisted_at": None,
+            "waitlist_position": None,
             "status": "JOINED",
             "joined_at": (AS_OF - timedelta(days=4)).isoformat().replace("+00:00", "Z"),
             "confirmed_at": None,
@@ -122,7 +131,7 @@ def test_joined_list_requires_own_membership_and_excludes_organized_activities(
             "no_show_at": None,
         }
         assert item["permissions"]["can_join"] is False
-        assert item["permissions"]["can_leave"] is (item["status"] != "ENDED")
+        assert item["permissions"]["can_leave"] is (item["status"] == "PUBLISHED")
         assert item["checked_in_count"] == item["waitlist_count"] == 0
 
 
@@ -182,7 +191,7 @@ def test_filter_and_status_share_one_cutoff_even_if_serialization_crosses_end(
         item for item in items if item["id"] == data.ids("just_after")[0]
     )
     assert almost_ended["status"] == "ONGOING"
-    assert almost_ended["permissions"]["can_leave"] is True
+    assert almost_ended["permissions"]["can_leave"] is False
     assert len(calls) == 1
 
 
@@ -232,7 +241,7 @@ def test_full_unlimited_and_real_counts(client, data):
     full = items[data.ids("joined_ongoing")[0]]
     assert full["participant_count"] == 2
     assert full["available_slots"] == 0
-    assert full["permissions"]["can_leave"] is True
+    assert full["permissions"]["can_leave"] is False
     unlimited = items[data.ids("joined_unlimited")[0]]
     assert unlimited["participant_count"] == 1
     assert unlimited["max_participants"] is unlimited["available_slots"] is None

@@ -1,11 +1,22 @@
 from copy import deepcopy
+from math import isfinite
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute, iter_route_contexts
+from sqlalchemy import text
+from sqlalchemy.exc import DisconnectionError, InterfaceError, OperationalError
+from sqlalchemy.exc import TimeoutError as DatabaseTimeoutError
+from sqlalchemy.orm import Session
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.db.session import get_db
+from app.workers.participation_lifecycle import lifecycle_lifespan
 
 OPENAPI_TAGS = [
     {
@@ -22,7 +33,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "Users",
-        "description": "Authenticated current-user profile and organized/joined activity lists.",
+        "description": "Authenticated current-user profile and organized/joined/waitlisted activity lists.",
     },
     {
         "name": "Activities",
@@ -45,6 +56,7 @@ OPENAPI_TAGS = [
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
+        lifespan=lifecycle_lifespan(settings),
         title=settings.app_name,
         version=settings.app_version,
         description=(
@@ -67,6 +79,21 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(api_router)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_response(
+        _request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        # JSON parsing can produce nonfinite floats, including valid JSON 1e999.
+        # Keep the standard validation body serializable when it echoes input.
+        errors = jsonable_encoder(
+            exc.errors(),
+            custom_encoder={float: lambda value: value if isfinite(value) else str(value)},
+        )
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": errors},
+        )
 
     default_openapi = app.openapi
 
@@ -110,6 +137,43 @@ def create_app() -> FastAPI:
         response_description="The API process is healthy.",
     )
     async def health_check() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get(
+        "/ready",
+        tags=["Health"],
+        summary="Check database readiness",
+        description=(
+            "Execute SELECT 1 using the configured database session. Returns 503 "
+            "when the database connection is unavailable; does not inspect schema "
+            "or PostGIS. Use /health for lightweight process liveness."
+        ),
+        responses={
+            200: {
+                "description": "The API can reach its database.",
+                "content": {"application/json": {"example": {"status": "ok"}}},
+            },
+            503: {
+                "description": "The database connection is unavailable.",
+                "content": {
+                    "application/json": {"example": {"detail": "Database unavailable"}}
+                },
+            },
+        },
+    )
+    def readiness_check(session: Annotated[Session, Depends(get_db)]) -> dict[str, str]:
+        try:
+            session.execute(text("SELECT 1"))
+        except (
+            OperationalError,
+            InterfaceError,
+            DisconnectionError,
+            DatabaseTimeoutError,
+        ) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database unavailable",
+            ) from exc
         return {"status": "ok"}
 
     return app
