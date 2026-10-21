@@ -1,5 +1,13 @@
 import { useEffect } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import {
+  Circle,
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Popup,
+  TileLayer,
+  useMap,
+} from 'react-leaflet'
 import { Link } from 'react-router-dom'
 import type { Activity } from '../../types/activity'
 import {
@@ -14,6 +22,13 @@ interface ActivityMapProps {
   activities: Activity[]
   mode: 'light' | 'dark'
   isVisible?: boolean
+  userLocation?: UserMapLocation | null
+}
+
+export interface UserMapLocation {
+  latitude: number
+  longitude: number
+  accuracyM: number
 }
 
 const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
@@ -45,7 +60,44 @@ function MapResizeHandler({ isVisible }: { isVisible: boolean }) {
   return null
 }
 
-function ActivityMap({ activities, mode, isVisible = true }: ActivityMapProps) {
+function UserLocationLayer({ location }: { location: UserMapLocation }) {
+  const map = useMap()
+  const position: [number, number] = [location.latitude, location.longitude]
+
+  useEffect(() => {
+    map.flyTo([location.latitude, location.longitude], 15)
+  }, [location, map])
+
+  return (
+    <>
+      <Circle
+        center={position}
+        className="activity-map__user-accuracy"
+        interactive={false}
+        radius={location.accuracyM}
+      />
+      <CircleMarker
+        center={position}
+        className="activity-map__user-marker"
+        radius={9}
+      >
+        <Popup className="activity-map__user-popup-container">
+          <div className="activity-map__user-popup">
+            <strong>Twoja lokalizacja</strong>
+            <span>Dokładność: około {Math.round(location.accuracyM)} m</span>
+          </div>
+        </Popup>
+      </CircleMarker>
+    </>
+  )
+}
+
+function ActivityMap({
+  activities,
+  mode,
+  isVisible = true,
+  userLocation = null,
+}: ActivityMapProps) {
   const tileConfig = getMapTileConfig(mode)
 
   return (
@@ -62,6 +114,8 @@ function ActivityMap({ activities, mode, isVisible = true }: ActivityMapProps) {
           maxZoom={20}
           url={tileConfig.url}
         />
+
+        {userLocation !== null && <UserLocationLayer location={userLocation} />}
 
         {activities.map((activity) => {
           const missingToMinimum = Math.max(

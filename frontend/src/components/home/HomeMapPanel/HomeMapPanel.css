@@ -11,6 +11,60 @@
   display: none;
 }
 
+.home-map-panel__location-control {
+  position: absolute;
+  z-index: 1100;
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+  display: grid;
+  width: max-content;
+  max-width: calc(100% - 5.75rem);
+  gap: var(--space-2);
+}
+
+.home-map-panel__location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.home-map-panel__location-button.MuiButton-root {
+  min-height: var(--touch-target-min);
+  padding-inline: var(--space-4);
+  color: var(--floating-control-text);
+  font-weight: var(--font-weight-semibold);
+  background: var(--floating-control-bg);
+  border: 1px solid var(--color-primary);
+  box-shadow: 0 var(--space-1) var(--space-4) var(--floating-control-shadow);
+}
+
+.home-map-panel__location-button.MuiButton-contained {
+  color: var(--color-text-inverse);
+  background: var(--color-primary);
+}
+
+.home-map-panel__location-button.MuiButton-root:hover {
+  background: var(--floating-control-bg-hover);
+}
+
+.home-map-panel__location-button.MuiButton-contained:hover {
+  background: var(--color-primary-hover);
+}
+
+.home-map-panel__location-button.MuiButton-root:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.home-map-panel__location-error.MuiAlert-root {
+  max-width: 24rem;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-error);
+  box-shadow: 0 var(--space-1) var(--space-4) var(--floating-control-shadow);
+}
+
 .home-map-panel--mobile-hidden {
   display: none;
 }
@@ -59,5 +113,21 @@
   .home-map-panel__close.MuiIconButton-root:focus-visible {
     outline: 3px solid var(--header-focus-outline);
     outline-offset: 3px;
+  }
+}
+
+@media (max-width: 35rem) {
+  .home-map-panel__location-control {
+    max-width: calc(100% - 5.25rem);
+  }
+
+  .home-map-panel__location-actions {
+    display: grid;
+    justify-items: end;
+  }
+
+  .home-map-panel__location-button.MuiButton-root {
+    width: max-content;
+    max-width: 100%;
   }
 }

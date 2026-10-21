@@ -33,3 +33,40 @@
   color: var(--color-primary);
   font-weight: var(--font-weight-semibold);
 }
+
+.activity-map__user-accuracy {
+  fill: var(--color-primary);
+  fill-opacity: 0.12;
+  stroke: var(--color-primary);
+  stroke-opacity: 0.72;
+  stroke-width: 2;
+}
+
+.activity-map__user-marker {
+  fill: var(--color-primary);
+  fill-opacity: 1;
+  stroke: var(--color-surface);
+  stroke-opacity: 1;
+  stroke-width: 4;
+}
+
+.activity-map__user-popup {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-primary);
+}
+
+.activity-map__user-popup-container .leaflet-popup-content-wrapper,
+.activity-map__user-popup-container .leaflet-popup-tip {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+}
+
+.activity-map__user-popup-container .leaflet-popup-close-button {
+  color: var(--color-text-secondary);
+}
+
+.activity-map__user-popup span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
