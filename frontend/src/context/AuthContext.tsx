@@ -108,6 +108,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(await getCurrentUser())
   }
 
+  function syncUserProfile(profile: UserProfile) {
+    setUser(profile)
+  }
+
   const value = {
     user,
     isAuthenticated: user !== null,
@@ -116,6 +120,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     register,
     logout,
     refreshUser,
+    syncUserProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

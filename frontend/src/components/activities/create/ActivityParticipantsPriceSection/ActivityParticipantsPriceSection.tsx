@@ -12,12 +12,12 @@ import {
 import { Controller } from 'react-hook-form'
 import type { Control, FieldErrors } from 'react-hook-form'
 import type { PriceType } from '../../../../types/activity'
-import type { CreateActivityFormValues } from '../../../../types/createActivityForm'
+import type { ActivityFormValues } from '../../../../types/activityForm'
 
 interface ActivityParticipantsPriceSectionProps {
-  control: Control<CreateActivityFormValues>
+  control: Control<ActivityFormValues>
   disabled: boolean
-  errors: FieldErrors<CreateActivityFormValues>
+  errors: FieldErrors<ActivityFormValues>
   hasParticipantLimit: boolean
   priceType: PriceType
 }
@@ -36,7 +36,7 @@ function ActivityParticipantsPriceSection({
           Uczestnicy i cena
         </Typography>
 
-        <div className="create-activity-form__grid">
+        <div className="activity-form__grid">
           <Controller
             name="min_participants"
             control={control}

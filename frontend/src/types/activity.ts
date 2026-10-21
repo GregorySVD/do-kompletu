@@ -1,5 +1,7 @@
-export type ActivityStatus =
-  'DRAFT' | 'PUBLISHED' | 'ONGOING' | 'ENDED' | 'CANCELLED'
+export type ActivityStatus = 'PUBLISHED' | 'ONGOING' | 'ENDED' | 'CANCELLED'
+
+export type ActivityParticipationStatus =
+  'JOINED' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'NO_SHOW'
 
 export const priceTypes = ['FREE', 'PAID'] as const
 export type PriceType = (typeof priceTypes)[number]
@@ -25,6 +27,23 @@ export interface CreateActivityPayload {
   max_participants: number | null
   price_type: PriceType
   price_amount: number | null
+}
+
+export interface UpdateActivityPayload {
+  title?: string
+  description?: string
+  category_id?: string
+  start_at?: string
+  end_at?: string
+  location_name?: string
+  address?: string
+  latitude?: number
+  longitude?: number
+  min_participants?: number
+  has_participant_limit?: boolean
+  max_participants?: number | null
+  price_type?: PriceType
+  price_amount?: number | null
 }
 
 export interface Activity {
@@ -60,8 +79,19 @@ export interface ActivityTag {
   slug: string
 }
 
+export interface ActivityParticipation {
+  status: ActivityParticipationStatus
+  joined_at: string
+  confirmed_at: string | null
+  checked_in_at: string | null
+  completed_at: string | null
+  no_show_at: string | null
+}
+
 export interface ActivityPermissions {
   can_edit: boolean
+  can_cancel: boolean
+  can_finalize: boolean
   can_delete: boolean
   can_join: boolean
   can_leave: boolean
@@ -72,6 +102,7 @@ export interface ActivityPermissions {
 }
 
 export interface ActivityDetails extends Activity {
+  cancelled_at: string | null
   description: string
   organizer: ActivityOrganizer
   tags: ActivityTag[]
@@ -82,6 +113,6 @@ export interface ActivityDetails extends Activity {
   checkin_radius_m: number | null
   price_amount: number | null
   currency: string | null
-  current_user_participation: null
+  current_user_participation: ActivityParticipation | null
   permissions: ActivityPermissions
 }

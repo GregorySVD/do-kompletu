@@ -1,10 +1,13 @@
+import type { UseQueryResult } from '@tanstack/react-query'
+import axios from 'axios'
 import { Button, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import ActivityCard from '../../components/ActivityCard/ActivityCard'
+import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import { useAuth } from '../../context/auth'
-import { mockActivities } from '../../data/mockActivities'
-import { mockUserActivities } from '../../data/mockUserActivities'
-import type { Activity } from '../../types/activity'
+import { useMyActivitiesQuery } from '../../hooks/queries/useMyActivitiesQuery'
+import type { Activity, ActivityDetails } from '../../types/activity'
 import './MyActivitiesPage.css'
 
 interface ActivitySectionProps {
@@ -50,26 +53,70 @@ function ActivitySection({
   )
 }
 
+interface ActivityQuerySectionProps extends Omit<
+  ActivitySectionProps,
+  'activities'
+> {
+  query: UseQueryResult<ActivityDetails[], Error>
+}
+
+function getActivitiesErrorMessage(error: Error | null) {
+  if (axios.isAxiosError(error) && error.response?.status === 401) {
+    return 'Sesja wygasła lub jest nieprawidłowa.'
+  }
+
+  return 'Nie udało się pobrać aktywności.'
+}
+
+function ActivitySectionState({
+  id,
+  title,
+  children,
+}: Pick<ActivitySectionProps, 'id' | 'title'> & {
+  children: ReactNode
+}) {
+  return (
+    <section className="my-activities-section" aria-labelledby={id}>
+      <Typography id={id} component="h2" variant="h5">
+        {title}
+      </Typography>
+      {children}
+    </section>
+  )
+}
+
+function ActivityQuerySection({
+  query,
+  ...sectionProps
+}: ActivityQuerySectionProps) {
+  if (query.isPending) {
+    return (
+      <ActivitySectionState id={sectionProps.id} title={sectionProps.title}>
+        <QueryStateMessage message="Ładowanie aktywności..." isLoading />
+      </ActivitySectionState>
+    )
+  }
+
+  if (query.isError) {
+    return (
+      <ActivitySectionState id={sectionProps.id} title={sectionProps.title}>
+        <QueryStateMessage
+          message={getActivitiesErrorMessage(query.error)}
+          isRetrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      </ActivitySectionState>
+    )
+  }
+
+  return <ActivitySection {...sectionProps} activities={query.data} />
+}
+
 function MyActivitiesPage() {
   const { user } = useAuth()
-  const now = new Date()
-  const joinedActivityIds = new Set(mockUserActivities.joined_activity_ids)
-  const organizedActivityIds = new Set(
-    mockUserActivities.organized_activity_ids,
-  )
-
-  const joinedActivities = mockActivities.filter((activity) =>
-    joinedActivityIds.has(activity.id),
-  )
-  const upcomingActivities = joinedActivities.filter(
-    (activity) => new Date(activity.end_at) >= now,
-  )
-  const organizedActivities = mockActivities.filter((activity) =>
-    organizedActivityIds.has(activity.id),
-  )
-  const historyActivities = joinedActivities.filter(
-    (activity) => new Date(activity.end_at) < now,
-  )
+  const upcomingActivitiesQuery = useMyActivitiesQuery('joined', 'upcoming')
+  const organizedActivitiesQuery = useMyActivitiesQuery('organized')
+  const historyActivitiesQuery = useMyActivitiesQuery('joined', 'history')
 
   return (
     <main className="my-activities-page">
@@ -88,25 +135,25 @@ function MyActivitiesPage() {
         </Button>
       </div>
 
-      <ActivitySection
+      <ActivityQuerySection
         id="upcoming-activities-title"
         title="Nadchodzące"
-        activities={upcomingActivities}
+        query={upcomingActivitiesQuery}
         emptyMessage="Nie masz jeszcze nadchodzących aktywności."
       />
 
-      <ActivitySection
+      <ActivityQuerySection
         id="organized-activities-title"
         title="Organizowane przeze mnie"
-        activities={organizedActivities}
-        emptyMessage="Nie organizujesz obecnie żadnych aktywności."
+        query={organizedActivitiesQuery}
+        emptyMessage="Nie organizujesz jeszcze żadnych aktywności."
         statusLabel="Organizujesz"
       />
 
-      <ActivitySection
+      <ActivityQuerySection
         id="activity-history-title"
         title="Historia"
-        activities={historyActivities}
+        query={historyActivitiesQuery}
         emptyMessage="Nie masz jeszcze zakończonych aktywności."
         statusLabel="Zakończona"
       />

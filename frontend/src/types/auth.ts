@@ -30,3 +30,8 @@ export interface UserProfile {
   is_active: boolean
   created_at: string
 }
+
+export interface UpdateUserProfilePayload {
+  display_name?: string
+  avatar_url?: string | null
+}

@@ -4,6 +4,7 @@ import type {
   LoginFormValues,
   RegisterFormValues,
   TokenPair,
+  UpdateUserProfilePayload,
   UserProfile,
 } from '../types/auth'
 
@@ -42,6 +43,17 @@ export async function refreshAccessToken(
 
 export async function getCurrentUser(): Promise<UserProfile> {
   const response = await apiClient.get<UserProfile>('/api/v1/users/me')
+
+  return response.data
+}
+
+export async function updateCurrentUser(
+  payload: UpdateUserProfilePayload,
+): Promise<UserProfile> {
+  const response = await apiClient.patch<UserProfile>(
+    '/api/v1/users/me',
+    payload,
+  )
 
   return response.data
 }

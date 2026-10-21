@@ -7,7 +7,7 @@ function isTimezoneAwareIso(value: string) {
   return timezoneSuffixPattern.test(value) && !Number.isNaN(Date.parse(value))
 }
 
-export const createActivitySchema = z
+export const activityFormSchema = z
   .object({
     title: z
       .string()
