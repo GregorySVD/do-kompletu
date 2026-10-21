@@ -1,11 +1,17 @@
-import { useEffect, useState, type ReactNode } from 'react'
 import {
-  getCurrentUser,
-  loginUser,
-  refreshAccessToken,
-  registerUser,
-} from '../api/authApi'
-import { accessTokenStorageKey, refreshTokenStorageKey } from '../api/apiClient'
+  useQueryClient,
+  type QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query'
+import { useEffect, useState, type ReactNode } from 'react'
+import { getCurrentUser, loginUser, registerUser } from '../api/authApi'
+import {
+  clearStoredTokens,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  storeTokenPair,
+  subscribeToSessionExpiration,
+} from '../auth/authSession'
 import type {
   LoginFormValues,
   RegisterFormValues,
@@ -17,50 +23,55 @@ interface AuthProviderProps {
   children: ReactNode
 }
 
-function clearStoredTokens() {
-  sessionStorage.removeItem(accessTokenStorageKey)
-  sessionStorage.removeItem(refreshTokenStorageKey)
+function isPrivateQueryKey(queryKey: QueryKey) {
+  return (
+    queryKey[0] === 'my-activities' ||
+    (queryKey[0] === 'activity-details' && queryKey[1] !== 'anonymous')
+  )
+}
+
+function clearPrivateClientState(queryClient: QueryClient) {
+  queryClient.removeQueries({
+    predicate: (query) => isPrivateQueryKey(query.queryKey),
+  })
+  queryClient.getMutationCache().clear()
 }
 
 async function restoreSession(): Promise<UserProfile | null> {
-  const accessToken = sessionStorage.getItem(accessTokenStorageKey)
-
-  if (!accessToken) {
-    clearStoredTokens()
+  if (!getStoredAccessToken() && !getStoredRefreshToken()) {
     return null
   }
 
   try {
     return await getCurrentUser()
   } catch {
-    const refreshToken = sessionStorage.getItem(refreshTokenStorageKey)
-
-    if (!refreshToken) {
-      clearStoredTokens()
-      return null
-    }
-
-    try {
-      const refreshedToken = await refreshAccessToken(refreshToken)
-      sessionStorage.setItem(accessTokenStorageKey, refreshedToken.access_token)
-      return await getCurrentUser()
-    } catch {
-      clearStoredTokens()
-      return null
-    }
+    return null
   }
 }
 
 let pendingSessionRestore: Promise<UserProfile | null> | null = null
 
 function getRestoredSession() {
-  pendingSessionRestore ??= restoreSession()
+  pendingSessionRestore ??= restoreSession().finally(() => {
+    pendingSessionRestore = null
+  })
   return pendingSessionRestore
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(
+    () =>
+      subscribeToSessionExpiration(() => {
+        clearPrivateClientState(queryClient)
+        setUser(null)
+        setIsLoading(false)
+      }),
+    [queryClient],
+  )
 
   useEffect(() => {
     let isActive = true
@@ -79,13 +90,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   async function login(values: LoginFormValues) {
     const tokens = await loginUser(values)
-    sessionStorage.setItem(accessTokenStorageKey, tokens.access_token)
-    sessionStorage.setItem(refreshTokenStorageKey, tokens.refresh_token)
+    storeTokenPair(tokens.access_token, tokens.refresh_token)
 
     try {
-      setUser(await getCurrentUser())
+      const loggedInUser = await getCurrentUser()
+      clearPrivateClientState(queryClient)
+      setUser(loggedInUser)
     } catch (error) {
-      clearStoredTokens()
+      clearPrivateClientState(queryClient)
       setUser(null)
       throw error
     }
@@ -101,6 +113,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   function logout() {
     clearStoredTokens()
+    clearPrivateClientState(queryClient)
     setUser(null)
   }
 
