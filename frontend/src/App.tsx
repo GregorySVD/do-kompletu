@@ -3,6 +3,8 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import Header from './components/Header/Header'
 import RequireAuth from './components/RequireAuth/RequireAuth'
+import ServiceUnavailable from './components/system/ServiceUnavailable/ServiceUnavailable'
+import { useAuth } from './context/auth'
 import ActivityDetailsPage from './pages/ActivityDetailsPage/ActivityDetailsPage'
 import CreateActivityPage from './pages/CreateActivityPage/CreateActivityPage'
 import EditActivityPage from './pages/EditActivityPage/EditActivityPage'
@@ -22,6 +24,8 @@ import './App.css'
 
 function App() {
   const location = useLocation()
+  const { isSessionRestoreRetrying, retrySessionRestore, sessionRestoreError } =
+    useAuth()
   const [mode, setMode] = useState<ThemeMode>(getInitialThemeMode)
   const [searchQuery, setSearchQuery] = useState('')
   const isHomePage = location.pathname === '/'
@@ -112,6 +116,18 @@ function App() {
   useEffect(() => {
     applyThemeMode(mode)
   }, [mode])
+
+  if (sessionRestoreError) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <ServiceUnavailable
+          isRetrying={isSessionRestoreRetrying}
+          onRetry={retrySessionRestore}
+        />
+      </ThemeProvider>
+    )
+  }
 
   function toggleTheme() {
     setMode((currentMode) => (currentMode === 'light' ? 'dark' : 'light'))
