@@ -3,12 +3,12 @@ import axios from 'axios'
 import { Alert, Button, Typography } from '@mui/material'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import CreateActivityForm from '../../components/activities/create/CreateActivityForm/CreateActivityForm'
+import ActivityForm from '../../components/activities/create/ActivityForm/ActivityForm'
 import { useCreateActivityMutation } from '../../hooks/mutations/useCreateActivityMutation'
 import { activitiesQueryKey } from '../../hooks/queries/useActivitiesQuery'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
 import type { CreateActivityPayload } from '../../types/activity'
-import type { CreateActivityFormValues } from '../../types/createActivityForm'
+import type { ActivityFormValues } from '../../types/activityForm'
 import './CreateActivityPage.css'
 
 function getCreateActivityErrorMessage(error: unknown) {
@@ -36,7 +36,7 @@ function CreateActivityPage() {
   const navigate = useNavigate()
   const isCreatingRef = useRef(false)
 
-  async function handleCreate(values: CreateActivityFormValues) {
+  async function handleCreate(values: ActivityFormValues) {
     if (
       values.latitude === null ||
       values.longitude === null ||
@@ -126,9 +126,11 @@ function CreateActivityPage() {
       )}
 
       {categoriesQuery.isSuccess && (
-        <CreateActivityForm
+        <ActivityForm
           categories={categoriesQuery.data}
           disabled={createMutation.isPending}
+          submitLabel="Utwórz aktywność"
+          submittingLabel="Tworzenie..."
           onSubmit={handleCreate}
         />
       )}

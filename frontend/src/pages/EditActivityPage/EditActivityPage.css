@@ -1,0 +1,20 @@
+.edit-activity-page {
+  width: min(100%, 56.25rem);
+  margin-inline: auto;
+  padding: var(--section-gap) var(--page-gutter);
+}
+
+.edit-activity-page__heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--component-gap);
+  margin-bottom: var(--space-6);
+}
+
+@media (min-width: 43.75rem) {
+  .edit-activity-page__heading {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}

@@ -1,6 +1,6 @@
 import type { PriceType } from './activity'
 
-export interface CreateActivityFormValues {
+export interface ActivityFormValues {
   title: string
   description: string
   category_id: string

@@ -5,6 +5,7 @@ import Header from './components/Header/Header'
 import RequireAuth from './components/RequireAuth/RequireAuth'
 import ActivityDetailsPage from './pages/ActivityDetailsPage/ActivityDetailsPage'
 import CreateActivityPage from './pages/CreateActivityPage/CreateActivityPage'
+import EditActivityPage from './pages/EditActivityPage/EditActivityPage'
 import HomePage from './pages/HomePage/HomePage'
 import LoginPage from './pages/LoginPage/LoginPage'
 import MyActivitiesPage from './pages/MyActivitiesPage/MyActivitiesPage'
@@ -143,6 +144,10 @@ function App() {
           <Route path="/register/success" element={<RegisterSuccessPage />} />
           <Route element={<RequireAuth />}>
             <Route path="/activities/new" element={<CreateActivityPage />} />
+            <Route
+              path="/activities/:activityId/edit"
+              element={<EditActivityPage />}
+            />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/activities" element={<MyActivitiesPage />} />
           </Route>

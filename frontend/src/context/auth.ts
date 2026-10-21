@@ -13,6 +13,7 @@ export interface AuthContextValue {
   register: (values: RegisterFormValues) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
+  syncUserProfile: (profile: UserProfile) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(

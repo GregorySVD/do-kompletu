@@ -44,6 +44,9 @@ function ActivityLocationPicker({
   const mode = theme.palette.mode === 'dark' ? 'dark' : 'light'
   const tileConfig = getMapTileConfig(mode)
   const hasLocation = latitude !== null && longitude !== null
+  const initialCenter: [number, number] = hasLocation
+    ? [latitude, longitude]
+    : poznanMapCenter
 
   return (
     <div className="activity-location-picker">
@@ -60,7 +63,7 @@ function ActivityLocationPicker({
         className={`activity-location-picker__frame${error ? ' activity-location-picker__frame--error' : ''}${disabled ? ' activity-location-picker__frame--disabled' : ''}`}
       >
         <MapContainer
-          center={poznanMapCenter}
+          center={initialCenter}
           zoom={12}
           className="activity-location-picker__map"
           scrollWheelZoom

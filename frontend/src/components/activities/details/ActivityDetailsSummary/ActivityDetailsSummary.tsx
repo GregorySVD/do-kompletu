@@ -30,6 +30,9 @@ function ActivityDetailsSummary({ activity }: ActivityDetailsSummaryProps) {
             color={activity.price_type === 'FREE' ? 'success' : 'default'}
             variant="outlined"
           />
+          {activity.status === 'CANCELLED' && (
+            <Chip label="Anulowana" size="small" color="error" />
+          )}
         </div>
 
         <Typography component="h1" variant="h4" gutterBottom>

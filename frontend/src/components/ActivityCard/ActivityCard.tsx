@@ -14,6 +14,8 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
 })
 
 function ActivityCard({ activity, statusLabel }: ActivityCardProps) {
+  const isCancelled = activity.status === 'CANCELLED'
+  const effectiveStatusLabel = isCancelled ? 'Anulowana' : statusLabel
   const missingToMinimum = Math.max(
     activity.min_participants - activity.participant_count,
     0,
@@ -40,11 +42,11 @@ function ActivityCard({ activity, statusLabel }: ActivityCardProps) {
 
             <div className="activity-card__chips">
               <Chip label={activity.category.name} size="small" />
-              {statusLabel && (
+              {effectiveStatusLabel && (
                 <Chip
-                  label={statusLabel}
+                  label={effectiveStatusLabel}
                   size="small"
-                  color="primary"
+                  color={isCancelled ? 'error' : 'primary'}
                   variant="outlined"
                 />
               )}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import 'dayjs/locale/pl'
 import { Button } from '@mui/material'
@@ -6,20 +6,23 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { useForm, useWatch } from 'react-hook-form'
 import type { ActivityCategory } from '../../../../types/activity'
-import type { CreateActivityFormValues } from '../../../../types/createActivityForm'
-import { createActivitySchema } from '../../../../validation/createActivitySchema'
+import type { ActivityFormValues } from '../../../../types/activityForm'
+import { activityFormSchema } from '../../../../validation/activityFormSchema'
 import ActivityBasicInfoSection from '../ActivityBasicInfoSection/ActivityBasicInfoSection'
 import ActivityParticipantsPriceSection from '../ActivityParticipantsPriceSection/ActivityParticipantsPriceSection'
 import ActivityScheduleLocationSection from '../ActivityScheduleLocationSection/ActivityScheduleLocationSection'
-import './CreateActivityForm.css'
+import './ActivityForm.css'
 
-interface CreateActivityFormProps {
+interface ActivityFormProps {
   categories: ActivityCategory[]
+  initialValues?: ActivityFormValues
   disabled?: boolean
-  onSubmit: (values: CreateActivityFormValues) => void | Promise<void>
+  submitLabel: string
+  submittingLabel: string
+  onSubmit: (values: ActivityFormValues) => void | Promise<void>
 }
 
-const defaultValues: CreateActivityFormValues = {
+const defaultActivityFormValues: ActivityFormValues = {
   title: '',
   description: '',
   category_id: '',
@@ -36,11 +39,14 @@ const defaultValues: CreateActivityFormValues = {
   price_amount: null,
 }
 
-function CreateActivityForm({
+function ActivityForm({
   categories,
+  initialValues = defaultActivityFormValues,
   disabled = false,
+  submitLabel,
+  submittingLabel,
   onSubmit,
-}: CreateActivityFormProps) {
+}: ActivityFormProps) {
   const {
     clearErrors,
     control,
@@ -48,9 +54,9 @@ function CreateActivityForm({
     handleSubmit,
     register,
     setValue,
-  } = useForm<CreateActivityFormValues>({
-    resolver: zodResolver(createActivitySchema),
-    defaultValues,
+  } = useForm<ActivityFormValues>({
+    resolver: zodResolver(activityFormSchema),
+    defaultValues: initialValues,
   })
 
   const priceType = useWatch({ control, name: 'price_type' })
@@ -58,10 +64,12 @@ function CreateActivityForm({
     control,
     name: 'has_participant_limit',
   })
+  const maxParticipants = useWatch({ control, name: 'max_participants' })
   const startAt = useWatch({ control, name: 'start_at' })
   const latitude = useWatch({ control, name: 'latitude' })
   const longitude = useWatch({ control, name: 'longitude' })
   const formDisabled = disabled || isSubmitting
+  const previousHasParticipantLimit = useRef(hasParticipantLimit)
 
   useEffect(() => {
     if (priceType === 'FREE') {
@@ -71,13 +79,21 @@ function CreateActivityForm({
   }, [clearErrors, priceType, setValue])
 
   useEffect(() => {
-    if (hasParticipantLimit) {
+    if (
+      !previousHasParticipantLimit.current &&
+      hasParticipantLimit &&
+      maxParticipants === null
+    ) {
       setValue('max_participants', 10)
-    } else {
-      setValue('max_participants', null)
+    } else if (previousHasParticipantLimit.current && !hasParticipantLimit) {
+      if (maxParticipants !== null) {
+        setValue('max_participants', null)
+      }
       clearErrors('max_participants')
     }
-  }, [clearErrors, hasParticipantLimit, setValue])
+
+    previousHasParticipantLimit.current = hasParticipantLimit
+  }, [clearErrors, hasParticipantLimit, maxParticipants, setValue])
 
   function handleLocationChange(nextLatitude: number, nextLongitude: number) {
     setValue('latitude', nextLatitude, {
@@ -95,7 +111,7 @@ function CreateActivityForm({
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pl">
       <form
-        className="create-activity-form"
+        className="activity-form"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
@@ -126,9 +142,9 @@ function CreateActivityForm({
           priceType={priceType}
         />
 
-        <div className="create-activity-form__actions">
+        <div className="activity-form__actions">
           <Button disabled={formDisabled} type="submit" variant="contained">
-            {formDisabled ? 'Tworzenie...' : 'Utwórz aktywność'}
+            {formDisabled ? submittingLabel : submitLabel}
           </Button>
         </div>
       </form>
@@ -136,4 +152,4 @@ function CreateActivityForm({
   )
 }
 
-export default CreateActivityForm
+export default ActivityForm

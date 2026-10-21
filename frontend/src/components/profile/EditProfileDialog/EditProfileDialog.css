@@ -1,0 +1,19 @@
+.edit-profile-dialog__form {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+@media (max-width: 30rem) {
+  .edit-profile-dialog__actions.MuiDialogActions-root {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    padding: var(--space-4) var(--space-6) var(--space-5);
+  }
+
+  .edit-profile-dialog__actions .MuiButton-root {
+    width: 100%;
+    min-height: var(--touch-target-min);
+    margin: 0;
+  }
+}
