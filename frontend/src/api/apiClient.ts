@@ -38,9 +38,12 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const requestConfig = config as RetryableRequestConfig
   const accessToken = getStoredAccessToken()
+  const refreshToken = getStoredRefreshToken()
 
   if (requestConfig._sessionRefreshToken === undefined) {
-    requestConfig._sessionRefreshToken = getStoredRefreshToken()
+    requestConfig._sessionRefreshToken = refreshToken
+  } else if (requestConfig._sessionRefreshToken !== refreshToken) {
+    throw createStaleSessionRequestError(requestConfig)
   }
 
   if (accessToken) {
@@ -49,6 +52,13 @@ apiClient.interceptors.request.use((config) => {
 
   return requestConfig
 })
+
+function createStaleSessionRequestError(config?: RetryableRequestConfig) {
+  return new axios.CanceledError(
+    'Request canceled because the authentication session changed',
+    config,
+  )
+}
 
 function isAuthEndpointWithoutRefresh(url: string | undefined) {
   if (!url) {
@@ -67,7 +77,7 @@ function refreshAccessTokenSingleFlight(refreshToken: string) {
   const refreshRequest = requestAccessTokenRefresh(refreshToken)
     .then(({ access_token: accessToken }) => {
       if (getStoredRefreshToken() !== refreshToken) {
-        throw new Error('Session changed during access token refresh')
+        throw createStaleSessionRequestError()
       }
 
       storeAccessToken(accessToken)
@@ -113,7 +123,7 @@ apiClient.interceptors.response.use(
     }
 
     if (originalRequest._sessionRefreshToken !== getStoredRefreshToken()) {
-      return Promise.reject(error)
+      return Promise.reject(createStaleSessionRequestError(originalRequest))
     }
 
     if (originalRequest._retry) {
@@ -142,7 +152,7 @@ apiClient.interceptors.response.use(
       const accessToken = await refreshAccessTokenSingleFlight(refreshToken)
 
       if (getStoredRefreshToken() !== refreshToken) {
-        return Promise.reject(error)
+        return Promise.reject(createStaleSessionRequestError(originalRequest))
       }
 
       originalRequest.headers.Authorization = `Bearer ${accessToken}`
