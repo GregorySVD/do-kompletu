@@ -62,8 +62,12 @@ export function getActivityParticipantActionErrorMessage(error: unknown) {
     return defaultMessage
   }
 
-  const status = error.response?.status
-  const detail = error.response?.data.detail
+  if (!error.response) {
+    return networkMessage
+  }
+
+  const status = error.response.status
+  const detail = error.response.data.detail
 
   if (status === 401) {
     return 'Sesja wygasła lub jest nieprawidłowa.'

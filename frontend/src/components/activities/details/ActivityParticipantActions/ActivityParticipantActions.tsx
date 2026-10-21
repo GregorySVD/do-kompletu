@@ -10,7 +10,7 @@ import {
   DialogTitle,
   Typography,
 } from '@mui/material'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../../context/auth'
 import { useCheckInActivityMutation } from '../../../../hooks/mutations/useCheckInActivityMutation'
@@ -145,6 +145,9 @@ function ActivityParticipantActions({
     resetError: resetGeolocationError,
   } = useCurrentPosition()
   const participation = activity.current_user_participation
+  const participationStatus = participation?.status ?? null
+  const previousActivityIdRef = useRef(activity.id)
+  const previousParticipationStatusRef = useRef(participationStatus)
   const isWaitlisted = participation?.status === 'WAITLISTED'
   const isParticipantActionPending =
     confirmMutation.isPending ||
@@ -159,6 +162,64 @@ function ActivityParticipantActions({
   const canCheckIn = isAuthenticated && activity.permissions.can_check_in
   const canPromptLogin =
     !isLoading && !isAuthenticated && activity.status === 'PUBLISHED'
+
+  useEffect(() => {
+    const activityChanged = previousActivityIdRef.current !== activity.id
+    const participationStatusChanged =
+      previousParticipationStatusRef.current !== participationStatus
+    const previousParticipationStatus = previousParticipationStatusRef.current
+
+    previousActivityIdRef.current = activity.id
+    previousParticipationStatusRef.current = participationStatus
+
+    if (activityChanged) {
+      participantActionLockRef.current = false
+      joinMutation.reset()
+      leaveMutation.reset()
+      confirmMutation.reset()
+      checkInMutation.reset()
+      setIsLeaveDialogOpen(false)
+      setCheckInErrorMessage(null)
+      resetGeolocationError()
+      return
+    }
+
+    if (!participationStatusChanged) {
+      return
+    }
+
+    if (participationStatus !== null) {
+      joinMutation.reset()
+    }
+
+    if (previousParticipationStatus !== null && participationStatus === null) {
+      leaveMutation.reset()
+      setIsLeaveDialogOpen(false)
+    }
+
+    if (
+      previousParticipationStatus === 'JOINED' &&
+      participationStatus !== 'JOINED'
+    ) {
+      confirmMutation.reset()
+    }
+
+    if (
+      previousParticipationStatus === 'CONFIRMED' &&
+      participationStatus !== 'CONFIRMED'
+    ) {
+      checkInMutation.reset()
+      setCheckInErrorMessage(null)
+    }
+  }, [
+    activity.id,
+    checkInMutation,
+    confirmMutation,
+    joinMutation,
+    leaveMutation,
+    participationStatus,
+    resetGeolocationError,
+  ])
 
   function handleJoin() {
     if (
