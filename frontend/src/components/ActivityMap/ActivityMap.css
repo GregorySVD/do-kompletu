@@ -34,6 +34,111 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.activity-map__category-marker {
+  --marker-color: var(--category-fallback-color);
+  --marker-soft-bg: var(--category-fallback-bg);
+
+  background: transparent;
+  border: 0;
+}
+
+.activity-map__category-marker-visual {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--color-text-inverse);
+  background: var(--marker-color);
+  border: 3px solid var(--marker-soft-bg);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px var(--marker-color),
+    0 var(--space-1) var(--space-3)
+      color-mix(
+        in srgb,
+        var(--marker-color) 32%,
+        var(--floating-control-shadow)
+      );
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.activity-map__category-marker-icon.MuiSvgIcon-root {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.activity-map__category-marker:hover .activity-map__category-marker-visual,
+.activity-map__category-marker:focus-visible
+  .activity-map__category-marker-visual {
+  box-shadow:
+    0 0 0 2px var(--marker-color),
+    0 var(--space-2) var(--space-4)
+      color-mix(
+        in srgb,
+        var(--marker-color) 38%,
+        var(--floating-control-shadow)
+      );
+  transform: scale(1.08);
+}
+
+.activity-map__category-marker:focus-visible {
+  outline: none;
+}
+
+.activity-map__category-marker:focus-visible
+  .activity-map__category-marker-visual {
+  outline: 3px solid var(--color-surface);
+  outline-offset: 3px;
+}
+
+.activity-map__category-marker--team-sport {
+  --marker-color: var(--category-team-sport-color);
+  --marker-soft-bg: var(--category-team-sport-bg);
+}
+
+.activity-map__category-marker--board-games {
+  --marker-color: var(--category-board-games-color);
+  --marker-soft-bg: var(--category-board-games-bg);
+}
+
+.activity-map__category-marker--rpg {
+  --marker-color: var(--category-rpg-color);
+  --marker-soft-bg: var(--category-rpg-bg);
+}
+
+.activity-map__category-marker--gaming {
+  --marker-color: var(--category-gaming-color);
+  --marker-soft-bg: var(--category-gaming-bg);
+}
+
+.activity-map__category-marker--study {
+  --marker-color: var(--category-study-color);
+  --marker-soft-bg: var(--category-study-bg);
+}
+
+.activity-map__category-marker--technology {
+  --marker-color: var(--category-technology-color);
+  --marker-soft-bg: var(--category-technology-bg);
+}
+
+.activity-map__category-marker--music {
+  --marker-color: var(--category-music-color);
+  --marker-soft-bg: var(--category-music-bg);
+}
+
+.activity-map__category-marker--creative {
+  --marker-color: var(--category-creative-color);
+  --marker-soft-bg: var(--category-creative-bg);
+}
+
+.activity-map__category-marker--fallback {
+  --marker-color: var(--category-fallback-color);
+  --marker-soft-bg: var(--category-fallback-bg);
+}
+
 .activity-map__user-accuracy {
   fill: var(--color-primary);
   fill-opacity: 0.12;
@@ -48,6 +153,10 @@
   stroke: var(--color-surface);
   stroke-opacity: 1;
   stroke-width: 4;
+}
+
+.activity-map__user-marker-pane {
+  z-index: 650;
 }
 
 .activity-map__user-popup {

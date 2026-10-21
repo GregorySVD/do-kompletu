@@ -1,20 +1,23 @@
+import { DivIcon } from 'leaflet'
 import { useEffect } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import {
   Circle,
   CircleMarker,
   MapContainer,
   Marker,
+  Pane,
   Popup,
   TileLayer,
   useMap,
 } from 'react-leaflet'
 import { Link } from 'react-router-dom'
-import type { Activity } from '../../types/activity'
 import {
-  getMapTileConfig,
-  mapMarkerIcon,
-  poznanMapCenter,
-} from '../../utils/mapConfig'
+  getActivityCategoryPresentation,
+  type ActivityCategoryVisualVariant,
+} from '../../config/activityCategoryPresentation'
+import type { Activity } from '../../types/activity'
+import { getMapTileConfig, poznanMapCenter } from '../../utils/mapConfig'
 import 'leaflet/dist/leaflet.css'
 import './ActivityMap.css'
 
@@ -36,6 +39,37 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
   timeStyle: 'short',
   hour12: false,
 })
+
+const categoryMarkerIconCache = new Map<
+  ActivityCategoryVisualVariant,
+  DivIcon
+>()
+
+function getActivityCategoryMarkerIcon(categorySlug: string) {
+  const presentation = getActivityCategoryPresentation(categorySlug)
+  const cachedIcon = categoryMarkerIconCache.get(presentation.variant)
+
+  if (cachedIcon) {
+    return cachedIcon
+  }
+
+  const CategoryIcon = presentation.icon
+  const markerIcon = new DivIcon({
+    className: `activity-map__category-marker activity-map__category-marker--${presentation.variant}`,
+    html: renderToStaticMarkup(
+      <span className="activity-map__category-marker-visual" aria-hidden="true">
+        <CategoryIcon className="activity-map__category-marker-icon" />
+      </span>,
+    ),
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
+    popupAnchor: [0, -24],
+  })
+
+  categoryMarkerIconCache.set(presentation.variant, markerIcon)
+
+  return markerIcon
+}
 
 function MapResizeHandler({ isVisible }: { isVisible: boolean }) {
   const map = useMap()
@@ -76,18 +110,23 @@ function UserLocationLayer({ location }: { location: UserMapLocation }) {
         interactive={false}
         radius={location.accuracyM}
       />
-      <CircleMarker
-        center={position}
-        className="activity-map__user-marker"
-        radius={9}
+      <Pane
+        className="activity-map__user-marker-pane"
+        name="user-location-marker"
       >
-        <Popup className="activity-map__user-popup-container">
-          <div className="activity-map__user-popup">
-            <strong>Twoja lokalizacja</strong>
-            <span>Dokładność: około {Math.round(location.accuracyM)} m</span>
-          </div>
-        </Popup>
-      </CircleMarker>
+        <CircleMarker
+          center={position}
+          className="activity-map__user-marker"
+          radius={9}
+        >
+          <Popup className="activity-map__user-popup-container">
+            <div className="activity-map__user-popup">
+              <strong>Twoja lokalizacja</strong>
+              <span>Dokładność: około {Math.round(location.accuracyM)} m</span>
+            </div>
+          </Popup>
+        </CircleMarker>
+      </Pane>
     </>
   )
 }
@@ -123,12 +162,15 @@ function ActivityMap({
             0,
           )
           const hasParticipantLimit = activity.max_participants !== null
+          const markerLabel = `${activity.title} — ${activity.category.name}`
 
           return (
             <Marker
               key={activity.id}
+              alt={markerLabel}
               position={[activity.latitude, activity.longitude]}
-              icon={mapMarkerIcon}
+              icon={getActivityCategoryMarkerIcon(activity.category.slug)}
+              title={markerLabel}
             >
               <Popup>
                 <div className="activity-map__popup">
