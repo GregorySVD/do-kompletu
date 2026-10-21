@@ -1,0 +1,43 @@
+.activity-participant-actions {
+  margin-top: var(--space-4);
+}
+
+.activity-participant-actions__content {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.activity-participant-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.activity-participant-actions__dialog-error {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 30rem) {
+  .activity-participant-actions__buttons {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .activity-participant-actions__buttons .MuiButton-root {
+    width: 100%;
+    min-height: var(--touch-target-min);
+  }
+
+  .activity-participant-actions__dialog-actions.MuiDialogActions-root {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    padding: var(--space-4) var(--space-6) var(--space-5);
+  }
+
+  .activity-participant-actions__dialog-actions .MuiButton-root {
+    width: 100%;
+    min-height: var(--touch-target-min);
+    margin: 0;
+  }
+}

@@ -1,4 +1,4 @@
-import { Button, Card, CardContent, Chip, Typography } from '@mui/material'
+import { Card, CardContent, Chip, Typography } from '@mui/material'
 import type { ActivityDetails } from '../../../../types/activity'
 import './ActivityDetailsSummary.css'
 
@@ -39,12 +39,6 @@ function ActivityDetailsSummary({ activity }: ActivityDetailsSummaryProps) {
           {activity.title}
         </Typography>
         <Typography>{activity.description}</Typography>
-
-        <div className="activity-details-summary__action">
-          <Button variant="contained" disabled={!activity.permissions.can_join}>
-            Dołącz do aktywności
-          </Button>
-        </div>
       </CardContent>
     </Card>
   )

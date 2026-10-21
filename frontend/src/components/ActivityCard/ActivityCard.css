@@ -32,6 +32,10 @@
   margin-top: var(--space-4);
 }
 
+.activity-card__secondary-status {
+  margin-top: var(--space-2);
+}
+
 .activity-card__details {
   display: flex;
   flex-direction: column;

@@ -3,6 +3,7 @@ import ActivityDetailsSummary from '../ActivityDetailsSummary/ActivityDetailsSum
 import ActivityLifecycleInfo from '../ActivityLifecycleInfo/ActivityLifecycleInfo'
 import ActivityOrganizerActions from '../ActivityOrganizerActions/ActivityOrganizerActions'
 import ActivityOrganizerInfo from '../ActivityOrganizerInfo/ActivityOrganizerInfo'
+import ActivityParticipantActions from '../ActivityParticipantActions/ActivityParticipantActions'
 import ActivityParticipantsInfo from '../ActivityParticipantsInfo/ActivityParticipantsInfo'
 import ActivityScheduleLocation from '../ActivityScheduleLocation/ActivityScheduleLocation'
 import './ActivityDetailsContent.css'
@@ -15,6 +16,7 @@ function ActivityDetailsContent({ activity }: ActivityDetailsContentProps) {
   return (
     <>
       <ActivityDetailsSummary activity={activity} />
+      <ActivityParticipantActions activity={activity} />
       <ActivityOrganizerActions activity={activity} />
 
       <div className="activity-details-content__grid">

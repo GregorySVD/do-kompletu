@@ -7,13 +7,14 @@ import ActivityCard from '../../components/ActivityCard/ActivityCard'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import { useAuth } from '../../context/auth'
 import { useMyActivitiesQuery } from '../../hooks/queries/useMyActivitiesQuery'
-import type { Activity, ActivityDetails } from '../../types/activity'
+import type { ActivityDetails } from '../../types/activity'
 import './MyActivitiesPage.css'
 
 interface ActivitySectionProps {
-  activities: Activity[]
+  activities: ActivityDetails[]
   emptyMessage: string
   id: string
+  secondaryStatusText?: (activity: ActivityDetails) => string | undefined
   statusLabel?: string
   title: string
 }
@@ -22,6 +23,7 @@ function ActivitySection({
   activities,
   emptyMessage,
   id,
+  secondaryStatusText,
   statusLabel,
   title,
 }: ActivitySectionProps) {
@@ -37,6 +39,7 @@ function ActivitySection({
             <ActivityCard
               key={activity.id}
               activity={activity}
+              secondaryStatusText={secondaryStatusText?.(activity)}
               statusLabel={statusLabel}
             />
           ))}
@@ -115,6 +118,10 @@ function ActivityQuerySection({
 function MyActivitiesPage() {
   const { user } = useAuth()
   const upcomingActivitiesQuery = useMyActivitiesQuery('joined', 'upcoming')
+  const waitlistedActivitiesQuery = useMyActivitiesQuery(
+    'waitlisted',
+    'upcoming',
+  )
   const organizedActivitiesQuery = useMyActivitiesQuery('organized')
   const historyActivitiesQuery = useMyActivitiesQuery('joined', 'history')
 
@@ -140,6 +147,22 @@ function MyActivitiesPage() {
         title="Nadchodzące"
         query={upcomingActivitiesQuery}
         emptyMessage="Nie masz jeszcze nadchodzących aktywności."
+      />
+
+      <ActivityQuerySection
+        id="waitlisted-activities-title"
+        title="Waitlista"
+        query={waitlistedActivitiesQuery}
+        emptyMessage="Nie oczekujesz obecnie na miejsce w żadnej aktywności."
+        statusLabel="Lista oczekujących"
+        secondaryStatusText={(activity) => {
+          const participation = activity.current_user_participation
+
+          return participation?.status === 'WAITLISTED' &&
+            participation.waitlist_position !== null
+            ? `Pozycja: ${participation.waitlist_position}`
+            : undefined
+        }}
       />
 
       <ActivityQuerySection

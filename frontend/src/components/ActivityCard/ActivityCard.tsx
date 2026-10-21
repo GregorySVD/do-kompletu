@@ -5,6 +5,7 @@ import './ActivityCard.css'
 
 interface ActivityCardProps {
   activity: Activity
+  secondaryStatusText?: string
   statusLabel?: string
 }
 
@@ -13,7 +14,11 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
   timeStyle: 'short',
 })
 
-function ActivityCard({ activity, statusLabel }: ActivityCardProps) {
+function ActivityCard({
+  activity,
+  secondaryStatusText,
+  statusLabel,
+}: ActivityCardProps) {
   const isCancelled = activity.status === 'CANCELLED'
   const effectiveStatusLabel = isCancelled ? 'Anulowana' : statusLabel
   const missingToMinimum = Math.max(
@@ -56,6 +61,14 @@ function ActivityCard({ activity, statusLabel }: ActivityCardProps) {
           <Typography className="activity-card__location">
             {activity.location_name}
           </Typography>
+          {secondaryStatusText && (
+            <Typography
+              className="activity-card__secondary-status"
+              color="text.secondary"
+            >
+              {secondaryStatusText}
+            </Typography>
+          )}
 
           <div className="activity-card__details">
             <Chip
