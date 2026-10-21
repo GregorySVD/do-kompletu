@@ -53,6 +53,12 @@ export interface UpdateActivityPayload {
   price_amount?: number | null
 }
 
+export interface CheckInActivityPayload {
+  latitude: number
+  longitude: number
+  accuracy_m: number
+}
+
 export interface Activity {
   id: string
   title: string

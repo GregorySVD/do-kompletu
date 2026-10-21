@@ -10,16 +10,23 @@ import {
   DialogTitle,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../../context/auth'
+import { useCheckInActivityMutation } from '../../../../hooks/mutations/useCheckInActivityMutation'
+import { useConfirmActivityMutation } from '../../../../hooks/mutations/useConfirmActivityMutation'
 import { useJoinActivityMutation } from '../../../../hooks/mutations/useJoinActivityMutation'
 import { useLeaveActivityMutation } from '../../../../hooks/mutations/useLeaveActivityMutation'
+import { useCurrentPosition } from '../../../../hooks/useCurrentPosition'
 import type {
   ActivityDetails,
   ActivityParticipation,
 } from '../../../../types/activity'
-import { getActivityParticipantActionErrorMessage } from '../../../../utils/activityParticipantActionError'
+import {
+  getActivityParticipantActionErrorMessage,
+  getCheckInActivityErrorMessage,
+  getConfirmActivityErrorMessage,
+} from '../../../../utils/activityParticipantActionError'
 import { formatDateTime } from '../../../../utils/dateFormat'
 import './ActivityParticipantActions.css'
 
@@ -67,9 +74,18 @@ function ParticipationStatus({
       )
     case 'CONFIRMED':
       return (
-        <Typography component="h2" variant="h6">
-          Udział potwierdzony
-        </Typography>
+        <>
+          <Typography component="h2" variant="h6">
+            Udział potwierdzony
+          </Typography>
+          {activity.checkin_opens_at !== null &&
+            activity.checkin_closes_at !== null && (
+              <Typography color="text.secondary">
+                Check-in: {formatDateTime(activity.checkin_opens_at)} –{' '}
+                {formatDateTime(activity.checkin_closes_at)}
+              </Typography>
+            )}
+        </>
       )
     case 'CHECKED_IN':
       return (
@@ -114,27 +130,55 @@ function ActivityParticipantActions({
 }: ActivityParticipantActionsProps) {
   const { isAuthenticated, isLoading } = useAuth()
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
+  const [checkInErrorMessage, setCheckInErrorMessage] = useState<string | null>(
+    null,
+  )
+  const participantActionLockRef = useRef(false)
+  const confirmMutation = useConfirmActivityMutation()
+  const checkInMutation = useCheckInActivityMutation()
   const joinMutation = useJoinActivityMutation()
   const leaveMutation = useLeaveActivityMutation()
+  const {
+    errorMessage: geolocationErrorMessage,
+    getCurrentPosition,
+    isLocating,
+    resetError: resetGeolocationError,
+  } = useCurrentPosition()
   const participation = activity.current_user_participation
   const isWaitlisted = participation?.status === 'WAITLISTED'
-  const isPending = joinMutation.isPending || leaveMutation.isPending
+  const isParticipantActionPending =
+    confirmMutation.isPending ||
+    checkInMutation.isPending ||
+    joinMutation.isPending ||
+    leaveMutation.isPending ||
+    isLocating
   const canJoin = isAuthenticated && activity.permissions.can_join
   const canLeave =
     isAuthenticated && participation !== null && activity.permissions.can_leave
+  const canConfirm = isAuthenticated && activity.permissions.can_confirm
+  const canCheckIn = isAuthenticated && activity.permissions.can_check_in
   const canPromptLogin =
     !isLoading && !isAuthenticated && activity.status === 'PUBLISHED'
 
   function handleJoin() {
-    if (!canJoin || isPending) {
+    if (
+      !canJoin ||
+      isParticipantActionPending ||
+      participantActionLockRef.current
+    ) {
       return
     }
 
-    joinMutation.mutate(activity.id)
+    participantActionLockRef.current = true
+    joinMutation.mutate(activity.id, {
+      onSettled: () => {
+        participantActionLockRef.current = false
+      },
+    })
   }
 
   function openLeaveDialog() {
-    if (!canLeave || isPending) {
+    if (!canLeave || isParticipantActionPending) {
       return
     }
 
@@ -143,19 +187,80 @@ function ActivityParticipantActions({
   }
 
   function closeLeaveDialog() {
-    if (!leaveMutation.isPending) {
+    if (!isParticipantActionPending) {
       setIsLeaveDialogOpen(false)
     }
   }
 
   function confirmLeave() {
-    if (!canLeave || leaveMutation.isPending) {
+    if (
+      !canLeave ||
+      isParticipantActionPending ||
+      participantActionLockRef.current
+    ) {
       return
     }
 
+    participantActionLockRef.current = true
     leaveMutation.mutate(activity.id, {
       onSuccess: () => setIsLeaveDialogOpen(false),
+      onSettled: () => {
+        participantActionLockRef.current = false
+      },
     })
+  }
+
+  function handleConfirm() {
+    if (
+      !canConfirm ||
+      isParticipantActionPending ||
+      participantActionLockRef.current
+    ) {
+      return
+    }
+
+    participantActionLockRef.current = true
+    confirmMutation.mutate(activity.id, {
+      onSettled: () => {
+        participantActionLockRef.current = false
+      },
+    })
+  }
+
+  async function handleCheckIn() {
+    if (
+      !canCheckIn ||
+      isParticipantActionPending ||
+      participantActionLockRef.current
+    ) {
+      return
+    }
+
+    participantActionLockRef.current = true
+    setCheckInErrorMessage(null)
+    resetGeolocationError()
+
+    try {
+      const position = await getCurrentPosition()
+
+      if (position === null) {
+        return
+      }
+
+      await checkInMutation.mutateAsync({
+        activityId: activity.id,
+        payload: {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy_m: position.coords.accuracy,
+        },
+      })
+    } catch (error) {
+      setCheckInErrorMessage(getCheckInActivityErrorMessage(error))
+    } finally {
+      checkInMutation.reset()
+      participantActionLockRef.current = false
+    }
   }
 
   if (isLoading || (participation === null && !canJoin && !canPromptLogin)) {
@@ -197,6 +302,27 @@ function ActivityParticipantActions({
             </Alert>
           )}
 
+          {confirmMutation.isError && (
+            <Alert severity="error">
+              {getConfirmActivityErrorMessage(confirmMutation.error)}
+            </Alert>
+          )}
+
+          {geolocationErrorMessage && (
+            <Alert severity="error">{geolocationErrorMessage}</Alert>
+          )}
+
+          {checkInErrorMessage && (
+            <Alert severity="error">{checkInErrorMessage}</Alert>
+          )}
+
+          {canCheckIn && (
+            <Typography color="text.secondary" variant="body2">
+              Check-in wykorzysta jednorazowo lokalizację urządzenia, aby
+              zweryfikować lokalizację dla check-inu.
+            </Typography>
+          )}
+
           <div className="activity-participant-actions__buttons">
             {canPromptLogin && (
               <Button component={Link} to="/login" variant="contained">
@@ -207,10 +333,36 @@ function ActivityParticipantActions({
             {canJoin && (
               <Button
                 variant="contained"
-                disabled={isPending}
+                disabled={isParticipantActionPending}
                 onClick={handleJoin}
               >
                 {joinMutation.isPending ? 'Dołączanie...' : joinLabel}
+              </Button>
+            )}
+
+            {canConfirm && (
+              <Button
+                variant="contained"
+                disabled={isParticipantActionPending}
+                onClick={handleConfirm}
+              >
+                {confirmMutation.isPending
+                  ? 'Potwierdzanie...'
+                  : 'Potwierdź udział'}
+              </Button>
+            )}
+
+            {canCheckIn && (
+              <Button
+                variant="contained"
+                disabled={isParticipantActionPending}
+                onClick={() => void handleCheckIn()}
+              >
+                {isLocating
+                  ? 'Pobieranie lokalizacji...'
+                  : checkInMutation.isPending
+                    ? 'Weryfikowanie lokalizacji...'
+                    : 'Wykonaj check-in'}
               </Button>
             )}
 
@@ -218,7 +370,7 @@ function ActivityParticipantActions({
               <Button
                 color="error"
                 variant="outlined"
-                disabled={isPending}
+                disabled={isParticipantActionPending}
                 onClick={openLeaveDialog}
               >
                 {isWaitlisted ? 'Opuść kolejkę' : 'Zrezygnuj'}
@@ -253,13 +405,16 @@ function ActivityParticipantActions({
           )}
         </DialogContent>
         <DialogActions className="activity-participant-actions__dialog-actions">
-          <Button disabled={leaveMutation.isPending} onClick={closeLeaveDialog}>
+          <Button
+            disabled={isParticipantActionPending}
+            onClick={closeLeaveDialog}
+          >
             Wróć
           </Button>
           <Button
             color="error"
             variant="contained"
-            disabled={leaveMutation.isPending}
+            disabled={isParticipantActionPending}
             onClick={confirmLeave}
           >
             {leaveMutation.isPending
