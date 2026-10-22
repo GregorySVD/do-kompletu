@@ -7,6 +7,13 @@ interface ActivityParticipantActionErrorResponse {
 const defaultMessage = 'Nie udało się wykonać operacji. Spróbuj ponownie.'
 const networkMessage = 'Nie udało się połączyć z serwerem. Spróbuj ponownie.'
 
+function isCanceledRequest(error: unknown) {
+  return (
+    axios.isCancel(error) ||
+    (axios.isAxiosError(error) && error.code === 'ERR_CANCELED')
+  )
+}
+
 const conflictMessages: Record<string, string> = {
   'Already joined this activity': 'Jesteś już zapisany na tę aktywność.',
   'Attendance outcome is final':
@@ -58,6 +65,10 @@ const checkInConflictMessages: Record<string, string> = {
 }
 
 export function getActivityParticipantActionErrorMessage(error: unknown) {
+  if (isCanceledRequest(error)) {
+    return null
+  }
+
   if (!axios.isAxiosError<ActivityParticipantActionErrorResponse>(error)) {
     return defaultMessage
   }
@@ -85,6 +96,10 @@ export function getActivityParticipantActionErrorMessage(error: unknown) {
 }
 
 export function getConfirmActivityErrorMessage(error: unknown) {
+  if (isCanceledRequest(error)) {
+    return null
+  }
+
   if (!axios.isAxiosError<ActivityParticipantActionErrorResponse>(error)) {
     return defaultMessage
   }
@@ -112,6 +127,10 @@ export function getConfirmActivityErrorMessage(error: unknown) {
 }
 
 export function getCheckInActivityErrorMessage(error: unknown) {
+  if (isCanceledRequest(error)) {
+    return null
+  }
+
   if (!axios.isAxiosError<ActivityParticipantActionErrorResponse>(error)) {
     return defaultMessage
   }

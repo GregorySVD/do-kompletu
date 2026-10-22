@@ -162,6 +162,15 @@ function ActivityParticipantActions({
   const canCheckIn = isAuthenticated && activity.permissions.can_check_in
   const canPromptLogin =
     !isLoading && !isAuthenticated && activity.status === 'PUBLISHED'
+  const joinErrorMessage = joinMutation.isError
+    ? getActivityParticipantActionErrorMessage(joinMutation.error)
+    : null
+  const confirmErrorMessage = confirmMutation.isError
+    ? getConfirmActivityErrorMessage(confirmMutation.error)
+    : null
+  const leaveErrorMessage = leaveMutation.isError
+    ? getActivityParticipantActionErrorMessage(leaveMutation.error)
+    : null
 
   useEffect(() => {
     const activityChanged = previousActivityIdRef.current !== activity.id
@@ -357,16 +366,12 @@ function ActivityParticipantActions({
             </>
           )}
 
-          {joinMutation.isError && (
-            <Alert severity="error">
-              {getActivityParticipantActionErrorMessage(joinMutation.error)}
-            </Alert>
+          {joinErrorMessage !== null && (
+            <Alert severity="error">{joinErrorMessage}</Alert>
           )}
 
-          {confirmMutation.isError && (
-            <Alert severity="error">
-              {getConfirmActivityErrorMessage(confirmMutation.error)}
-            </Alert>
+          {confirmErrorMessage !== null && (
+            <Alert severity="error">{confirmErrorMessage}</Alert>
           )}
 
           {geolocationErrorMessage && (
@@ -456,12 +461,12 @@ function ActivityParticipantActions({
               Twoje miejsce może zostać przekazane kolejnej osobie.
             </DialogContentText>
           )}
-          {leaveMutation.isError && (
+          {leaveErrorMessage !== null && (
             <Alert
               className="activity-participant-actions__dialog-error"
               severity="error"
             >
-              {getActivityParticipantActionErrorMessage(leaveMutation.error)}
+              {leaveErrorMessage}
             </Alert>
           )}
         </DialogContent>

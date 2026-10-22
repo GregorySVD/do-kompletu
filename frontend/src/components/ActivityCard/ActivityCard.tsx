@@ -1,4 +1,10 @@
-import { Card, CardContent, Chip, Typography } from '@mui/material'
+import {
+  Card,
+  CardContent,
+  Chip,
+  Typography,
+  type ChipProps,
+} from '@mui/material'
 import { Link } from 'react-router-dom'
 import type { Activity } from '../../types/activity'
 import './ActivityCard.css'
@@ -6,6 +12,8 @@ import './ActivityCard.css'
 interface ActivityCardProps {
   activity: Activity
   secondaryStatusText?: string
+  showParticipationStats?: boolean
+  statusColor?: ChipProps['color']
   statusLabel?: string
 }
 
@@ -17,10 +25,13 @@ const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
 function ActivityCard({
   activity,
   secondaryStatusText,
+  showParticipationStats = true,
+  statusColor = 'primary',
   statusLabel,
 }: ActivityCardProps) {
   const isCancelled = activity.status === 'CANCELLED'
   const effectiveStatusLabel = isCancelled ? 'Anulowana' : statusLabel
+  const effectiveStatusColor = isCancelled ? 'error' : statusColor
   const missingToMinimum = Math.max(
     activity.min_participants - activity.participant_count,
     0,
@@ -51,7 +62,7 @@ function ActivityCard({
                 <Chip
                   label={effectiveStatusLabel}
                   size="small"
-                  color={isCancelled ? 'error' : 'primary'}
+                  color={effectiveStatusColor}
                   variant="outlined"
                 />
               )}
@@ -78,26 +89,28 @@ function ActivityCard({
               variant="outlined"
             />
 
-            <div className="activity-card__participants">
-              <Typography>
-                {hasParticipantLimit
-                  ? `${activity.participant_count} / ${activity.max_participants} uczestników`
-                  : `${activity.participant_count} uczestników`}
-              </Typography>
-              <Typography color="text.secondary">
-                {missingToMinimum > 0
-                  ? `Brakuje ${missingToMinimum} osób do kompletu`
-                  : 'Komplet zebrany'}
-              </Typography>
-              <Typography color="text.secondary">
-                {hasParticipantLimit
-                  ? activity.available_slots !== null &&
-                    activity.available_slots > 0
-                    ? `${activity.available_slots} wolnych miejsc`
-                    : 'Brak wolnych miejsc'
-                  : 'Bez limitu miejsc'}
-              </Typography>
-            </div>
+            {showParticipationStats && (
+              <div className="activity-card__participants">
+                <Typography>
+                  {hasParticipantLimit
+                    ? `${activity.participant_count} / ${activity.max_participants} uczestników`
+                    : `${activity.participant_count} uczestników`}
+                </Typography>
+                <Typography color="text.secondary">
+                  {missingToMinimum > 0
+                    ? `Brakuje ${missingToMinimum} osób do kompletu`
+                    : 'Komplet zebrany'}
+                </Typography>
+                <Typography color="text.secondary">
+                  {hasParticipantLimit
+                    ? activity.available_slots !== null &&
+                      activity.available_slots > 0
+                      ? `${activity.available_slots} wolnych miejsc`
+                      : 'Brak wolnych miejsc'
+                    : 'Bez limitu miejsc'}
+                </Typography>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
