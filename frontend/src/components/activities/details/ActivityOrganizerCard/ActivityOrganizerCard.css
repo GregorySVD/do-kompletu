@@ -1,0 +1,26 @@
+.activity-organizer-card {
+  min-width: 0;
+  border-radius: var(--radius-md);
+}
+
+.activity-organizer-card__profile {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.activity-organizer-card__profile > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.activity-organizer-card__avatar {
+  flex: 0 0 auto;
+  background: var(--color-accent);
+}
+
+.activity-organizer-card__name {
+  font-weight: var(--font-weight-semibold);
+}

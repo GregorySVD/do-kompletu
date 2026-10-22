@@ -1,11 +1,13 @@
 import type { ActivityDetails } from '../../../../types/activity'
-import ActivityDetailsSummary from '../ActivityDetailsSummary/ActivityDetailsSummary'
-import ActivityLifecycleInfo from '../ActivityLifecycleInfo/ActivityLifecycleInfo'
+import ActivityDetailsHero from '../ActivityDetailsHero/ActivityDetailsHero'
+import ActivityLocationCard from '../ActivityLocationCard/ActivityLocationCard'
 import ActivityOrganizerActions from '../ActivityOrganizerActions/ActivityOrganizerActions'
-import ActivityOrganizerInfo from '../ActivityOrganizerInfo/ActivityOrganizerInfo'
+import ActivityOrganizerCard from '../ActivityOrganizerCard/ActivityOrganizerCard'
 import ActivityParticipantActions from '../ActivityParticipantActions/ActivityParticipantActions'
-import ActivityParticipantsInfo from '../ActivityParticipantsInfo/ActivityParticipantsInfo'
-import ActivityScheduleLocation from '../ActivityScheduleLocation/ActivityScheduleLocation'
+import ActivityParticipantsCard from '../ActivityParticipantsCard/ActivityParticipantsCard'
+import ActivityParticipationWindowsCard from '../ActivityParticipationWindowsCard/ActivityParticipationWindowsCard'
+import ActivityScheduleCard from '../ActivityScheduleCard/ActivityScheduleCard'
+import ActivityTagsCard from '../ActivityTagsCard/ActivityTagsCard'
 import './ActivityDetailsContent.css'
 
 interface ActivityDetailsContentProps {
@@ -15,15 +17,28 @@ interface ActivityDetailsContentProps {
 function ActivityDetailsContent({ activity }: ActivityDetailsContentProps) {
   return (
     <>
-      <ActivityDetailsSummary activity={activity} />
-      <ActivityParticipantActions activity={activity} />
-      <ActivityOrganizerActions activity={activity} />
+      <ActivityDetailsHero activity={activity} />
 
-      <div className="activity-details-content__grid">
-        <ActivityScheduleLocation activity={activity} />
-        <ActivityParticipantsInfo activity={activity} />
-        <ActivityOrganizerInfo activity={activity} />
-        <ActivityLifecycleInfo activity={activity} />
+      <div className="activity-details-content__layout">
+        <div className="activity-details-content__actions">
+          <ActivityParticipantActions activity={activity} />
+          <ActivityOrganizerActions activity={activity} />
+        </div>
+
+        <div className="activity-details-content__main">
+          <ActivityParticipantsCard activity={activity} />
+          <ActivityScheduleCard activity={activity} />
+          <ActivityParticipationWindowsCard activity={activity} />
+        </div>
+
+        <aside
+          className="activity-details-content__sidebar"
+          aria-label="Dodatkowe informacje o aktywności"
+        >
+          <ActivityLocationCard activity={activity} />
+          <ActivityOrganizerCard activity={activity} />
+          <ActivityTagsCard activity={activity} />
+        </aside>
       </div>
     </>
   )

@@ -1,0 +1,64 @@
+.activity-participants-card {
+  min-width: 0;
+  border-radius: var(--radius-md);
+}
+
+.activity-participants-card__content {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.activity-participants-card__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.activity-participants-card__heading-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  border-radius: 50%;
+}
+
+.activity-participants-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  gap: var(--space-3);
+}
+
+.activity-participants-card__metrics > div {
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-sm);
+}
+
+.activity-participants-card__metrics dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.activity-participants-card__metrics dt .MuiSvgIcon-root {
+  font-size: var(--font-size-lg);
+}
+
+.activity-participants-card__metrics dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+  font-weight: var(--font-weight-semibold);
+}
+
+@media (max-width: 40rem) {
+  .activity-participants-card__metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

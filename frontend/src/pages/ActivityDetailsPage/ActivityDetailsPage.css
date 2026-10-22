@@ -1,7 +1,17 @@
 .activity-details-page {
-  width: min(100%, 68.75rem);
+  --activity-details-page-bg: color-mix(
+    in srgb,
+    var(--color-page-bg) 92%,
+    var(--color-accent)
+  );
+
+  width: min(100%, var(--page-max-width));
+  min-height: 100dvh;
   margin-inline: auto;
   padding: var(--section-gap) var(--page-gutter);
+  background: var(--activity-details-page-bg);
+  box-shadow: 0 0 0 100vmax var(--activity-details-page-bg);
+  clip-path: inset(0 -100vmax);
 }
 
 .activity-details-page__not-found {

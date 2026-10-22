@@ -1,0 +1,104 @@
+.activity-details-hero {
+  --activity-category-color: var(--category-fallback-color);
+  --activity-category-bg: var(--category-fallback-bg);
+
+  position: relative;
+  min-width: 0;
+  margin-top: var(--space-4);
+  padding: clamp(var(--space-6), 5vw, var(--space-12));
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    color-mix(in srgb, var(--color-surface) 88%, var(--color-accent)),
+    color-mix(in srgb, var(--color-surface) 96%, var(--color-accent))
+  );
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.activity-details-hero::before {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 0.35rem;
+  content: '';
+  background: var(--activity-category-color);
+}
+
+.activity-details-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.activity-details-hero__category.MuiChip-root {
+  color: var(--activity-category-color);
+  font-weight: var(--font-weight-semibold);
+  background: var(--activity-category-bg);
+  border: 1px solid
+    color-mix(in srgb, var(--activity-category-color) 45%, transparent);
+}
+
+.activity-details-hero__category .MuiChip-icon {
+  color: inherit;
+}
+
+.activity-details-hero__title {
+  max-width: 54rem;
+  margin-top: var(--space-5);
+  overflow-wrap: anywhere;
+}
+
+.activity-details-hero__description {
+  max-width: 58rem;
+  margin-top: var(--space-4);
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.activity-details-hero--team-sport {
+  --activity-category-color: var(--category-team-sport-color);
+  --activity-category-bg: var(--category-team-sport-bg);
+}
+
+.activity-details-hero--board-games {
+  --activity-category-color: var(--category-board-games-color);
+  --activity-category-bg: var(--category-board-games-bg);
+}
+
+.activity-details-hero--rpg {
+  --activity-category-color: var(--category-rpg-color);
+  --activity-category-bg: var(--category-rpg-bg);
+}
+
+.activity-details-hero--gaming {
+  --activity-category-color: var(--category-gaming-color);
+  --activity-category-bg: var(--category-gaming-bg);
+}
+
+.activity-details-hero--study {
+  --activity-category-color: var(--category-study-color);
+  --activity-category-bg: var(--category-study-bg);
+}
+
+.activity-details-hero--technology {
+  --activity-category-color: var(--category-technology-color);
+  --activity-category-bg: var(--category-technology-bg);
+}
+
+.activity-details-hero--music {
+  --activity-category-color: var(--category-music-color);
+  --activity-category-bg: var(--category-music-bg);
+}
+
+.activity-details-hero--creative {
+  --activity-category-color: var(--category-creative-color);
+  --activity-category-bg: var(--category-creative-bg);
+}
+
+@media (max-width: 30rem) {
+  .activity-details-hero {
+    padding: var(--space-6) var(--space-5);
+    border-radius: var(--radius-md);
+  }
+}

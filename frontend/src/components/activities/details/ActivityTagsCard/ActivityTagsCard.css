@@ -1,0 +1,23 @@
+.activity-tags-card {
+  min-width: 0;
+  padding: var(--space-4);
+  color: var(--color-text-secondary);
+  border-top: 1px solid var(--color-border);
+}
+
+.activity-tags-card__heading,
+.activity-tags-card__list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.activity-tags-card__heading .MuiSvgIcon-root {
+  color: var(--color-text-muted);
+}
+
+.activity-tags-card__list,
+.activity-tags-card__empty {
+  margin-top: var(--space-3);
+}

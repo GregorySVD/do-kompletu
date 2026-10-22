@@ -1,5 +1,13 @@
 .activity-participant-actions {
-  margin-top: var(--space-4);
+  min-width: 0;
+  background: var(--color-surface);
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent) 35%,
+    var(--color-border)
+  );
+  border-inline-start: 0.3rem solid var(--color-accent);
+  border-radius: var(--radius-md);
 }
 
 .activity-participant-actions__content {
@@ -8,10 +16,13 @@
 }
 
 .activity-participant-actions__buttons {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: var(--space-3);
   margin-top: var(--space-1);
+}
+
+.activity-participant-actions__buttons .MuiButton-root {
+  min-height: var(--touch-target-min);
 }
 
 .activity-participant-actions__dialog-error {
@@ -21,7 +32,6 @@
 @media (max-width: 30rem) {
   .activity-participant-actions__buttons {
     align-items: stretch;
-    flex-direction: column;
   }
 
   .activity-participant-actions__buttons .MuiButton-root {

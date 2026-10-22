@@ -1,0 +1,64 @@
+.activity-schedule-card {
+  min-width: 0;
+  border-radius: var(--radius-md);
+}
+
+.activity-schedule-card__timeline {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.activity-schedule-card__point {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.activity-schedule-card__point-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  border-radius: var(--radius-sm);
+}
+
+.activity-schedule-card__point-label {
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.activity-schedule-card__date {
+  margin-top: var(--space-1);
+  font-weight: var(--font-weight-semibold);
+  text-transform: capitalize;
+}
+
+.activity-schedule-card__time {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-lg);
+}
+
+.activity-schedule-card__time .MuiSvgIcon-root {
+  font-size: var(--font-size-lg);
+}
+
+@media (max-width: 40rem) {
+  .activity-schedule-card__timeline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

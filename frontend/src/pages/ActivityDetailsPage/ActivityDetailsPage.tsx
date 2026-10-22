@@ -1,3 +1,4 @@
+import { ArrowBack } from '@mui/icons-material'
 import axios from 'axios'
 import { Button, Card, CardContent, Typography } from '@mui/material'
 import { Link, useParams } from 'react-router-dom'
@@ -9,8 +10,8 @@ import './ActivityDetailsPage.css'
 function ActivityNotFound() {
   return (
     <main className="activity-details-page">
-      <Button component={Link} to="/">
-        Wróć do listy
+      <Button component={Link} to="/" startIcon={<ArrowBack />}>
+        Wróć do aktywności
       </Button>
 
       <Card variant="outlined" className="activity-details-page__not-found">
@@ -38,8 +39,8 @@ function ActivityDetailsPage() {
   if (activityQuery.isPending && activityId) {
     return (
       <main className="activity-details-page">
-        <Button component={Link} to="/">
-          Wróć do listy
+        <Button component={Link} to="/" startIcon={<ArrowBack />}>
+          Wróć do aktywności
         </Button>
         <QueryStateMessage message="Ładowanie aktywności..." isLoading />
       </main>
@@ -53,8 +54,8 @@ function ActivityDetailsPage() {
   if (activityQuery.isError) {
     return (
       <main className="activity-details-page">
-        <Button component={Link} to="/">
-          Wróć do listy
+        <Button component={Link} to="/" startIcon={<ArrowBack />}>
+          Wróć do aktywności
         </Button>
         <QueryStateMessage
           message="Nie udało się pobrać aktywności."
@@ -73,8 +74,8 @@ function ActivityDetailsPage() {
 
   return (
     <main className="activity-details-page">
-      <Button component={Link} to="/">
-        Wróć do listy
+      <Button component={Link} to="/" startIcon={<ArrowBack />}>
+        Wróć do aktywności
       </Button>
 
       <ActivityDetailsContent activity={activityQuery.data} />

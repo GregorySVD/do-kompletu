@@ -1,5 +1,7 @@
 .activity-organizer-actions {
-  margin-top: var(--space-4);
+  min-width: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
 }
 
 .activity-organizer-actions__content {
@@ -8,9 +10,12 @@
 }
 
 .activity-organizer-actions__buttons {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: var(--space-3);
+}
+
+.activity-organizer-actions__buttons .MuiButton-root {
+  min-height: var(--touch-target-min);
 }
 
 .activity-organizer-actions__dialog-error {
@@ -20,7 +25,6 @@
 @media (max-width: 30rem) {
   .activity-organizer-actions__buttons {
     align-items: stretch;
-    flex-direction: column;
   }
 
   .activity-organizer-actions__dialog-actions.MuiDialogActions-root {
