@@ -11,7 +11,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useAuth } from '../../../context/auth'
 import type { LoginFormValues } from '../../../types/auth'
@@ -33,9 +33,53 @@ const defaultValues: LoginFormValues = {
   password: '',
 }
 
+interface LoginLocationState {
+  from?: {
+    hash?: unknown
+    pathname?: unknown
+    search?: unknown
+  }
+}
+
+function getSafePostLoginPath(state: unknown) {
+  if (typeof state !== 'object' || state === null) {
+    return '/'
+  }
+
+  const { from } = state as LoginLocationState
+
+  if (typeof from !== 'object' || from === null) {
+    return '/'
+  }
+
+  const { hash, pathname, search } = from
+
+  if (
+    typeof pathname !== 'string' ||
+    !pathname.startsWith('/') ||
+    pathname.startsWith('//') ||
+    pathname.includes('\\') ||
+    pathname === '/login'
+  ) {
+    return '/'
+  }
+
+  const safeSearch =
+    typeof search === 'string' && (search === '' || search.startsWith('?'))
+      ? search
+      : ''
+  const safeHash =
+    typeof hash === 'string' && (hash === '' || hash.startsWith('#'))
+      ? hash
+      : ''
+
+  return `${pathname}${safeSearch}${safeHash}`
+}
+
 function LoginForm() {
   const [apiError, setApiError] = useState<string | null>(null)
   const { login } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
   const {
     register,
@@ -51,7 +95,7 @@ function LoginForm() {
 
     try {
       await login(values)
-      navigate('/profile', { replace: true })
+      navigate(getSafePostLoginPath(location.state), { replace: true })
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         setApiError('Nieprawidłowe dane logowania.')

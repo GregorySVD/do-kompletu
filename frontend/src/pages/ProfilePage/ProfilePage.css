@@ -1,15 +1,23 @@
 .profile-page {
-  width: min(100%, 35rem);
+  width: min(100%, var(--page-max-width));
   margin-inline: auto;
   padding: var(--section-gap) var(--page-gutter);
 }
 
-.profile-card {
+.profile-page__success {
+  margin-top: var(--space-4);
+}
+
+.profile-page__overview {
+  display: grid;
+  gap: var(--section-gap);
   margin-top: var(--space-6);
 }
 
-.profile-page__success {
-  margin-top: var(--space-4);
+.profile-page__overview > section,
+.profile-card {
+  min-width: 0;
+  height: 100%;
 }
 
 .profile-card__content {
@@ -18,7 +26,7 @@
   gap: var(--component-gap);
 }
 
-.profile-card__content > div {
+.profile-card__details {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -30,20 +38,62 @@
   font-size: var(--font-size-h2);
 }
 
-.profile-card__actions {
-  display: flex;
-  flex-wrap: wrap;
+.profile-card__edit {
+  margin-top: var(--space-4);
+}
+
+.profile-quick-actions {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.profile-quick-actions__list {
+  display: grid;
   gap: var(--space-3);
   margin-top: var(--space-4);
 }
 
+.profile-quick-actions__button {
+  min-height: var(--touch-target-min);
+  justify-content: flex-start;
+}
+
+.profile-upcoming {
+  margin-top: var(--section-gap);
+}
+
+.profile-upcoming__list {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.profile-upcoming__all {
+  margin-top: var(--space-3);
+}
+
+.profile-upcoming__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding: clamp(var(--space-4), 4vw, var(--space-6));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+@media (min-width: 56.25rem) {
+  .profile-page__overview {
+    grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+    align-items: stretch;
+  }
+}
+
 @media (max-width: 30rem) {
   .profile-card__content {
-    flex-direction: column;
-  }
-
-  .profile-card__actions {
-    align-items: stretch;
     flex-direction: column;
   }
 }
