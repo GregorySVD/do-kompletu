@@ -45,10 +45,20 @@ function ActivityCategoryBar({
                 onClick={() => onToggleCategory(category.id)}
               >
                 <span className="activity-category-bar__icon-wrap">
-                  <CategoryIcon
-                    className="activity-category-bar__icon"
-                    aria-hidden="true"
-                  />
+                  {presentation.pixelIconSrc ? (
+                    <img
+                      className="activity-category-bar__pixel-icon"
+                      src={presentation.pixelIconSrc}
+                      alt=""
+                      width="32"
+                      height="32"
+                    />
+                  ) : (
+                    <CategoryIcon
+                      className="activity-category-bar__icon"
+                      aria-hidden="true"
+                    />
+                  )}
                 </span>
                 <span className="activity-category-bar__name">
                   {category.name}

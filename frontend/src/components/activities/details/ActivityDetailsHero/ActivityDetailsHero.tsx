@@ -11,39 +11,6 @@ interface ActivityDetailsHeroProps {
   activity: ActivityDetails
 }
 
-const featuredCategoryAssets: Partial<
-  Record<ActivityCategoryVisualVariant, { badge: string; hero: string }>
-> = {
-  music: {
-    badge: '/icons/icons8-rock-music-32.png',
-    hero: '/icons/icons8-rock-music-64.png',
-  },
-  'team-sport': {
-    badge: '/icons/icons8-sport-32.png',
-    hero: '/icons/icons8-sport-64.png',
-  },
-  'board-games': {
-    badge: '/icons/icons8-dice-32.png',
-    hero: '/icons/icons8-dice-64.png',
-  },
-  gaming: {
-    badge: '/icons/icons8-games-32.png',
-    hero: '/icons/icons8-games-64.png',
-  },
-  study: {
-    badge: '/icons/icons8-book-stack-32.png',
-    hero: '/icons/icons8-book-stack-64.png',
-  },
-  technology: {
-    badge: '/icons/icons8-technology-32.png',
-    hero: '/icons/icons8-technology-64.png',
-  },
-  creative: {
-    badge: '/icons/icons8-painting-32.png',
-    hero: '/icons/icons8-painting-64.png',
-  },
-}
-
 const featuredCategoryVariants = new Set<ActivityCategoryVisualVariant>([
   'music',
   'team-sport',
@@ -72,14 +39,14 @@ function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
     activity.category.slug,
   )
   const CategoryIcon = categoryPresentation.icon
-  const featuredAssets =
-    featuredCategoryAssets[categoryPresentation.variant] ?? null
+  const categoryIconSrc = categoryPresentation.pixelIconSrc
+  const categoryHeroIconSrc = categoryPresentation.pixelHeroIconSrc
   const isFeatured = featuredCategoryVariants.has(categoryPresentation.variant)
   const priceVariant = activity.price_type === 'FREE' ? 'free' : 'paid'
 
   return (
     <section
-      className={`activity-details-hero activity-details-hero--${categoryPresentation.variant}${isFeatured ? ' activity-details-hero--featured' : ''}${featuredAssets ? ' activity-details-hero--with-visual' : ''}`}
+      className={`activity-details-hero activity-details-hero--${categoryPresentation.variant}${isFeatured ? ' activity-details-hero--featured' : ''}${categoryHeroIconSrc ? ' activity-details-hero--with-visual' : ''}`}
       aria-labelledby="activity-title"
     >
       <div className="activity-details-hero__content">
@@ -87,10 +54,10 @@ function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
           <Chip
             className="activity-details-hero__category"
             icon={
-              featuredAssets ? (
+              categoryIconSrc ? (
                 <img
                   className="activity-details-hero__category-image"
-                  src={featuredAssets.badge}
+                  src={categoryIconSrc}
                   alt=""
                   width="32"
                   height="32"
@@ -128,14 +95,14 @@ function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
         </Typography>
       </div>
 
-      {featuredAssets && (
+      {categoryHeroIconSrc && (
         <div
           className="activity-details-hero__category-visual"
           aria-hidden="true"
         >
           <img
             className="activity-details-hero__category-image-large"
-            src={featuredAssets.hero}
+            src={categoryHeroIconSrc}
             alt=""
             width="64"
             height="64"

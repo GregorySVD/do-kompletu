@@ -58,12 +58,22 @@ function getActivityCategoryMarkerIcon(categorySlug: string) {
     className: `activity-map__category-marker activity-map__category-marker--${presentation.variant}`,
     html: renderToStaticMarkup(
       <span className="activity-map__category-marker-visual" aria-hidden="true">
-        <CategoryIcon className="activity-map__category-marker-icon" />
+        {presentation.pixelIconSrc ? (
+          <img
+            className="activity-map__category-marker-pixel-icon"
+            src={presentation.pixelIconSrc}
+            alt=""
+            width="32"
+            height="32"
+          />
+        ) : (
+          <CategoryIcon className="activity-map__category-marker-icon" />
+        )}
       </span>,
     ),
-    iconSize: [42, 42],
-    iconAnchor: [21, 21],
-    popupAnchor: [0, -24],
+    iconSize: [46, 46],
+    iconAnchor: [23, 23],
+    popupAnchor: [0, -27],
   })
 
   categoryMarkerIconCache.set(presentation.variant, markerIcon)

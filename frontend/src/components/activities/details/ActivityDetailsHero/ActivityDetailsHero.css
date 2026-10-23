@@ -57,11 +57,7 @@
   --activity-category-color: var(--category-team-sport-color);
   --activity-category-bg: var(--category-team-sport-bg);
   --activity-featured-accent: var(--category-team-sport-color);
-  --activity-featured-gradient-end: color-mix(
-    in srgb,
-    var(--category-team-sport-color) 45%,
-    var(--color-error)
-  );
+  --activity-featured-gradient-end: var(--category-team-sport-gradient-end);
   --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fdfcfb;
 }
@@ -70,11 +66,7 @@
   --activity-category-color: var(--category-board-games-color);
   --activity-category-bg: var(--category-board-games-bg);
   --activity-featured-accent: var(--category-board-games-color);
-  --activity-featured-gradient-end: color-mix(
-    in srgb,
-    var(--category-board-games-color) 22%,
-    var(--color-success)
-  );
+  --activity-featured-gradient-end: var(--category-board-games-gradient-end);
   --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fdfcf8;
 }
@@ -83,11 +75,7 @@
   --activity-category-color: var(--category-rpg-color);
   --activity-category-bg: var(--category-rpg-bg);
   --activity-featured-accent: var(--category-rpg-color);
-  --activity-featured-gradient-end: color-mix(
-    in srgb,
-    var(--category-rpg-color) 28%,
-    var(--color-warning)
-  );
+  --activity-featured-gradient-end: var(--category-rpg-gradient-end);
   --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fcfbfe;
 }
@@ -96,7 +84,7 @@
   --activity-category-color: var(--category-gaming-color);
   --activity-category-bg: var(--category-gaming-bg);
   --activity-featured-accent: var(--category-gaming-color);
-  --activity-featured-gradient-end: var(--color-accent);
+  --activity-featured-gradient-end: var(--category-gaming-gradient-end);
   --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fdfafd;
 }
@@ -105,7 +93,7 @@
   --activity-category-color: var(--category-study-color);
   --activity-category-bg: var(--category-study-bg);
   --activity-featured-accent: var(--category-study-color);
-  --activity-featured-gradient-end: var(--category-technology-color);
+  --activity-featured-gradient-end: var(--category-study-gradient-end);
   --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #f9fdfc;
 }
@@ -114,7 +102,7 @@
   --activity-category-color: var(--category-technology-color);
   --activity-category-bg: var(--category-technology-bg);
   --activity-featured-accent: var(--category-technology-color);
-  --activity-featured-gradient-end: var(--color-accent);
+  --activity-featured-gradient-end: var(--category-technology-gradient-end);
   --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #f9fcfe;
 }
@@ -123,7 +111,7 @@
   --activity-category-color: var(--category-music-color);
   --activity-category-bg: var(--category-music-bg);
   --activity-featured-accent: var(--activity-music-accent);
-  --activity-featured-gradient-end: var(--color-accent);
+  --activity-featured-gradient-end: var(--category-music-gradient-end);
   --activity-featured-badge-text: #fff;
   --activity-featured-surface: #fdfcfd;
 }
@@ -309,7 +297,7 @@
   --activity-category-color: var(--category-creative-color);
   --activity-category-bg: var(--category-creative-bg);
   --activity-featured-accent: var(--category-creative-color);
-  --activity-featured-gradient-end: var(--activity-music-accent);
+  --activity-featured-gradient-end: var(--category-creative-gradient-end);
   --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fdfafd;
 }

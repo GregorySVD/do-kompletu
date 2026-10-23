@@ -14,6 +14,7 @@
 
 .activity-category-bar__item {
   --category-color: var(--category-fallback-color);
+  --category-gradient-end: var(--category-fallback-gradient-end);
   --category-soft-bg: var(--category-fallback-bg);
 
   position: relative;
@@ -66,13 +67,21 @@
 .activity-category-bar__icon-wrap {
   position: relative;
   display: grid;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 3.5rem;
+  height: 3.5rem;
   place-items: center;
   color: var(--category-color);
-  background: var(--category-soft-bg);
-  border: 1px solid color-mix(in srgb, var(--category-color) 35%, transparent);
-  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--category-soft-bg),
+    color-mix(in srgb, var(--category-gradient-end) 18%, var(--color-surface))
+  );
+  border: 2px solid var(--category-color);
+  border-radius: 0.5rem;
+  box-shadow:
+    0.25rem 0.25rem 0 color-mix(in srgb, var(--category-color) 34%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--category-gradient-end) 28%, transparent);
   transition:
     box-shadow 160ms ease,
     transform 160ms ease;
@@ -80,13 +89,25 @@
 
 .activity-category-bar__item--selected .activity-category-bar__icon-wrap {
   box-shadow:
-    0 0 0 3px var(--color-surface),
-    0 0 0 5px var(--category-color);
-  transform: scale(1.04);
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--category-color),
+    0.35rem 0.35rem 0
+      color-mix(in srgb, var(--category-gradient-end) 42%, transparent);
+  transform: translate(-2px, -2px);
 }
 
 .activity-category-bar__icon.MuiSvgIcon-root {
   font-size: 1.65rem;
+}
+
+.activity-category-bar__pixel-icon {
+  width: 2rem;
+  height: 2rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(
+    2px 2px 0 color-mix(in srgb, var(--category-color) 30%, transparent)
+  );
 }
 
 .activity-category-bar__badge {
@@ -104,7 +125,9 @@
   line-height: 1;
   background: var(--category-color);
   border: 2px solid var(--color-surface);
-  border-radius: var(--radius-pill);
+  border-radius: 0.3rem;
+  box-shadow: 2px 2px 0 var(--category-soft-bg);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
 .activity-category-bar--bar
@@ -117,7 +140,9 @@
   max-width: 7.5rem;
   overflow: hidden;
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
   line-height: 1.25;
   text-align: center;
   text-overflow: ellipsis;
@@ -126,48 +151,67 @@
 
 .activity-category-bar__item--team-sport {
   --category-color: var(--category-team-sport-color);
+  --category-gradient-end: var(--category-team-sport-gradient-end);
   --category-soft-bg: var(--category-team-sport-bg);
 }
 
 .activity-category-bar__item--board-games {
   --category-color: var(--category-board-games-color);
+  --category-gradient-end: var(--category-board-games-gradient-end);
   --category-soft-bg: var(--category-board-games-bg);
 }
 
 .activity-category-bar__item--rpg {
   --category-color: var(--category-rpg-color);
+  --category-gradient-end: var(--category-rpg-gradient-end);
   --category-soft-bg: var(--category-rpg-bg);
 }
 
 .activity-category-bar__item--gaming {
   --category-color: var(--category-gaming-color);
+  --category-gradient-end: var(--category-gaming-gradient-end);
   --category-soft-bg: var(--category-gaming-bg);
 }
 
 .activity-category-bar__item--study {
   --category-color: var(--category-study-color);
+  --category-gradient-end: var(--category-study-gradient-end);
   --category-soft-bg: var(--category-study-bg);
 }
 
 .activity-category-bar__item--technology {
   --category-color: var(--category-technology-color);
+  --category-gradient-end: var(--category-technology-gradient-end);
   --category-soft-bg: var(--category-technology-bg);
 }
 
 .activity-category-bar__item--music {
   --category-color: var(--category-music-color);
+  --category-gradient-end: var(--category-music-gradient-end);
   --category-soft-bg: var(--category-music-bg);
 }
 
 .activity-category-bar__item--creative {
   --category-color: var(--category-creative-color);
+  --category-gradient-end: var(--category-creative-gradient-end);
   --category-soft-bg: var(--category-creative-bg);
 }
 
 .activity-category-bar--bar {
   overflow: hidden;
-  background: var(--color-surface);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      color-mix(in srgb, var(--color-border) 24%, transparent) 3px 4px
+    ),
+    var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+}
+
+.activity-category-bar--bar .activity-category-bar__item:hover,
+.activity-category-bar--bar .activity-category-bar__item--selected {
+  background: color-mix(in srgb, var(--category-soft-bg) 60%, transparent);
 }
 
 .activity-category-bar--bar .activity-category-bar__scroller {
@@ -245,6 +289,12 @@
   height: 1.75rem;
   background: transparent;
   border: 0;
+  box-shadow: none;
+}
+
+.activity-category-bar--compact .activity-category-bar__pixel-icon {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .activity-category-bar--compact

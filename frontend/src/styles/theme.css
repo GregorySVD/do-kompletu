@@ -116,6 +116,28 @@
   --category-fallback-color: #65736b;
   --category-fallback-bg: #e9efeb;
 
+  --category-team-sport-gradient-end: color-mix(
+    in srgb,
+    var(--category-team-sport-color) 45%,
+    var(--color-error)
+  );
+  --category-board-games-gradient-end: color-mix(
+    in srgb,
+    var(--category-board-games-color) 22%,
+    var(--color-success)
+  );
+  --category-rpg-gradient-end: color-mix(
+    in srgb,
+    var(--category-rpg-color) 28%,
+    var(--color-warning)
+  );
+  --category-gaming-gradient-end: var(--color-accent);
+  --category-study-gradient-end: var(--category-technology-color);
+  --category-technology-gradient-end: var(--color-accent);
+  --category-music-gradient-end: var(--color-accent);
+  --category-creative-gradient-end: var(--activity-music-accent);
+  --category-fallback-gradient-end: var(--color-text-muted);
+
   --header-gradient-start: #35493b;
   --header-gradient-middle: #3b3c42;
   --header-gradient-end: #584653;

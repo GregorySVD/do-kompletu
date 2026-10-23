@@ -36,6 +36,7 @@
 
 .activity-map__category-marker {
   --marker-color: var(--category-fallback-color);
+  --marker-gradient-end: var(--category-fallback-gradient-end);
   --marker-soft-bg: var(--category-fallback-bg);
 
   background: transparent;
@@ -48,17 +49,17 @@
   height: 100%;
   place-items: center;
   color: var(--color-text-inverse);
-  background: var(--marker-color);
-  border: 3px solid var(--marker-soft-bg);
-  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--marker-soft-bg),
+    color-mix(in srgb, var(--marker-gradient-end) 22%, var(--color-surface))
+  );
+  border: 3px solid var(--marker-color);
+  border-radius: 0.45rem;
   box-shadow:
-    0 0 0 1px var(--marker-color),
-    0 var(--space-1) var(--space-3)
-      color-mix(
-        in srgb,
-        var(--marker-color) 32%,
-        var(--floating-control-shadow)
-      );
+    0 0 0 1px var(--marker-soft-bg),
+    0.3rem 0.3rem 0
+      color-mix(in srgb, var(--marker-gradient-end) 55%, transparent);
   transition:
     box-shadow 160ms ease,
     transform 160ms ease;
@@ -70,18 +71,24 @@
   font-size: 1.5rem;
 }
 
+.activity-map__category-marker-pixel-icon {
+  width: 2rem;
+  height: 2rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(
+    2px 2px 0 color-mix(in srgb, var(--marker-color) 32%, transparent)
+  );
+}
+
 .activity-map__category-marker:hover .activity-map__category-marker-visual,
 .activity-map__category-marker:focus-visible
   .activity-map__category-marker-visual {
   box-shadow:
-    0 0 0 2px var(--marker-color),
-    0 var(--space-2) var(--space-4)
-      color-mix(
-        in srgb,
-        var(--marker-color) 38%,
-        var(--floating-control-shadow)
-      );
-  transform: scale(1.08);
+    0 0 0 2px var(--marker-soft-bg),
+    0.45rem 0.45rem 0
+      color-mix(in srgb, var(--marker-gradient-end) 68%, transparent);
+  transform: translate(-2px, -2px) scale(1.04);
 }
 
 .activity-map__category-marker:focus-visible {
@@ -96,41 +103,49 @@
 
 .activity-map__category-marker--team-sport {
   --marker-color: var(--category-team-sport-color);
+  --marker-gradient-end: var(--category-team-sport-gradient-end);
   --marker-soft-bg: var(--category-team-sport-bg);
 }
 
 .activity-map__category-marker--board-games {
   --marker-color: var(--category-board-games-color);
+  --marker-gradient-end: var(--category-board-games-gradient-end);
   --marker-soft-bg: var(--category-board-games-bg);
 }
 
 .activity-map__category-marker--rpg {
   --marker-color: var(--category-rpg-color);
+  --marker-gradient-end: var(--category-rpg-gradient-end);
   --marker-soft-bg: var(--category-rpg-bg);
 }
 
 .activity-map__category-marker--gaming {
   --marker-color: var(--category-gaming-color);
+  --marker-gradient-end: var(--category-gaming-gradient-end);
   --marker-soft-bg: var(--category-gaming-bg);
 }
 
 .activity-map__category-marker--study {
   --marker-color: var(--category-study-color);
+  --marker-gradient-end: var(--category-study-gradient-end);
   --marker-soft-bg: var(--category-study-bg);
 }
 
 .activity-map__category-marker--technology {
   --marker-color: var(--category-technology-color);
+  --marker-gradient-end: var(--category-technology-gradient-end);
   --marker-soft-bg: var(--category-technology-bg);
 }
 
 .activity-map__category-marker--music {
   --marker-color: var(--category-music-color);
+  --marker-gradient-end: var(--category-music-gradient-end);
   --marker-soft-bg: var(--category-music-bg);
 }
 
 .activity-map__category-marker--creative {
   --marker-color: var(--category-creative-color);
+  --marker-gradient-end: var(--category-creative-gradient-end);
   --marker-soft-bg: var(--category-creative-bg);
 }
 
