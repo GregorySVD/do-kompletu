@@ -12,17 +12,14 @@
     color-mix(in srgb, var(--color-surface) 88%, var(--color-accent)),
     color-mix(in srgb, var(--color-surface) 96%, var(--color-accent))
   );
-  border: 1px solid var(--color-border);
+  border: 0.35rem solid var(--activity-category-color);
   border-radius: var(--radius-lg);
 }
 
-.activity-details-hero::before {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: 0.35rem;
-  content: '';
-  background: var(--activity-category-color);
+.activity-details-hero__content {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
 }
 
 .activity-details-hero__chips {
@@ -59,46 +56,281 @@
 .activity-details-hero--team-sport {
   --activity-category-color: var(--category-team-sport-color);
   --activity-category-bg: var(--category-team-sport-bg);
+  --activity-featured-accent: var(--category-team-sport-color);
+  --activity-featured-gradient-end: color-mix(
+    in srgb,
+    var(--category-team-sport-color) 45%,
+    var(--color-error)
+  );
+  --activity-featured-badge-text: var(--color-text-inverse);
+  --activity-featured-surface: #fdfcfb;
 }
 
 .activity-details-hero--board-games {
   --activity-category-color: var(--category-board-games-color);
   --activity-category-bg: var(--category-board-games-bg);
+  --activity-featured-accent: var(--category-board-games-color);
+  --activity-featured-gradient-end: color-mix(
+    in srgb,
+    var(--category-board-games-color) 22%,
+    var(--color-success)
+  );
+  --activity-featured-badge-text: var(--color-text-inverse);
+  --activity-featured-surface: #fdfcf8;
 }
 
 .activity-details-hero--rpg {
   --activity-category-color: var(--category-rpg-color);
   --activity-category-bg: var(--category-rpg-bg);
+  --activity-featured-accent: var(--category-rpg-color);
+  --activity-featured-gradient-end: color-mix(
+    in srgb,
+    var(--category-rpg-color) 28%,
+    var(--color-warning)
+  );
+  --activity-featured-badge-text: var(--color-text-inverse);
+  --activity-featured-surface: #fcfbfe;
 }
 
 .activity-details-hero--gaming {
   --activity-category-color: var(--category-gaming-color);
   --activity-category-bg: var(--category-gaming-bg);
+  --activity-featured-accent: var(--category-gaming-color);
+  --activity-featured-gradient-end: var(--color-accent);
+  --activity-featured-badge-text: var(--color-text-inverse);
+  --activity-featured-surface: #fdfafd;
 }
 
 .activity-details-hero--study {
   --activity-category-color: var(--category-study-color);
   --activity-category-bg: var(--category-study-bg);
+  --activity-featured-accent: var(--category-study-color);
+  --activity-featured-gradient-end: var(--category-technology-color);
+  --activity-featured-badge-text: var(--color-text-inverse);
+  --activity-featured-surface: #f9fdfc;
 }
 
 .activity-details-hero--technology {
   --activity-category-color: var(--category-technology-color);
   --activity-category-bg: var(--category-technology-bg);
+  --activity-featured-accent: var(--category-technology-color);
+  --activity-featured-gradient-end: var(--color-accent);
+  --activity-featured-badge-text: var(--color-text-inverse);
+  --activity-featured-surface: #f9fcfe;
 }
 
 .activity-details-hero--music {
   --activity-category-color: var(--category-music-color);
   --activity-category-bg: var(--category-music-bg);
+  --activity-featured-accent: var(--activity-music-accent);
+  --activity-featured-gradient-end: var(--color-accent);
+  --activity-featured-badge-text: #fff;
+  --activity-featured-surface: #fdfcfd;
+}
+
+.activity-details-hero--featured {
+  background:
+    radial-gradient(
+        circle at 87% 16%,
+        color-mix(in srgb, var(--activity-featured-accent) 18%, transparent) 0,
+        transparent 31%
+      )
+      padding-box,
+    radial-gradient(
+        circle at 74% 98%,
+        color-mix(
+            in srgb,
+            var(--activity-featured-gradient-end) 12%,
+            transparent
+          )
+          0,
+        transparent 40%
+      )
+      padding-box,
+    linear-gradient(
+        var(--activity-featured-surface),
+        var(--activity-featured-surface)
+      )
+      padding-box,
+    linear-gradient(
+        100deg,
+        var(--activity-featured-accent) 0%,
+        color-mix(
+            in srgb,
+            var(--activity-featured-accent) 58%,
+            var(--activity-featured-gradient-end)
+          )
+          48%,
+        var(--activity-featured-gradient-end)
+      )
+      border-box;
+  border-color: transparent;
+  box-shadow: 0 1rem 2.5rem
+    color-mix(in srgb, var(--activity-featured-accent) 7%, transparent);
+}
+
+.activity-details-hero--with-visual {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(var(--space-6), 6vw, var(--space-12));
+  align-items: center;
+}
+
+[data-theme='dark'] .activity-details-hero--featured {
+  --activity-featured-surface: #17171a;
+}
+
+.activity-details-hero--featured .activity-details-hero__chips {
+  gap: var(--space-3);
+}
+
+.activity-details-hero--featured .activity-details-hero__category.MuiChip-root {
+  color: var(--activity-featured-badge-text);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.035em;
+  background: linear-gradient(
+    100deg,
+    var(--activity-featured-accent) 0%,
+    color-mix(
+        in srgb,
+        var(--activity-featured-accent) 58%,
+        var(--activity-featured-gradient-end)
+      )
+      48%,
+    var(--activity-featured-gradient-end) 100%
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--activity-featured-accent) 55%,
+    var(--activity-featured-gradient-end)
+  );
+  box-shadow: 0 0.35rem 1rem
+    color-mix(in srgb, var(--activity-featured-accent) 22%, transparent);
+}
+
+.activity-details-hero--featured
+  .activity-details-hero__category
+  .MuiChip-icon {
+  color: inherit;
+}
+
+.activity-details-hero__category-image.MuiChip-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.activity-details-hero--featured .activity-details-hero__price.MuiChip-root,
+.activity-details-hero--featured .activity-details-hero__status.MuiChip-root {
+  font-weight: var(--font-weight-semibold);
+  background: color-mix(in srgb, currentColor 9%, var(--color-surface));
+  border-color: color-mix(in srgb, currentColor 38%, transparent);
+}
+
+.activity-details-hero--featured
+  .activity-details-hero__price--free.MuiChip-root {
+  color: var(--color-success);
+  background: color-mix(
+    in srgb,
+    var(--color-success) 11%,
+    var(--color-surface)
+  );
+  border-color: color-mix(in srgb, var(--color-success) 38%, transparent);
+}
+
+.activity-details-hero--featured
+  .activity-details-hero__price--paid.MuiChip-root {
+  color: var(--color-text-primary);
+  background: color-mix(
+    in srgb,
+    var(--activity-featured-accent) 7%,
+    var(--color-surface)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--activity-featured-accent) 28%,
+    var(--color-border)
+  );
+}
+
+.activity-details-hero--featured .activity-details-hero__title {
+  max-width: 46rem;
+  margin-top: clamp(var(--space-5), 3vw, var(--space-8));
+  font-size: clamp(2rem, 4vw, 3.65rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.activity-details-hero--featured .activity-details-hero__description {
+  max-width: 62ch;
+  font-size: clamp(1rem, 1.5vw, 1.125rem);
+}
+
+.activity-details-hero__category-visual {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: clamp(7.5rem, 14vw, 10rem);
+  aspect-ratio: 1;
+  place-items: center;
+  isolation: isolate;
+}
+
+.activity-details-hero__category-visual::before {
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  content: '';
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--activity-featured-accent) 24%, transparent) 0,
+    color-mix(in srgb, var(--activity-featured-gradient-end) 11%, transparent)
+      45%,
+    transparent 72%
+  );
+  filter: blur(0.45rem);
+  transform: scale(1.4);
+}
+
+.activity-details-hero__category-image-large {
+  display: block;
+  width: 4rem;
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(
+    0.25rem 0.25rem 0
+      color-mix(in srgb, var(--activity-featured-accent) 32%, transparent)
+  );
 }
 
 .activity-details-hero--creative {
   --activity-category-color: var(--category-creative-color);
   --activity-category-bg: var(--category-creative-bg);
+  --activity-featured-accent: var(--category-creative-color);
+  --activity-featured-gradient-end: var(--activity-music-accent);
+  --activity-featured-badge-text: var(--color-text-inverse);
+  --activity-featured-surface: #fdfafd;
 }
 
 @media (max-width: 30rem) {
   .activity-details-hero {
     padding: var(--space-6) var(--space-5);
     border-radius: var(--radius-md);
+  }
+
+  .activity-details-hero--with-visual {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .activity-details-hero__category-visual {
+    display: none;
+  }
+
+  .activity-details-hero--featured .activity-details-hero__title {
+    font-size: clamp(1.8rem, 9vw, 2.5rem);
+    line-height: 1.12;
   }
 }
