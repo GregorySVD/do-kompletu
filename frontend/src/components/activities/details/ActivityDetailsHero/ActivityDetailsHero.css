@@ -1,6 +1,5 @@
 .activity-details-hero {
   --activity-category-color: var(--category-fallback-color);
-  --activity-category-bg: var(--category-fallback-bg);
 
   position: relative;
   min-width: 0;
@@ -28,18 +27,6 @@
   gap: var(--space-2);
 }
 
-.activity-details-hero__category.MuiChip-root {
-  color: var(--activity-category-color);
-  font-weight: var(--font-weight-semibold);
-  background: var(--activity-category-bg);
-  border: 1px solid
-    color-mix(in srgb, var(--activity-category-color) 45%, transparent);
-}
-
-.activity-details-hero__category .MuiChip-icon {
-  color: inherit;
-}
-
 .activity-details-hero__title {
   max-width: 54rem;
   margin-top: var(--space-5);
@@ -55,64 +42,50 @@
 
 .activity-details-hero--team-sport {
   --activity-category-color: var(--category-team-sport-color);
-  --activity-category-bg: var(--category-team-sport-bg);
   --activity-featured-accent: var(--category-team-sport-color);
   --activity-featured-gradient-end: var(--category-team-sport-gradient-end);
-  --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fdfcfb;
 }
 
 .activity-details-hero--board-games {
   --activity-category-color: var(--category-board-games-color);
-  --activity-category-bg: var(--category-board-games-bg);
   --activity-featured-accent: var(--category-board-games-color);
   --activity-featured-gradient-end: var(--category-board-games-gradient-end);
-  --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fdfcf8;
 }
 
 .activity-details-hero--rpg {
   --activity-category-color: var(--category-rpg-color);
-  --activity-category-bg: var(--category-rpg-bg);
   --activity-featured-accent: var(--category-rpg-color);
   --activity-featured-gradient-end: var(--category-rpg-gradient-end);
-  --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fcfbfe;
 }
 
 .activity-details-hero--gaming {
   --activity-category-color: var(--category-gaming-color);
-  --activity-category-bg: var(--category-gaming-bg);
   --activity-featured-accent: var(--category-gaming-color);
   --activity-featured-gradient-end: var(--category-gaming-gradient-end);
-  --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fdfafd;
 }
 
 .activity-details-hero--study {
   --activity-category-color: var(--category-study-color);
-  --activity-category-bg: var(--category-study-bg);
   --activity-featured-accent: var(--category-study-color);
   --activity-featured-gradient-end: var(--category-study-gradient-end);
-  --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #f9fdfc;
 }
 
 .activity-details-hero--technology {
   --activity-category-color: var(--category-technology-color);
-  --activity-category-bg: var(--category-technology-bg);
   --activity-featured-accent: var(--category-technology-color);
   --activity-featured-gradient-end: var(--category-technology-gradient-end);
-  --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #f9fcfe;
 }
 
 .activity-details-hero--music {
   --activity-category-color: var(--category-music-color);
-  --activity-category-bg: var(--category-music-bg);
   --activity-featured-accent: var(--activity-music-accent);
   --activity-featured-gradient-end: var(--category-music-gradient-end);
-  --activity-featured-badge-text: #fff;
   --activity-featured-surface: #fdfcfd;
 }
 
@@ -176,46 +149,6 @@
 
 .activity-details-hero--featured .activity-details-hero__chips {
   gap: var(--space-3);
-}
-
-.activity-details-hero--featured .activity-details-hero__category.MuiChip-root {
-  color: var(--activity-featured-badge-text);
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  font-weight: var(--font-weight-bold);
-  letter-spacing: 0.035em;
-  background: linear-gradient(
-    100deg,
-    var(--activity-featured-accent) 0 36%,
-    color-mix(
-        in srgb,
-        var(--activity-featured-accent) 58%,
-        var(--activity-featured-gradient-end)
-      )
-      36% 70%,
-    var(--activity-featured-gradient-end) 70% 100%
-  );
-  border-width: 2px;
-  border-color: color-mix(
-    in srgb,
-    var(--activity-featured-accent) 55%,
-    var(--activity-featured-gradient-end)
-  );
-  border-radius: 0.45rem;
-  box-shadow: 0.16rem 0.16rem 0
-    color-mix(in srgb, var(--activity-featured-accent) 32%, transparent);
-}
-
-.activity-details-hero--featured
-  .activity-details-hero__category
-  .MuiChip-icon {
-  color: inherit;
-}
-
-.activity-details-hero__category-image.MuiChip-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  image-rendering: pixelated;
-  object-fit: contain;
 }
 
 .activity-details-hero--featured .activity-details-hero__price.MuiChip-root,
@@ -329,10 +262,8 @@
 
 .activity-details-hero--creative {
   --activity-category-color: var(--category-creative-color);
-  --activity-category-bg: var(--category-creative-bg);
   --activity-featured-accent: var(--category-creative-color);
   --activity-featured-gradient-end: var(--category-creative-gradient-end);
-  --activity-featured-badge-text: var(--color-text-inverse);
   --activity-featured-surface: #fdfafd;
 }
 

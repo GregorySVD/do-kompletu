@@ -51,7 +51,11 @@ function ActivityListPanel({
         <div className="activities__list">
           {activities.length > 0 ? (
             activities.map((activity) => (
-              <ActivityCard key={activity.id} activity={activity} />
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                emphasizeMetadata
+              />
             ))
           ) : (
             <div className="activities__empty">

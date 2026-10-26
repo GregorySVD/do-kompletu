@@ -4,6 +4,7 @@ import {
   type ActivityCategoryVisualVariant,
 } from '../../../../config/activityCategoryPresentation'
 import type { ActivityDetails } from '../../../../types/activity'
+import ActivityCategoryBadge from '../../../ActivityCategoryBadge/ActivityCategoryBadge'
 import ActivityStatusBadge from '../ActivityStatusBadge/ActivityStatusBadge'
 import './ActivityDetailsHero.css'
 
@@ -38,8 +39,6 @@ function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
   const categoryPresentation = getActivityCategoryPresentation(
     activity.category.slug,
   )
-  const CategoryIcon = categoryPresentation.icon
-  const categoryIconSrc = categoryPresentation.pixelIconSrc
   const categoryHeroIconSrc = categoryPresentation.pixelHeroIconSrc
   const isFeatured = featuredCategoryVariants.has(categoryPresentation.variant)
   const priceVariant = activity.price_type === 'FREE' ? 'free' : 'paid'
@@ -55,23 +54,7 @@ function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
     >
       <div className="activity-details-hero__content">
         <div className="activity-details-hero__chips">
-          <Chip
-            className="activity-details-hero__category"
-            icon={
-              categoryIconSrc ? (
-                <img
-                  className="activity-details-hero__category-image"
-                  src={categoryIconSrc}
-                  alt=""
-                  width="32"
-                  height="32"
-                />
-              ) : (
-                <CategoryIcon />
-              )
-            }
-            label={activity.category.name}
-          />
+          <ActivityCategoryBadge category={activity.category} />
           <Chip
             className={`activity-details-hero__price activity-details-hero__price--${priceVariant}`}
             icon={

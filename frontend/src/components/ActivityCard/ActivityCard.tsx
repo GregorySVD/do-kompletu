@@ -8,23 +8,29 @@ import {
 import { Link } from 'react-router-dom'
 import { getActivityCategoryPresentation } from '../../config/activityCategoryPresentation'
 import type { Activity } from '../../types/activity'
+import ActivityCategoryBadge from '../ActivityCategoryBadge/ActivityCategoryBadge'
 import './ActivityCard.css'
 
 interface ActivityCardProps {
   activity: Activity
+  emphasizeMetadata?: boolean
   secondaryStatusText?: string
   showParticipationStats?: boolean
   statusColor?: ChipProps['color']
   statusLabel?: string
 }
 
-const dateFormatter = new Intl.DateTimeFormat('pl-PL', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
+const dateFormatter = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium' })
+
+const timeFormatter = new Intl.DateTimeFormat('pl-PL', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
 })
 
 function ActivityCard({
   activity,
+  emphasizeMetadata = false,
   secondaryStatusText,
   showParticipationStats = true,
   statusColor = 'primary',
@@ -33,6 +39,7 @@ function ActivityCard({
   const categoryPresentation = getActivityCategoryPresentation(
     activity.category.slug,
   )
+  const startDate = new Date(activity.start_at)
   const isCancelled = activity.status === 'CANCELLED'
   const effectiveStatusLabel = isCancelled ? 'Anulowana' : statusLabel
   const effectiveStatusColor = isCancelled ? 'error' : statusColor
@@ -60,19 +67,40 @@ function ActivityCard({
       >
         <CardContent>
           <div className="activity-card__top">
-            <div>
+            <div className="activity-card__summary">
               <Typography component="h2" variant="h6">
                 {activity.title}
               </Typography>
-              <Typography color="text.secondary">
-                {dateFormatter.format(new Date(activity.start_at))}
-              </Typography>
+              {emphasizeMetadata ? (
+                <dl className="activity-card__metadata">
+                  <div className="activity-card__metadata-item activity-card__metadata-item--date">
+                    <dt>Termin</dt>
+                    <dd>
+                      <time dateTime={activity.start_at}>
+                        <span>{dateFormatter.format(startDate)}</span>
+                        <span className="activity-card__metadata-time">
+                          {timeFormatter.format(startDate)}
+                        </span>
+                      </time>
+                    </dd>
+                  </div>
+
+                  <div className="activity-card__metadata-item activity-card__metadata-item--location">
+                    <dt>Miejsce</dt>
+                    <dd>{activity.location_name}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <Typography color="text.secondary">
+                  {dateFormatter.format(startDate)},{' '}
+                  {timeFormatter.format(startDate)}
+                </Typography>
+              )}
             </div>
 
             <div className="activity-card__chips">
-              <Chip
-                className="activity-card__category"
-                label={activity.category.name}
+              <ActivityCategoryBadge
+                category={activity.category}
                 size="small"
               />
               {effectiveStatusLabel && (
@@ -87,9 +115,11 @@ function ActivityCard({
             </div>
           </div>
 
-          <Typography className="activity-card__location">
-            {activity.location_name}
-          </Typography>
+          {!emphasizeMetadata && (
+            <Typography className="activity-card__location">
+              {activity.location_name}
+            </Typography>
+          )}
           {secondaryStatusText && (
             <Typography
               className="activity-card__secondary-status"
