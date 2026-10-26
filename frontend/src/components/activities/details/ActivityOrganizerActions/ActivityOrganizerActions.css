@@ -1,12 +1,69 @@
 .activity-organizer-actions {
+  --organizer-actions-accent: var(--brand-green-500);
+
+  position: relative;
   min-width: 0;
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    var(--color-surface) 0 44%,
+    color-mix(in srgb, var(--organizer-actions-accent) 6%, var(--color-surface))
+      44% 72%,
+    color-mix(in srgb, var(--category-gaming-color) 7%, var(--color-surface))
+      72% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--organizer-actions-accent) 48%, var(--color-border));
+  border-radius: 0.55rem;
+  box-shadow:
+    4px 4px 0
+      color-mix(in srgb, var(--organizer-actions-accent) 22%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--organizer-actions-accent) 12%, transparent);
+}
+
+.activity-organizer-actions::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.12;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.3rem,
+    color-mix(in srgb, var(--organizer-actions-accent) 28%, transparent) 0.3rem
+      0.35rem
+  );
 }
 
 .activity-organizer-actions__content {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: var(--space-4);
+}
+
+.activity-organizer-actions__heading {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.activity-organizer-actions__title {
+  width: fit-content;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    180deg,
+    transparent 0 72%,
+    color-mix(in srgb, var(--organizer-actions-accent) 26%, transparent) 72%
+      100%
+  );
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--organizer-actions-accent) 24%, transparent);
+}
+
+.activity-organizer-actions__subtitle {
+  font-size: var(--font-size-sm);
 }
 
 .activity-organizer-actions__buttons {
@@ -14,8 +71,76 @@
   gap: var(--space-3);
 }
 
-.activity-organizer-actions__buttons .MuiButton-root {
+.activity-organizer-actions__button.activity-organizer-actions__button {
   min-height: var(--touch-target-min);
+  justify-content: flex-start;
+  padding: 0.55rem 0.8rem;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.01em;
+  border-width: 2px;
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0 color-mix(in srgb, currentColor 26%, transparent);
+  transition:
+    translate 120ms ease,
+    box-shadow 120ms ease,
+    filter 120ms ease;
+}
+
+.activity-organizer-actions__button.activity-organizer-actions__button:hover {
+  translate: -1px -1px;
+  box-shadow: 4px 4px 0 color-mix(in srgb, currentColor 32%, transparent);
+  filter: brightness(1.06);
+}
+
+.activity-organizer-actions__button.activity-organizer-actions__button:active {
+  translate: 2px 2px;
+  box-shadow: 1px 1px 0 color-mix(in srgb, currentColor 24%, transparent);
+}
+
+.activity-organizer-actions__button--edit.activity-organizer-actions__button--edit {
+  color: var(--brand-green-400);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--brand-green-500) 13%, var(--color-surface)) 0 34%,
+    color-mix(in srgb, var(--brand-green-500) 7%, var(--color-surface)) 34% 100%
+  );
+  border-color: color-mix(in srgb, var(--brand-green-400) 72%, transparent);
+}
+
+.activity-organizer-actions__button--finalize.activity-organizer-actions__button--finalize {
+  color: color-mix(in srgb, var(--color-warning) 74%, #fff);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-warning) 30%, var(--color-surface)) 0 34%,
+    color-mix(in srgb, var(--color-warning) 15%, var(--color-surface)) 34% 100%
+  );
+  border-color: var(--color-warning);
+}
+
+.activity-organizer-actions__button--cancel.activity-organizer-actions__button--cancel {
+  color: var(--color-error);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-error) 12%, var(--color-surface)) 0 34%,
+    color-mix(in srgb, var(--color-error) 5%, var(--color-surface)) 34% 100%
+  );
+  border-color: color-mix(in srgb, var(--color-error) 72%, transparent);
+}
+
+.activity-organizer-actions__button-icon {
+  display: block;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0.18rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  background: color-mix(in srgb, currentColor 12%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, currentColor 50%, transparent);
+  border-radius: 0.2rem;
+  filter: drop-shadow(
+    1px 1px 0 color-mix(in srgb, currentColor 30%, transparent)
+  );
 }
 
 .activity-organizer-actions__dialog-error {
@@ -33,9 +158,15 @@
     padding: var(--space-4) var(--space-6) var(--space-5);
   }
 
-  .activity-organizer-actions__dialog-actions .MuiButton-root {
+  .activity-organizer-actions__dialog-actions > button {
     width: 100%;
     min-height: var(--touch-target-min);
     margin: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-organizer-actions__button.activity-organizer-actions__button {
+    transition: none;
   }
 }

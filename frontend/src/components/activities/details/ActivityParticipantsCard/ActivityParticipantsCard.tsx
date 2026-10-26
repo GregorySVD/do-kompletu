@@ -1,4 +1,4 @@
-import { GroupsOutlined, HourglassBottom } from '@mui/icons-material'
+import { HourglassBottom } from '@mui/icons-material'
 import { Card, CardContent, Typography } from '@mui/material'
 import type { ActivityDetails } from '../../../../types/activity'
 import ActivityCapacityIndicator from '../ActivityCapacityIndicator/ActivityCapacityIndicator'
@@ -23,7 +23,13 @@ function ActivityParticipantsCard({ activity }: ActivityParticipantsCardProps) {
       <CardContent className="activity-participants-card__content">
         <div className="activity-participants-card__heading">
           <span className="activity-participants-card__heading-icon">
-            <GroupsOutlined aria-hidden="true" />
+            <img
+              src="/favicon.png"
+              alt=""
+              width="1254"
+              height="1254"
+              aria-hidden="true"
+            />
           </span>
           <div>
             <Typography component="h2" variant="h5">
@@ -38,11 +44,13 @@ function ActivityParticipantsCard({ activity }: ActivityParticipantsCardProps) {
         <ActivityCapacityIndicator activity={activity} />
 
         <dl className="activity-participants-card__metrics">
-          <div>
+          <div className="activity-participants-card__metric activity-participants-card__metric--minimum">
             <dt>Minimum</dt>
             <dd>{activity.min_participants} osób</dd>
           </div>
-          <div>
+          <div
+            className={`activity-participants-card__metric activity-participants-card__metric--status activity-participants-card__metric--${missingToMinimum > 0 ? 'waiting' : 'complete'}`}
+          >
             <dt>Status kompletu</dt>
             <dd>
               {missingToMinimum > 0
@@ -50,7 +58,7 @@ function ActivityParticipantsCard({ activity }: ActivityParticipantsCardProps) {
                 : 'Komplet zebrany'}
             </dd>
           </div>
-          <div>
+          <div className="activity-participants-card__metric activity-participants-card__metric--waitlist">
             <dt>
               <HourglassBottom aria-hidden="true" /> Lista rezerwowa
             </dt>

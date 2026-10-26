@@ -1,4 +1,3 @@
-import { LocalOfferOutlined } from '@mui/icons-material'
 import { Chip, Typography } from '@mui/material'
 import type { ActivityDetails } from '../../../../types/activity'
 import './ActivityTagsCard.css'
@@ -14,15 +13,27 @@ function ActivityTagsCard({ activity }: ActivityTagsCardProps) {
       aria-labelledby="activity-tags-title"
     >
       <div className="activity-tags-card__heading">
-        <LocalOfferOutlined aria-hidden="true" />
-        <Typography id="activity-tags-title" component="h2" variant="h6">
+        <span className="activity-tags-card__heading-icon" aria-hidden="true">
+          #
+        </span>
+        <Typography
+          id="activity-tags-title"
+          className="activity-tags-card__title"
+          component="h2"
+          variant="h5"
+        >
           Tagi
         </Typography>
       </div>
       {activity.tags.length > 0 ? (
         <div className="activity-tags-card__list">
           {activity.tags.map((tag) => (
-            <Chip key={tag.id} label={tag.name} size="small" />
+            <Chip
+              key={tag.id}
+              className="activity-tags-card__tag"
+              label={tag.name}
+              size="small"
+            />
           ))}
         </div>
       ) : (
@@ -31,7 +42,7 @@ function ActivityTagsCard({ activity }: ActivityTagsCardProps) {
           variant="body2"
           color="text.secondary"
         >
-          Bez dodatkowych tagów
+          Brak dodatkowych tagów
         </Typography>
       )}
     </section>

@@ -17,10 +17,19 @@ function ActivityCapacityIndicator({
     return (
       <div className="activity-capacity activity-capacity--unlimited">
         <div className="activity-capacity__heading">
-          <Typography variant="body2" color="text.secondary">
-            Zajętość
+          <Typography
+            className="activity-capacity__label"
+            variant="body2"
+            color="text.secondary"
+          >
+            Uczestnicy
           </Typography>
-          <Chip label="Bez limitu miejsc" size="small" variant="outlined" />
+          <Chip
+            className="activity-capacity__status"
+            label="Bez limitu miejsc"
+            size="small"
+            variant="outlined"
+          />
         </div>
         <Typography className="activity-capacity__summary">
           {activity.participant_count} zapisanych uczestników
@@ -36,6 +45,7 @@ function ActivityCapacityIndicator({
     maximum > 0 ? (activity.participant_count / maximum) * 100 : 100,
     100,
   )
+  const roundedOccupiedPercentage = Math.round(occupiedPercentage)
   const availableRatio = maximum > 0 ? availableSlots / maximum : 0
   const isFull = availableSlots === 0
   let level: CapacityLevel = 'available'
@@ -62,22 +72,36 @@ function ActivityCapacityIndicator({
   return (
     <div className={`activity-capacity activity-capacity--${level}`}>
       <div className="activity-capacity__heading">
-        <Typography variant="body2" color="text.secondary">
-          Zajętość
+        <Typography
+          className="activity-capacity__label"
+          variant="body2"
+          color="text.secondary"
+        >
+          Uczestnicy
         </Typography>
-        <Chip label={label} size="small" color={chipColor} variant="outlined" />
+        <Chip
+          className="activity-capacity__status"
+          label={label}
+          size="small"
+          color={chipColor}
+          variant="outlined"
+        />
       </div>
 
+      <div className="activity-capacity__progress-copy" aria-hidden="true">
+        <span>EXP kompletu</span>
+        <strong>{roundedOccupiedPercentage}%</strong>
+      </div>
       <LinearProgress
         className="activity-capacity__progress"
         variant="determinate"
         value={occupiedPercentage}
-        aria-label={`Zajętych ${activity.participant_count} z ${maximum} miejsc`}
+        aria-label={`Zapisanych ${activity.participant_count} z ${maximum} uczestników`}
       />
 
       <div className="activity-capacity__legend">
         <Typography>
-          <strong>{activity.participant_count}</strong> / {maximum} zajętych
+          <strong>{activity.participant_count}</strong> / {maximum} zapisanych
         </Typography>
         <Typography color="text.secondary">
           {isFull ? 'Brak wolnych miejsc' : `${availableSlots} wolnych miejsc`}

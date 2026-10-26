@@ -1,6 +1,97 @@
-.activity-schedule-card {
+.activity-schedule-card.MuiCard-root {
+  --schedule-accent: var(--color-accent);
+
+  position: relative;
   min-width: 0;
-  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    var(--color-surface) 0 38%,
+    color-mix(in srgb, var(--schedule-accent) 5%, var(--color-surface)) 38% 68%,
+    color-mix(in srgb, var(--schedule-accent) 9%, var(--color-surface)) 68% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--schedule-accent) 48%, var(--color-border));
+  border-radius: 0.55rem;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--schedule-accent) 22%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--schedule-accent) 12%, transparent);
+}
+
+.activity-schedule-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.14;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.3rem,
+    color-mix(in srgb, var(--schedule-accent) 24%, transparent) 0.3rem 0.35rem
+  );
+}
+
+.activity-schedule-card__content {
+  position: relative;
+  z-index: 1;
+}
+
+.activity-schedule-card__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.activity-schedule-card__heading-icon,
+.activity-schedule-card__point-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--schedule-accent) 12%, var(--color-surface)) 0 52%,
+    color-mix(in srgb, var(--schedule-accent) 20%, var(--color-surface)) 52%
+      100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--schedule-accent) 58%, var(--color-border));
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--schedule-accent) 27%, transparent);
+}
+
+.activity-schedule-card__heading-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.activity-schedule-card__heading-icon img,
+.activity-schedule-card__point-icon img {
+  display: block;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: hue-rotate(225deg) saturate(1.25)
+    drop-shadow(
+      0 0 0.35rem color-mix(in srgb, var(--schedule-accent) 52%, transparent)
+    );
+}
+
+.activity-schedule-card__heading-icon img {
+  width: 2.45rem;
+  height: 2.45rem;
+}
+
+.activity-schedule-card__heading .MuiTypography-h5 {
+  width: fit-content;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    180deg,
+    transparent 0 72%,
+    color-mix(in srgb, var(--schedule-accent) 25%, transparent) 72% 100%
+  );
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--schedule-accent) 22%, transparent);
 }
 
 .activity-schedule-card__timeline {
@@ -16,41 +107,63 @@
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-4);
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--schedule-accent) 6%, var(--color-surface)) 0 56%,
+    color-mix(in srgb, var(--schedule-accent) 12%, var(--color-surface)) 56%
+      100%
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--schedule-accent) 34%, var(--color-border));
+  border-radius: 0.4rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--schedule-accent) 18%, transparent);
 }
 
 .activity-schedule-card__point-icon {
-  display: grid;
-  flex: 0 0 auto;
   width: 2.75rem;
   height: 2.75rem;
-  place-items: center;
-  color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-  border-radius: var(--radius-sm);
+}
+
+.activity-schedule-card__point-icon img {
+  width: 1.8rem;
+  height: 1.8rem;
 }
 
 .activity-schedule-card__point-label {
-  font-weight: var(--font-weight-semibold);
+  color: var(--schedule-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .activity-schedule-card__date {
   margin-top: var(--space-1);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-weight: var(--font-weight-semibold);
   text-transform: capitalize;
 }
 
 .activity-schedule-card__time {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   margin-top: var(--space-2);
-  color: var(--color-text-secondary);
+  padding: 0.15rem 0.4rem;
+  color: var(--schedule-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  background: color-mix(
+    in srgb,
+    var(--schedule-accent) 10%,
+    var(--color-surface)
+  );
+  border: 1px solid var(--schedule-accent);
+  border-radius: 0.25rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--schedule-accent) 22%, transparent);
 }
 
 .activity-schedule-card__time .MuiSvgIcon-root {

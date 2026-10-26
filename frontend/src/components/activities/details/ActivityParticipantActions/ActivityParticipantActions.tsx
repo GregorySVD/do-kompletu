@@ -11,7 +11,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../../context/auth'
 import { useCheckInActivityMutation } from '../../../../hooks/mutations/useCheckInActivityMutation'
 import { useConfirmActivityMutation } from '../../../../hooks/mutations/useConfirmActivityMutation'
@@ -129,6 +129,7 @@ function ActivityParticipantActions({
   activity,
 }: ActivityParticipantActionsProps) {
   const { isAuthenticated, isLoading } = useAuth()
+  const location = useLocation()
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
   const [checkInErrorMessage, setCheckInErrorMessage] = useState<string | null>(
     null,
@@ -391,7 +392,12 @@ function ActivityParticipantActions({
 
           <div className="activity-participant-actions__buttons">
             {canPromptLogin && (
-              <Button component={Link} to="/login" variant="contained">
+              <Button
+                component={Link}
+                to="/login"
+                state={{ from: location }}
+                variant="contained"
+              >
                 Zaloguj się, aby dołączyć
               </Button>
             )}

@@ -1,6 +1,4 @@
-import { LocationSearching, VerifiedOutlined } from '@mui/icons-material'
 import { Card, CardContent, Typography } from '@mui/material'
-import type { ReactNode } from 'react'
 import type { ActivityDetails } from '../../../../types/activity'
 import { formatDateTime } from '../../../../utils/dateFormat'
 import './ActivityParticipationWindowsCard.css'
@@ -12,7 +10,7 @@ interface ActivityParticipationWindowsCardProps {
 interface ParticipationWindowProps {
   emptyMessage: string
   end: string | null
-  icon: ReactNode
+  iconSrc: string
   start: string | null
   title: string
 }
@@ -20,7 +18,7 @@ interface ParticipationWindowProps {
 function ParticipationWindow({
   emptyMessage,
   end,
-  icon,
+  iconSrc,
   start,
   title,
 }: ParticipationWindowProps) {
@@ -28,19 +26,49 @@ function ParticipationWindow({
 
   return (
     <div className="activity-participation-windows__item">
-      <span className="activity-participation-windows__icon">{icon}</span>
-      <div>
-        <Typography component="h3" variant="h6">
+      <span className="activity-participation-windows__icon">
+        <img src={iconSrc} alt="" width="64" height="64" aria-hidden="true" />
+      </span>
+      <div className="activity-participation-windows__item-content">
+        <Typography
+          className="activity-participation-windows__item-title"
+          component="h3"
+          variant="h6"
+        >
           {title}
         </Typography>
         {isAvailable ? (
-          <Typography color="text.secondary">
-            <time dateTime={start}>{formatDateTime(start)}</time>
-            <span aria-hidden="true"> — </span>
-            <time dateTime={end}>{formatDateTime(end)}</time>
-          </Typography>
+          <div className="activity-participation-windows__range">
+            <time
+              className="activity-participation-windows__range-start"
+              dateTime={start}
+            >
+              <span className="activity-participation-windows__range-label">
+                Od
+              </span>
+              <strong className="activity-participation-windows__range-value">
+                {formatDateTime(start)}
+              </strong>
+            </time>
+            <time
+              className="activity-participation-windows__range-end"
+              dateTime={end}
+            >
+              <span className="activity-participation-windows__range-label">
+                Do
+              </span>
+              <strong className="activity-participation-windows__range-value">
+                {formatDateTime(end)}
+              </strong>
+            </time>
+          </div>
         ) : (
-          <Typography color="text.secondary">{emptyMessage}</Typography>
+          <Typography
+            className="activity-participation-windows__empty-message"
+            color="text.secondary"
+          >
+            {emptyMessage}
+          </Typography>
         )}
       </div>
     </div>
@@ -56,29 +84,41 @@ function ActivityParticipationWindowsCard({
       variant="outlined"
       className="activity-participation-windows"
     >
-      <CardContent>
-        <Typography component="h2" variant="h5">
-          Ważne terminy udziału
-        </Typography>
+      <CardContent className="activity-participation-windows__content">
+        <div className="activity-participation-windows__heading">
+          <Typography
+            className="activity-participation-windows__title"
+            component="h2"
+            variant="h5"
+          >
+            Etapy udziału
+          </Typography>
+          <Typography
+            className="activity-participation-windows__subtitle"
+            color="text.secondary"
+          >
+            Potwierdzenie obecności i check-in
+          </Typography>
+        </div>
         <div className="activity-participation-windows__list">
           <ParticipationWindow
             title="Potwierdzenie udziału"
             start={activity.confirmation_opens_at}
             end={activity.confirmation_deadline_at}
             emptyMessage="Potwierdzanie udziału nie jest jeszcze dostępne."
-            icon={<VerifiedOutlined aria-hidden="true" />}
+            iconSrc="/icons/icons8-today-64.png"
           />
           <ParticipationWindow
             title="Check-in"
             start={activity.checkin_opens_at}
             end={activity.checkin_closes_at}
             emptyMessage="Check-in nie jest jeszcze dostępny."
-            icon={<LocationSearching aria-hidden="true" />}
+            iconSrc="/icons/icons8-navigation-64.png"
           />
         </div>
         {activity.checkin_radius_m !== null && (
           <Typography
-            className="activity-participation-windows__radius"
+            className="activity-participation-windows__radius-note"
             variant="body2"
             color="text.secondary"
           >

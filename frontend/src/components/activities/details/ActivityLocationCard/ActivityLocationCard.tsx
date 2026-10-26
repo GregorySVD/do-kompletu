@@ -1,9 +1,6 @@
 import {
-  Close,
-  LocationOnOutlined,
-  OpenInFullOutlined,
-} from '@mui/icons-material'
-import {
+  Alert,
+  Button,
   Card,
   CardContent,
   Dialog,
@@ -13,10 +10,21 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { useEffect, useState, type KeyboardEvent } from 'react'
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import { Icon } from 'leaflet'
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
+import {
+  Circle,
+  CircleMarker,
+  MapContainer,
+  Marker,
+  Pane,
+  Popup,
+  TileLayer,
+  useMap,
+} from 'react-leaflet'
+import { useCurrentPosition } from '../../../../hooks/useCurrentPosition'
 import type { ActivityDetails } from '../../../../types/activity'
-import { getMapTileConfig, mapMarkerIcon } from '../../../../utils/mapConfig'
+import { getMapTileConfig } from '../../../../utils/mapConfig'
 import 'leaflet/dist/leaflet.css'
 import './ActivityLocationCard.css'
 
@@ -24,7 +32,29 @@ interface ActivityLocationCardProps {
   activity: ActivityDetails
 }
 
-function InteractiveMapSizeHandler() {
+interface UserMapLocation {
+  accuracyM: number
+  latitude: number
+  longitude: number
+}
+
+const activityLocationMarkerIcon = new Icon({
+  iconUrl: '/icons/icons8-place-64.png',
+  iconSize: [48, 48],
+  iconAnchor: [24, 45],
+  popupAnchor: [0, -42],
+  className: 'activity-location-card__marker',
+})
+
+interface InteractiveMapControllerProps {
+  activityPosition: [number, number]
+  userLocation: UserMapLocation | null
+}
+
+function InteractiveMapController({
+  activityPosition,
+  userLocation,
+}: InteractiveMapControllerProps) {
   const map = useMap()
 
   useEffect(() => {
@@ -40,19 +70,99 @@ function InteractiveMapSizeHandler() {
     }
   }, [map])
 
+  useEffect(() => {
+    if (userLocation === null) {
+      map.setView(activityPosition, 16)
+      return
+    }
+
+    map.fitBounds(
+      [activityPosition, [userLocation.latitude, userLocation.longitude]],
+      {
+        maxZoom: 16,
+        padding: [48, 48],
+      },
+    )
+  }, [activityPosition, map, userLocation])
+
   return null
+}
+
+function UserLocationLayer({ location }: { location: UserMapLocation }) {
+  const position: [number, number] = [location.latitude, location.longitude]
+
+  return (
+    <>
+      <Circle
+        center={position}
+        className="activity-location-card__user-accuracy"
+        interactive={false}
+        radius={location.accuracyM}
+      />
+      <Pane name="activity-location-user-marker" style={{ zIndex: 650 }}>
+        <CircleMarker
+          center={position}
+          className="activity-location-card__user-marker"
+          radius={9}
+        >
+          <Popup>
+            <strong>Twoja lokalizacja</strong>
+            <span>Dokładność: około {Math.round(location.accuracyM)} m</span>
+          </Popup>
+        </CircleMarker>
+      </Pane>
+    </>
+  )
 }
 
 function ActivityLocationCard({ activity }: ActivityLocationCardProps) {
   const [isMapOpen, setIsMapOpen] = useState(false)
+  const [userLocation, setUserLocation] = useState<UserMapLocation | null>(null)
+  const { errorMessage, getCurrentPosition, isLocating, resetError } =
+    useCurrentPosition()
   const theme = useTheme()
   const mode = theme.palette.mode === 'dark' ? 'dark' : 'light'
   const tileConfig = getMapTileConfig(mode)
-  const position: [number, number] = [activity.latitude, activity.longitude]
+  const position = useMemo<[number, number]>(
+    () => [activity.latitude, activity.longitude],
+    [activity.latitude, activity.longitude],
+  )
   const mapDialogTitleId = `activity-location-map-title-${activity.id}`
 
-  const openMap = () => setIsMapOpen(true)
-  const closeMap = () => setIsMapOpen(false)
+  const openMap = () => {
+    resetError()
+    setIsMapOpen(true)
+  }
+
+  const closeMap = () => {
+    setIsMapOpen(false)
+    setUserLocation(null)
+    resetError()
+  }
+
+  async function updateUserLocation() {
+    const currentPosition = await getCurrentPosition()
+
+    if (currentPosition === null) {
+      return
+    }
+
+    setUserLocation({
+      accuracyM: currentPosition.coords.accuracy,
+      latitude: currentPosition.coords.latitude,
+      longitude: currentPosition.coords.longitude,
+    })
+  }
+
+  function toggleUserLocation() {
+    if (userLocation !== null) {
+      setUserLocation(null)
+      resetError()
+      return
+    }
+
+    void updateUserLocation()
+  }
 
   const handleMapPreviewKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -70,17 +180,32 @@ function ActivityLocationCard({ activity }: ActivityLocationCardProps) {
       <CardContent className="activity-location-card__content">
         <div className="activity-location-card__details">
           <span className="activity-location-card__icon">
-            <LocationOnOutlined aria-hidden="true" />
+            <img
+              src="/icons/icons8-map-64.png"
+              alt=""
+              width="64"
+              height="64"
+              aria-hidden="true"
+            />
           </span>
-          <div>
-            <Typography component="h2" variant="h6">
+          <div className="activity-location-card__copy">
+            <Typography
+              className="activity-location-card__title"
+              component="h2"
+              variant="h5"
+            >
               Miejsce
             </Typography>
             <Typography className="activity-location-card__name">
               {activity.location_name}
             </Typography>
             {activity.address && (
-              <Typography color="text.secondary">{activity.address}</Typography>
+              <Typography
+                className="activity-location-card__address"
+                color="text.secondary"
+              >
+                {activity.address}
+              </Typography>
             )}
           </div>
         </div>
@@ -116,7 +241,7 @@ function ActivityLocationCard({ activity }: ActivityLocationCardProps) {
               />
               <Marker
                 alt={`Lokalizacja: ${activity.location_name}`}
-                icon={mapMarkerIcon}
+                icon={activityLocationMarkerIcon}
                 interactive={false}
                 position={position}
                 title={activity.location_name}
@@ -130,7 +255,14 @@ function ActivityLocationCard({ activity }: ActivityLocationCardProps) {
             © OpenStreetMap
           </span>
           <span className="activity-location-card__map-open-hint">
-            <OpenInFullOutlined aria-hidden="true" fontSize="small" />
+            <img
+              className="activity-location-card__map-open-icon"
+              src="/icons/icons8-enlarge-64.png"
+              alt=""
+              width="64"
+              height="64"
+              aria-hidden="true"
+            />
             Otwórz mapę
           </span>
         </div>
@@ -142,25 +274,89 @@ function ActivityLocationCard({ activity }: ActivityLocationCardProps) {
         fullWidth
         maxWidth="md"
         aria-labelledby={mapDialogTitleId}
+        className="activity-location-card__dialog"
+        slotProps={{
+          backdrop: {
+            className: 'activity-location-card__dialog-backdrop',
+          },
+          paper: {
+            className: 'activity-location-card__dialog-paper',
+          },
+        }}
       >
         <DialogTitle
           id={mapDialogTitleId}
           className="activity-location-card__dialog-title"
         >
-          <span>
-            Lokalizacja wydarzenia
-            <Typography component="span" color="text.secondary">
-              {activity.location_name}
-            </Typography>
+          <span className="activity-location-card__dialog-heading">
+            <img
+              className="activity-location-card__dialog-icon"
+              src="/icons/icons8-map-64.png"
+              alt=""
+              width="64"
+              height="64"
+              aria-hidden="true"
+            />
+            <span className="activity-location-card__dialog-title-copy">
+              <span className="activity-location-card__dialog-title-text">
+                Mapa aktywności
+              </span>
+              <Typography
+                className="activity-location-card__dialog-location"
+                component="span"
+                color="text.secondary"
+              >
+                {activity.location_name}
+              </Typography>
+            </span>
           </span>
-          <IconButton aria-label="Zamknij mapę" edge="end" onClick={closeMap}>
-            <Close />
+          <IconButton
+            className="activity-location-card__dialog-close"
+            aria-label="Zamknij mapę"
+            edge="end"
+            onClick={closeMap}
+          >
+            <span aria-hidden="true">×</span>
           </IconButton>
         </DialogTitle>
         <DialogContent
           dividers
           className="activity-location-card__dialog-content"
         >
+          <div className="activity-location-card__location-control">
+            <Button
+              className="activity-location-card__location-button"
+              disabled={isLocating}
+              variant={userLocation === null ? 'contained' : 'outlined'}
+              onClick={toggleUserLocation}
+              startIcon={
+                <img
+                  className="activity-location-card__location-button-icon"
+                  src="/icons/icons8-navigation-64.png"
+                  alt=""
+                  width="64"
+                  height="64"
+                  aria-hidden="true"
+                />
+              }
+            >
+              {isLocating
+                ? 'Pobieranie lokalizacji...'
+                : userLocation === null
+                  ? 'Pokaż moją lokalizację'
+                  : 'Ukryj moją lokalizację'}
+            </Button>
+
+            {errorMessage !== null && (
+              <Alert
+                className="activity-location-card__location-error"
+                severity="error"
+              >
+                {errorMessage}
+              </Alert>
+            )}
+          </div>
+
           <MapContainer
             key={`${activity.id}-${mode}-interactive`}
             center={position}
@@ -168,7 +364,10 @@ function ActivityLocationCard({ activity }: ActivityLocationCardProps) {
             className="activity-location-card__interactive-map"
             scrollWheelZoom
           >
-            <InteractiveMapSizeHandler />
+            <InteractiveMapController
+              activityPosition={position}
+              userLocation={userLocation}
+            />
             <TileLayer
               attribution={tileConfig.attribution}
               maxZoom={20}
@@ -176,7 +375,7 @@ function ActivityLocationCard({ activity }: ActivityLocationCardProps) {
             />
             <Marker
               alt={`Lokalizacja: ${activity.location_name}`}
-              icon={mapMarkerIcon}
+              icon={activityLocationMarkerIcon}
               position={position}
               title={activity.location_name}
             >
@@ -185,6 +384,9 @@ function ActivityLocationCard({ activity }: ActivityLocationCardProps) {
                 {activity.address && <span>{activity.address}</span>}
               </Popup>
             </Marker>
+            {userLocation !== null && (
+              <UserLocationLayer location={userLocation} />
+            )}
           </MapContainer>
         </DialogContent>
       </Dialog>

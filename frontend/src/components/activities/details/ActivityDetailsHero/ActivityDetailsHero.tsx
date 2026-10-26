@@ -1,10 +1,11 @@
-import { Chip, Typography } from '@mui/material'
+import { Typography } from '@mui/material'
 import {
   getActivityCategoryPresentation,
   type ActivityCategoryVisualVariant,
 } from '../../../../config/activityCategoryPresentation'
 import type { ActivityDetails } from '../../../../types/activity'
 import ActivityCategoryBadge from '../../../ActivityCategoryBadge/ActivityCategoryBadge'
+import ActivityPriceBadge from '../../../ActivityPriceBadge/ActivityPriceBadge'
 import ActivityStatusBadge from '../ActivityStatusBadge/ActivityStatusBadge'
 import './ActivityDetailsHero.css'
 
@@ -23,29 +24,12 @@ const featuredCategoryVariants = new Set<ActivityCategoryVisualVariant>([
   'creative',
 ])
 
-function getPriceLabel(activity: ActivityDetails) {
-  if (activity.price_type === 'FREE') {
-    return 'Bezpłatna'
-  }
-
-  if (activity.price_amount !== null && activity.currency !== null) {
-    return `${activity.price_amount} ${activity.currency}`
-  }
-
-  return 'Płatna'
-}
-
 function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
   const categoryPresentation = getActivityCategoryPresentation(
     activity.category.slug,
   )
   const categoryHeroIconSrc = categoryPresentation.pixelHeroIconSrc
   const isFeatured = featuredCategoryVariants.has(categoryPresentation.variant)
-  const priceVariant = activity.price_type === 'FREE' ? 'free' : 'paid'
-  const priceIconSrc =
-    activity.price_type === 'FREE'
-      ? '/icons/icons8-confetti-64.png'
-      : '/icons/icons8-money-64.png'
 
   return (
     <section
@@ -55,19 +39,10 @@ function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
       <div className="activity-details-hero__content">
         <div className="activity-details-hero__chips">
           <ActivityCategoryBadge category={activity.category} />
-          <Chip
-            className={`activity-details-hero__price activity-details-hero__price--${priceVariant}`}
-            icon={
-              <img
-                className="activity-details-hero__price-image"
-                src={priceIconSrc}
-                alt=""
-                width="64"
-                height="64"
-              />
-            }
-            label={getPriceLabel(activity)}
-            variant="outlined"
+          <ActivityPriceBadge
+            priceType={activity.price_type}
+            priceAmount={activity.price_amount}
+            currency={activity.currency}
           />
           <ActivityStatusBadge
             className="activity-details-hero__status"

@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { getActivityCategoryPresentation } from '../../config/activityCategoryPresentation'
 import type { Activity } from '../../types/activity'
 import ActivityCategoryBadge from '../ActivityCategoryBadge/ActivityCategoryBadge'
+import ActivityPriceBadge from '../ActivityPriceBadge/ActivityPriceBadge'
 import './ActivityCard.css'
 
 interface ActivityCardProps {
@@ -40,6 +41,7 @@ function ActivityCard({
     activity.category.slug,
   )
   const startDate = new Date(activity.start_at)
+  const endDate = new Date(activity.end_at)
   const isCancelled = activity.status === 'CANCELLED'
   const effectiveStatusLabel = isCancelled ? 'Anulowana' : statusLabel
   const effectiveStatusColor = isCancelled ? 'error' : statusColor
@@ -73,13 +75,43 @@ function ActivityCard({
               </Typography>
               {emphasizeMetadata ? (
                 <dl className="activity-card__metadata">
-                  <div className="activity-card__metadata-item activity-card__metadata-item--date">
-                    <dt>Termin</dt>
+                  <div className="activity-card__metadata-item activity-card__metadata-item--timepoint">
+                    <dt>
+                      <img
+                        className="activity-card__metadata-icon"
+                        src="/icons/icons8-start-64.png"
+                        alt=""
+                        width="64"
+                        height="64"
+                      />
+                      Start
+                    </dt>
                     <dd>
                       <time dateTime={activity.start_at}>
                         <span>{dateFormatter.format(startDate)}</span>
                         <span className="activity-card__metadata-time">
                           {timeFormatter.format(startDate)}
+                        </span>
+                      </time>
+                    </dd>
+                  </div>
+
+                  <div className="activity-card__metadata-item activity-card__metadata-item--timepoint">
+                    <dt>
+                      <img
+                        className="activity-card__metadata-icon"
+                        src="/icons/icons8-finish-64.png"
+                        alt=""
+                        width="64"
+                        height="64"
+                      />
+                      Zakończenie
+                    </dt>
+                    <dd>
+                      <time dateTime={activity.end_at}>
+                        <span>{dateFormatter.format(endDate)}</span>
+                        <span className="activity-card__metadata-time">
+                          {timeFormatter.format(endDate)}
                         </span>
                       </time>
                     </dd>
@@ -130,13 +162,7 @@ function ActivityCard({
           )}
 
           <div className="activity-card__details">
-            <Chip
-              className={`activity-card__price activity-card__price--${activity.price_type === 'FREE' ? 'free' : 'paid'}`}
-              label={activity.price_type === 'FREE' ? 'Bezpłatna' : 'Płatna'}
-              size="small"
-              color={activity.price_type === 'FREE' ? 'success' : 'default'}
-              variant="outlined"
-            />
+            <ActivityPriceBadge priceType={activity.price_type} size="small" />
 
             {showParticipationStats && (
               <div className="activity-card__participants">

@@ -1,9 +1,43 @@
 .activity-location-card {
+  --location-card-accent: var(--category-technology-color);
+
+  position: relative;
   min-width: 0;
-  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    var(--color-surface) 0 44%,
+    color-mix(in srgb, var(--location-card-accent) 6%, var(--color-surface)) 44%
+      72%,
+    color-mix(in srgb, var(--location-card-accent) 11%, var(--color-surface))
+      72% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--location-card-accent) 52%, var(--color-border));
+  border-radius: 0.55rem;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--location-card-accent) 22%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--location-card-accent) 12%, transparent);
+}
+
+.activity-location-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.12;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.3rem,
+    color-mix(in srgb, var(--location-card-accent) 28%, transparent) 0.3rem
+      0.35rem
+  );
 }
 
 .activity-location-card__content {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: var(--space-4);
 }
@@ -14,7 +48,7 @@
   gap: var(--space-3);
 }
 
-.activity-location-card__details > div {
+.activity-location-card__copy {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -22,17 +56,55 @@
 .activity-location-card__icon {
   display: grid;
   flex: 0 0 auto;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 3rem;
+  height: 3rem;
   place-items: center;
-  color: var(--category-technology-color);
-  background: var(--category-technology-bg);
-  border-radius: 50%;
+  background: color-mix(
+    in srgb,
+    var(--location-card-accent) 12%,
+    var(--color-surface)
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--location-card-accent) 62%, var(--color-border));
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--location-card-accent) 25%, transparent);
+}
+
+.activity-location-card__icon img {
+  display: block;
+  width: 2.15rem;
+  height: 2.15rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 0 0.3rem color-mix(in srgb, var(--location-card-accent) 48%, transparent)
+  );
+}
+
+.activity-location-card__title {
+  width: fit-content;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    180deg,
+    transparent 0 72%,
+    color-mix(in srgb, var(--location-card-accent) 26%, transparent) 72% 100%
+  );
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--location-card-accent) 24%, transparent);
 }
 
 .activity-location-card__name {
-  margin-top: var(--space-3);
-  font-weight: var(--font-weight-semibold);
+  margin-top: var(--space-2);
+  color: var(--location-card-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+}
+
+.activity-location-card__address {
+  margin-top: 0.15rem;
+  font-size: var(--font-size-sm);
 }
 
 .activity-location-card__map-preview {
@@ -42,22 +114,50 @@
   min-width: 0;
   overflow: hidden;
   background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: 3px solid
+    color-mix(in srgb, var(--location-card-accent) 62%, var(--color-border));
+  border-radius: 0.45rem;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--location-card-accent) 24%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #000 22%, transparent);
   cursor: pointer;
   outline: none;
   transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    translate 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    filter 140ms ease;
+}
+
+.activity-location-card__map-preview::after {
+  position: absolute;
+  inset: 0;
+  z-index: 450;
+  pointer-events: none;
+  content: '';
+  opacity: 0.1;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.35rem,
+    color-mix(in srgb, var(--location-card-accent) 24%, transparent) 0.35rem
+      0.4rem
+  );
 }
 
 .activity-location-card__map-preview:hover {
-  border-color: var(--color-primary);
+  translate: -1px -1px;
+  border-color: var(--location-card-accent);
+  box-shadow:
+    5px 5px 0 color-mix(in srgb, var(--location-card-accent) 30%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, #000 22%, transparent);
+  filter: saturate(1.04);
 }
 
 .activity-location-card__map-preview:focus-visible {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--category-technology-bg);
+  border-color: var(--color-warning);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-warning) 38%, transparent),
+    4px 4px 0 color-mix(in srgb, var(--location-card-accent) 24%, transparent);
 }
 
 .activity-location-card__map-frame {
@@ -73,6 +173,11 @@
 
 .activity-location-card__map .leaflet-control-attribution {
   font-size: 0.55rem;
+}
+
+.activity-location-card__marker {
+  image-rendering: pixelated;
+  filter: drop-shadow(3px 4px 0 rgb(0 0 0 / 38%));
 }
 
 .activity-location-card__map-attribution {
@@ -94,31 +199,229 @@
   z-index: 500;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
   color: var(--color-text-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  box-shadow: 0 var(--space-1) var(--space-4) var(--floating-control-shadow);
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-warning) 28%, var(--color-surface)) 0 34%,
+    color-mix(in srgb, var(--color-warning) 14%, var(--color-surface)) 34% 100%
+  );
+  border: 2px solid var(--color-warning);
+  border-radius: 0.3rem;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--color-warning) 38%, #261a05);
+  text-shadow: 1px 1px 0
+    color-mix(in srgb, var(--color-warning) 25%, transparent);
+}
+
+.activity-location-card__map-open-icon {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0.1rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  background: color-mix(
+    in srgb,
+    var(--color-warning) 12%,
+    var(--color-surface)
+  );
+  border: 1px solid var(--color-warning);
 }
 
 .activity-location-card__dialog-title {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: linear-gradient(
+    110deg,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 12%,
+        var(--color-surface)
+      )
+      0 54%,
+    color-mix(in srgb, var(--category-gaming-color) 10%, var(--color-surface))
+      54% 100%
+  );
+  border-bottom: 2px solid
+    color-mix(
+      in srgb,
+      var(--category-technology-color) 58%,
+      var(--color-border)
+    );
+}
+
+.activity-location-card__dialog-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
   gap: var(--space-3);
 }
 
-.activity-location-card__dialog-title > span {
+.activity-location-card__dialog-icon {
+  display: block;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.2rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  background: color-mix(
+    in srgb,
+    var(--category-technology-color) 12%,
+    var(--color-surface)
+  );
+  border: 2px solid var(--category-technology-color);
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--category-technology-color) 28%, transparent);
+}
+
+.activity-location-card__dialog-title-copy {
   display: grid;
+  min-width: 0;
   gap: var(--space-1);
 }
 
+.activity-location-card__dialog-title-text {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.activity-location-card__dialog-location {
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.activity-location-card__dialog-close.activity-location-card__dialog-close {
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--color-error);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 1.65rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
+  border: 2px solid var(--color-error);
+  border-radius: 0.3rem;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--color-error) 28%, transparent);
+}
+
+.activity-location-card__dialog-close.activity-location-card__dialog-close:hover {
+  color: var(--color-surface);
+  background: var(--color-error);
+}
+
+.activity-location-card__dialog-backdrop {
+  background: rgb(4 10 8 / 76%);
+  backdrop-filter: blur(3px);
+}
+
+.activity-location-card__dialog-paper.activity-location-card__dialog-paper {
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 3px solid var(--category-technology-color);
+  border-radius: 0.55rem;
+  box-shadow:
+    6px 6px 0
+      color-mix(in srgb, var(--category-technology-color) 34%, transparent),
+    0 0 0 2px color-mix(in srgb, #000 38%, transparent);
+}
+
 .activity-location-card__dialog-content {
+  position: relative;
   padding: 0;
+  border-color: color-mix(
+    in srgb,
+    var(--category-technology-color) 44%,
+    var(--color-border)
+  );
+}
+
+.activity-location-card__location-control {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 1000;
+  display: grid;
+  width: min(21rem, calc(100% - 1.5rem));
+  justify-items: end;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.activity-location-card__location-button.activity-location-card__location-button {
+  min-height: var(--touch-target-min);
+  padding: 0.45rem 0.7rem;
+  color: var(--color-text-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    100deg,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 24%,
+        var(--color-surface)
+      )
+      0 34%,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 12%,
+        var(--color-surface)
+      )
+      34% 100%
+  );
+  border: 2px solid var(--category-technology-color);
+  border-radius: 0.3rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--category-technology-color) 34%, #071522);
+  pointer-events: auto;
+}
+
+.activity-location-card__location-button.activity-location-card__location-button:hover {
+  background: linear-gradient(
+    100deg,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 32%,
+        var(--color-surface)
+      )
+      0 34%,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 18%,
+        var(--color-surface)
+      )
+      34% 100%
+  );
+}
+
+.activity-location-card__location-button-icon {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.activity-location-card__location-error {
+  width: 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  border: 2px solid var(--color-error);
+  border-radius: 0.3rem;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--color-error) 34%, #210909);
+  pointer-events: auto;
 }
 
 .activity-location-card__interactive-map {
@@ -131,11 +434,108 @@
   display: grid;
   gap: var(--space-1);
   margin: var(--space-3);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.activity-location-card__user-accuracy {
+  fill: var(--category-technology-color) !important;
+  fill-opacity: 0.12 !important;
+  stroke: var(--category-technology-color) !important;
+  stroke-dasharray: 5 5;
+  stroke-width: 2px !important;
+}
+
+.activity-location-card__user-marker {
+  fill: var(--brand-green-500) !important;
+  fill-opacity: 1 !important;
+  stroke: #fff !important;
+  stroke-width: 3px !important;
+  filter: drop-shadow(2px 3px 0 rgb(0 0 0 / 38%));
+}
+
+.activity-location-card__interactive-map .leaflet-popup-content-wrapper {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 2px solid var(--category-technology-color);
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--category-technology-color) 30%, transparent);
+}
+
+.activity-location-card__interactive-map .leaflet-popup-tip {
+  background: var(--category-technology-color);
+}
+
+.activity-location-card__interactive-map .leaflet-control-zoom {
+  overflow: hidden;
+  border: 2px solid var(--category-technology-color);
+  border-radius: 0.3rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--category-technology-color) 30%, transparent);
+}
+
+.activity-location-card__interactive-map .leaflet-control-zoom a {
+  color: var(--category-technology-color);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: var(--color-surface);
+  border-color: color-mix(
+    in srgb,
+    var(--category-technology-color) 38%,
+    var(--color-border)
+  );
+}
+
+.activity-location-card__interactive-map .leaflet-control-zoom a:hover {
+  color: var(--color-surface);
+  background: var(--category-technology-color);
+}
+
+.activity-location-card__interactive-map .leaflet-control-attribution {
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
 }
 
 @media (max-width: 37.5rem) {
+  .activity-location-card__dialog-paper.activity-location-card__dialog-paper {
+    width: calc(100% - 1rem);
+    margin: 0.5rem;
+  }
+
+  .activity-location-card__dialog-title {
+    padding: var(--space-3);
+  }
+
+  .activity-location-card__dialog-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .activity-location-card__dialog-title-text {
+    font-size: var(--font-size-md);
+  }
+
+  .activity-location-card__location-control {
+    top: var(--space-2);
+    right: var(--space-2);
+    width: calc(100% - 1rem);
+  }
+
+  .activity-location-card__location-button.activity-location-card__location-button {
+    max-width: 100%;
+    min-height: 2.5rem;
+    font-size: var(--font-size-xs);
+  }
+
   .activity-location-card__interactive-map {
     height: 60vh;
     min-height: 18rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-location-card__map-preview {
+    transition: none;
   }
 }

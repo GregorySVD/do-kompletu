@@ -153,6 +153,7 @@ function Header({
               className="header__button header__auth-button"
               component={Link}
               to="/login"
+              state={{ from: location }}
             >
               Zaloguj się
             </Button>

@@ -1,4 +1,4 @@
-import { CalendarMonthOutlined, ScheduleOutlined } from '@mui/icons-material'
+import { ScheduleOutlined } from '@mui/icons-material'
 import { Card, CardContent, Typography } from '@mui/material'
 import type { ActivityDetails } from '../../../../types/activity'
 import './ActivityScheduleCard.css'
@@ -25,7 +25,13 @@ function SchedulePoint({ label, value }: { label: string; value: string }) {
   return (
     <div className="activity-schedule-card__point">
       <span className="activity-schedule-card__point-icon">
-        <CalendarMonthOutlined aria-hidden="true" />
+        <img
+          src="/icons/icons8-schedule-64.png"
+          alt=""
+          width="64"
+          height="64"
+          aria-hidden="true"
+        />
       </span>
       <div>
         <Typography
@@ -56,10 +62,26 @@ function ActivityScheduleCard({ activity }: ActivityScheduleCardProps) {
       variant="outlined"
       className="activity-schedule-card"
     >
-      <CardContent>
-        <Typography component="h2" variant="h5">
-          Termin aktywności
-        </Typography>
+      <CardContent className="activity-schedule-card__content">
+        <div className="activity-schedule-card__heading">
+          <span className="activity-schedule-card__heading-icon">
+            <img
+              src="/icons/icons8-schedule-64.png"
+              alt=""
+              width="64"
+              height="64"
+              aria-hidden="true"
+            />
+          </span>
+          <div>
+            <Typography component="h2" variant="h5">
+              Termin aktywności
+            </Typography>
+            <Typography color="text.secondary">
+              Zaplanuj czas od rozpoczęcia do zakończenia
+            </Typography>
+          </div>
+        </div>
         <div className="activity-schedule-card__timeline">
           <SchedulePoint label="Start" value={activity.start_at} />
           <SchedulePoint label="Koniec" value={activity.end_at} />
