@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { Card, CardContent, Typography } from '@mui/material'
 import { useParams } from 'react-router-dom'
 import ActivityDetailsContent from '../../components/activities/details/ActivityDetailsContent/ActivityDetailsContent'
 import BackButton from '../../components/navigation/BackButton/BackButton'
@@ -9,19 +8,34 @@ import './ActivityDetailsPage.css'
 
 function ActivityNotFound() {
   return (
-    <main className="activity-details-page">
+    <main className="activity-details-page activity-details-page--not-found">
       <BackButton to="/" />
 
-      <Card variant="outlined" className="activity-details-page__not-found">
-        <CardContent>
-          <Typography component="h1" variant="h5" gutterBottom>
+      <section
+        className="activity-not-found"
+        aria-labelledby="activity-not-found-title"
+      >
+        <div className="activity-not-found__visual" aria-hidden="true">
+          <img src="/error.gif" alt="" width="500" height="500" />
+          <span className="activity-not-found__error-code">404</span>
+        </div>
+
+        <div className="activity-not-found__content">
+          <p className="activity-not-found__eyebrow">Błąd 404</p>
+          <h1
+            id="activity-not-found-title"
+            className="activity-not-found__title"
+          >
             Nie znaleziono aktywności
-          </Typography>
-          <Typography color="text.secondary">
-            Aktywność o podanym identyfikatorze nie istnieje.
-          </Typography>
-        </CardContent>
-      </Card>
+          </h1>
+          <p className="activity-not-found__message">
+            Ta aktywność nie istnieje albo nie jest już dostępna.
+          </p>
+          <p className="activity-not-found__hint">
+            Wróć do listy i wybierz inną aktywność w swojej okolicy.
+          </p>
+        </div>
+      </section>
     </main>
   )
 }
