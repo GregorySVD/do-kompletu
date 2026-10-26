@@ -1,18 +1,12 @@
 import { useState } from 'react'
 import { Add, Event, Explore } from '@mui/icons-material'
 import axios from 'axios'
-import {
-  Alert,
-  Avatar,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-} from '@mui/material'
+import { Alert, Button, Card, CardContent, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import ActivityCard from '../../components/ActivityCard/ActivityCard'
 import EditProfileDialog from '../../components/profile/EditProfileDialog/EditProfileDialog'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
+import UserAvatar from '../../components/UserAvatar/UserAvatar'
 import { useAuth } from '../../context/auth'
 import { useMyActivitiesQuery } from '../../hooks/queries/useMyActivitiesQuery'
 import type { ActivityDetails } from '../../types/activity'
@@ -41,8 +35,6 @@ function ProfilePage() {
     return null
   }
 
-  const avatarFallback = user.display_name.charAt(0).toUpperCase()
-
   function openEditDialog() {
     setShowSuccess(false)
     setIsEditDialogOpen(true)
@@ -69,13 +61,11 @@ function ProfilePage() {
         <section aria-labelledby="profile-summary-title">
           <Card variant="outlined" className="profile-card">
             <CardContent className="profile-card__content">
-              <Avatar
+              <UserAvatar
                 className="profile-card__avatar"
-                src={user.avatar_url ?? undefined}
-                alt={user.display_name}
-              >
-                {avatarFallback}
-              </Avatar>
+                avatarUrl={user.avatar_url}
+                displayName={user.display_name}
+              />
 
               <div className="profile-card__details">
                 <Typography

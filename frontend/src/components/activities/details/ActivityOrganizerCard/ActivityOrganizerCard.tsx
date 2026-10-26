@@ -1,4 +1,5 @@
-import { Avatar, Typography } from '@mui/material'
+import { Typography } from '@mui/material'
+import UserAvatar from '../../../UserAvatar/UserAvatar'
 import type { ActivityDetails } from '../../../../types/activity'
 import './ActivityOrganizerCard.css'
 
@@ -24,20 +25,11 @@ function ActivityOrganizerCard({ activity }: ActivityOrganizerCardProps) {
           Organizator
         </Typography>
         <div className="activity-organizer-card__profile">
-          <Avatar
+          <UserAvatar
             className="activity-organizer-card__avatar"
-            src={organizer.avatar_url ?? undefined}
-            alt={organizer.display_name}
-          >
-            <img
-              className="activity-organizer-card__avatar-fallback"
-              src="/icons/icons8-avatar-64.png"
-              alt=""
-              width="64"
-              height="64"
-              aria-hidden="true"
-            />
-          </Avatar>
+            avatarUrl={organizer.avatar_url}
+            displayName={organizer.display_name}
+          />
           <div className="activity-organizer-card__profile-copy">
             <Typography className="activity-organizer-card__name">
               {organizer.display_name}

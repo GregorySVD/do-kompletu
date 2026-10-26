@@ -1,0 +1,7 @@
+.user-avatar__fallback {
+  display: block;
+  width: 75%;
+  height: 75%;
+  image-rendering: pixelated;
+  object-fit: contain;
+}

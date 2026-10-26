@@ -12,9 +12,357 @@
   margin-bottom: var(--space-6);
 }
 
+.edit-activity-page--denied {
+  display: grid;
+  width: min(100%, 72rem);
+  min-height: 80dvh;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.edit-activity-page__denied-back {
+  justify-self: start;
+}
+
+.edit-access-denied {
+  position: relative;
+  display: grid;
+  width: 100%;
+  align-self: center;
+  grid-template-columns: minmax(18rem, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  padding: clamp(var(--space-4), 4vw, var(--space-8));
+  overflow: hidden;
+  gap: clamp(var(--space-5), 5vw, var(--space-10));
+  background:
+    linear-gradient(
+        125deg,
+        var(--color-surface) 0 32%,
+        color-mix(in srgb, var(--color-error) 7%, var(--color-surface)) 32% 58%,
+        color-mix(in srgb, var(--color-accent) 9%, var(--color-surface)) 58% 82%,
+        color-mix(
+            in srgb,
+            var(--category-technology-color) 7%,
+            var(--color-surface)
+          )
+          82% 100%
+      )
+      padding-box,
+    linear-gradient(
+        90deg,
+        var(--color-error),
+        var(--color-accent),
+        var(--category-technology-color)
+      )
+      border-box;
+  border: 3px solid transparent;
+  border-radius: 0.6rem;
+  box-shadow:
+    6px 6px 0 color-mix(in srgb, var(--color-error) 24%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 16%, transparent);
+}
+
+.edit-access-denied::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.13;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.3rem,
+    color-mix(in srgb, var(--color-error) 24%, transparent) 0.3rem 0.35rem
+  );
+}
+
+.edit-access-denied > * {
+  position: relative;
+  z-index: 1;
+}
+
+.edit-access-denied__visual {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0.3rem;
+  overflow: hidden;
+  background: #05060a;
+  border: 3px solid
+    color-mix(in srgb, var(--color-error) 78%, var(--color-accent));
+  border-radius: 0.45rem;
+  box-shadow:
+    5px 5px 0 color-mix(in srgb, var(--color-error) 32%, transparent),
+    0 0 2rem color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.edit-access-denied__visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.2rem;
+  filter: saturate(1.12) contrast(1.08);
+}
+
+.edit-access-denied__code {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  padding: 0.3rem 0.5rem;
+  color: #fff;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  background: color-mix(in srgb, var(--color-error) 76%, #18060a);
+  border: 2px solid color-mix(in srgb, var(--color-error) 58%, #fff);
+  border-radius: 0.25rem;
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--color-error) 42%, #220606);
+  animation: edit-access-code-glitch 2.4s steps(2, end) infinite;
+}
+
+.edit-access-denied__content {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.edit-access-denied__eyebrow,
+.edit-access-denied__title,
+.edit-access-denied__message,
+.edit-access-denied__hint {
+  margin: 0;
+}
+
+.edit-access-denied__eyebrow {
+  width: fit-content;
+  padding: 0.25rem 0.45rem;
+  color: var(--color-error);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--color-error) 9%, var(--color-surface));
+  border: 1px solid var(--color-error);
+  border-radius: 0.25rem;
+}
+
+.edit-access-denied__title {
+  width: fit-content;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.65rem, 4vw, 2.55rem);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.12;
+  background: linear-gradient(
+    180deg,
+    transparent 0 76%,
+    color-mix(in srgb, var(--color-error) 24%, transparent) 76% 100%
+  );
+  text-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-accent) 24%, transparent);
+}
+
+.edit-access-denied__message {
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+}
+
+.edit-access-denied__organizer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--color-accent) 13%, var(--color-surface)) 0 38%,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 8%,
+        var(--color-surface)
+      )
+      38% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--color-accent) 52%, var(--color-border));
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.edit-access-denied__organizer-avatar {
+  display: grid;
+  width: 3.4rem;
+  height: 3.4rem;
+  place-items: center;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
+  border: 2px solid
+    color-mix(in srgb, var(--color-accent) 62%, var(--color-border));
+  border-radius: 0.4rem;
+}
+
+.edit-access-denied__organizer-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  object-fit: cover;
+}
+
+.edit-access-denied__organizer-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.edit-access-denied__organizer-copy span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.edit-access-denied__organizer-copy strong {
+  overflow-wrap: anywhere;
+  color: var(--color-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-lg);
+}
+
+.edit-access-denied__hint {
+  padding: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  background: color-mix(
+    in srgb,
+    var(--category-technology-color) 8%,
+    var(--color-surface)
+  );
+  border-radius: 0.3rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--category-technology-color) 16%, transparent);
+}
+
+.edit-access-denied__browse-button.edit-access-denied__browse-button {
+  min-height: var(--touch-target-min);
+  justify-content: flex-start;
+  padding: 0.55rem 0.8rem;
+  color: var(--color-text-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--brand-green-500) 42%, var(--color-surface)) 0 34%,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 20%,
+        var(--color-surface)
+      )
+      34% 100%
+  );
+  border: 2px solid var(--brand-green-400);
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--brand-green-500) 28%, transparent);
+  transition:
+    translate 120ms ease,
+    box-shadow 120ms ease,
+    filter 120ms ease;
+}
+
+.edit-access-denied__browse-button.edit-access-denied__browse-button:hover {
+  translate: -1px -1px;
+  box-shadow: 4px 4px 0
+    color-mix(in srgb, var(--brand-green-500) 36%, transparent);
+  filter: brightness(1.06);
+}
+
+.edit-access-denied__browse-button img {
+  display: block;
+  width: 1.55rem;
+  height: 1.55rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
 @media (min-width: 43.75rem) {
   .edit-activity-page__heading {
     flex-direction: row;
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 46rem) {
+  .edit-activity-page--denied {
+    min-height: auto;
+  }
+
+  .edit-access-denied {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: var(--space-6);
+  }
+
+  .edit-access-denied__visual {
+    width: min(100%, 34rem);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 30rem) {
+  .edit-access-denied {
+    text-align: center;
+  }
+
+  .edit-access-denied__content {
+    justify-items: center;
+  }
+
+  .edit-access-denied__organizer,
+  .edit-access-denied__hint,
+  .edit-access-denied__browse-button.edit-access-denied__browse-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edit-access-denied__visual img {
+    display: none;
+  }
+
+  .edit-access-denied__visual::after {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    content: 'ACCESS DENIED';
+    font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    font-size: clamp(1.5rem, 7vw, 3.5rem);
+    font-weight: var(--font-weight-bold);
+    text-shadow: 4px 4px 0 var(--color-error);
+  }
+
+  .edit-access-denied__code,
+  .edit-access-denied__browse-button.edit-access-denied__browse-button {
+    animation: none;
+    transition: none;
+  }
+}
+
+@keyframes edit-access-code-glitch {
+  0%,
+  88%,
+  100% {
+    transform: translate(0);
+  }
+
+  90% {
+    transform: translate(-2px, 1px);
+  }
+
+  94% {
+    transform: translate(2px, -1px);
   }
 }

@@ -95,14 +95,6 @@
     color-mix(in srgb, var(--organizer-card-accent) 30%, transparent);
 }
 
-.activity-organizer-card__avatar-fallback {
-  display: block;
-  width: 2.4rem;
-  height: 2.4rem;
-  image-rendering: pixelated;
-  object-fit: contain;
-}
-
 .activity-organizer-card__name {
   color: var(--organizer-card-accent);
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;

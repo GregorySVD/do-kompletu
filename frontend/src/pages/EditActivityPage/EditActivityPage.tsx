@@ -1,9 +1,10 @@
 import { useRef } from 'react'
 import axios from 'axios'
 import { Alert, Button, Typography } from '@mui/material'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import ActivityForm from '../../components/activities/create/ActivityForm/ActivityForm'
 import BackButton from '../../components/navigation/BackButton/BackButton'
+import UserAvatar from '../../components/UserAvatar/UserAvatar'
 import { useUpdateActivityMutation } from '../../hooks/mutations/useUpdateActivityMutation'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
 import { useActivityDetailsQuery } from '../../hooks/queries/useActivityDetailsQuery'
@@ -54,17 +55,77 @@ function getActivityLoadErrorMessage(error: unknown) {
   return 'Nie udało się pobrać danych aktywności.'
 }
 
+function EditPermissionDenied({ activity }: { activity: ActivityDetails }) {
+  return (
+    <section
+      className="edit-access-denied"
+      aria-labelledby="edit-access-denied-title"
+    >
+      <div className="edit-access-denied__visual" aria-hidden="true">
+        <img src="/denied.gif" alt="" width="480" height="270" />
+        <span className="edit-access-denied__code">403</span>
+      </div>
+
+      <div className="edit-access-denied__content">
+        <p className="edit-access-denied__eyebrow">Dostęp zablokowany</p>
+        <h1 id="edit-access-denied-title" className="edit-access-denied__title">
+          Nie możesz edytować tej aktywności
+        </h1>
+        <p className="edit-access-denied__message">
+          Zmiany może wprowadzać wyłącznie osoba, która utworzyła aktywność.
+        </p>
+
+        <div className="edit-access-denied__organizer">
+          <UserAvatar
+            className="edit-access-denied__organizer-avatar"
+            avatarUrl={activity.organizer.avatar_url}
+            displayName={activity.organizer.display_name}
+          />
+          <span className="edit-access-denied__organizer-copy">
+            <span>Organizator aktywności</span>
+            <strong>{activity.organizer.display_name}</strong>
+          </span>
+        </div>
+
+        <p className="edit-access-denied__hint">
+          Jeśli coś wymaga zmiany, skontaktuj się bezpośrednio z organizatorem.
+        </p>
+
+        <Button
+          className="edit-access-denied__browse-button"
+          component={Link}
+          to="/"
+          startIcon={
+            <img
+              src="/icons/icons8-list-64.png"
+              alt=""
+              width="64"
+              height="64"
+              aria-hidden="true"
+            />
+          }
+        >
+          Zobacz inne aktywności
+        </Button>
+      </div>
+    </section>
+  )
+}
+
 function EditActivityPage() {
   const { activityId = '' } = useParams()
   const activityQuery = useActivityDetailsQuery(activityId)
-  const categoriesQuery = useActivityCategoriesQuery()
+  const canEditActivity = activityQuery.data?.permissions.can_edit === true
+  const categoriesQuery = useActivityCategoriesQuery(canEditActivity)
   const updateMutation = useUpdateActivityMutation()
   const navigate = useNavigate()
   const isUpdatingRef = useRef(false)
   const activityPath = activityId ? `/activities/${activityId}` : '/'
   const isLoading =
-    activityId !== '' && (activityQuery.isPending || categoriesQuery.isPending)
-  const hasLoadError = activityQuery.isError || categoriesQuery.isError
+    activityId !== '' &&
+    (activityQuery.isPending || (canEditActivity && categoriesQuery.isPending))
+  const hasLoadError =
+    activityQuery.isError || (canEditActivity && categoriesQuery.isError)
 
   async function handleUpdate(values: ActivityFormValues) {
     if (
@@ -106,6 +167,20 @@ function EditActivityPage() {
     } finally {
       isUpdatingRef.current = false
     }
+  }
+
+  if (activityQuery.isSuccess && !canEditActivity) {
+    return (
+      <main className="edit-activity-page edit-activity-page--denied">
+        <BackButton
+          className="edit-activity-page__denied-back"
+          to={activityPath}
+        >
+          Wróć do szczegółów
+        </BackButton>
+        <EditPermissionDenied activity={activityQuery.data} />
+      </main>
+    )
   }
 
   return (
@@ -167,13 +242,7 @@ function EditActivityPage() {
 
       {activityQuery.isSuccess &&
         categoriesQuery.isSuccess &&
-        !activityQuery.data.permissions.can_edit && (
-          <Alert severity="warning">Nie możesz edytować tej aktywności.</Alert>
-        )}
-
-      {activityQuery.isSuccess &&
-        categoriesQuery.isSuccess &&
-        activityQuery.data.permissions.can_edit && (
+        canEditActivity && (
           <ActivityForm
             key={activityQuery.data.id}
             categories={categoriesQuery.data}

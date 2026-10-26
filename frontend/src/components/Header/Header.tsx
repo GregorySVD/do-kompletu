@@ -9,6 +9,7 @@ import {
 } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/auth'
+import UserAvatar from '../UserAvatar/UserAvatar'
 import './Header.css'
 
 interface HeaderProps {
@@ -128,12 +129,10 @@ function Header({
                 component={Link}
                 to="/profile"
                 startIcon={
-                  <img
+                  <UserAvatar
                     className="header__button-icon"
-                    src="/icons/icons8-avatar-64.png"
-                    alt=""
-                    width="64"
-                    height="64"
+                    avatarUrl={user.avatar_url}
+                    displayName={user.display_name}
                   />
                 }
               >
