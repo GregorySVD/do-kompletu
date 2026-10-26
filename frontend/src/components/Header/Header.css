@@ -50,22 +50,15 @@
   top: 50%;
   inset-inline-start: 50%;
   display: block;
-  width: 190%;
+  width: 100%;
   height: auto;
   max-width: none;
   object-fit: contain;
   pointer-events: none;
-}
-
-.header__logo-image--light {
-  filter: invert(1) hue-rotate(180deg) brightness(1.16);
   mix-blend-mode: screen;
   transform: translate(-50%, -50%);
-}
-
-.header__logo-image--dark {
-  mix-blend-mode: screen;
-  transform: translate(-50%, -50%);
+  filter: saturate(1.18) brightness(1.12) contrast(1.08)
+    drop-shadow(0 0 0.35rem rgba(193, 53, 255, 0.52));
 }
 
 .header__search {
@@ -503,8 +496,8 @@
   }
 
   .header__logo.MuiTypography-root {
-    width: 10rem;
-    height: 2.75rem;
+    width: 11rem;
+    height: 3rem;
   }
 
   .header__search {

@@ -1,8 +1,9 @@
 import { useRef } from 'react'
 import axios from 'axios'
 import { Alert, Button, Typography } from '@mui/material'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import ActivityForm from '../../components/activities/create/ActivityForm/ActivityForm'
+import BackButton from '../../components/navigation/BackButton/BackButton'
 import { useUpdateActivityMutation } from '../../hooks/mutations/useUpdateActivityMutation'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
 import { useActivityDetailsQuery } from '../../hooks/queries/useActivityDetailsQuery'
@@ -119,9 +120,7 @@ function EditActivityPage() {
           </Typography>
         </div>
 
-        <Button component={Link} to={activityPath}>
-          Wróć do aktywności
-        </Button>
+        <BackButton to={activityPath} />
       </div>
 
       {activityId === '' && (

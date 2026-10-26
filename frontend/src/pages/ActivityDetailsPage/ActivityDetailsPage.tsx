@@ -1,8 +1,8 @@
-import { ArrowBack } from '@mui/icons-material'
 import axios from 'axios'
-import { Button, Card, CardContent, Typography } from '@mui/material'
-import { Link, useParams } from 'react-router-dom'
+import { Card, CardContent, Typography } from '@mui/material'
+import { useParams } from 'react-router-dom'
 import ActivityDetailsContent from '../../components/activities/details/ActivityDetailsContent/ActivityDetailsContent'
+import BackButton from '../../components/navigation/BackButton/BackButton'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import { useActivityDetailsQuery } from '../../hooks/queries/useActivityDetailsQuery'
 import './ActivityDetailsPage.css'
@@ -10,9 +10,7 @@ import './ActivityDetailsPage.css'
 function ActivityNotFound() {
   return (
     <main className="activity-details-page">
-      <Button component={Link} to="/" startIcon={<ArrowBack />}>
-        Wróć do aktywności
-      </Button>
+      <BackButton to="/" />
 
       <Card variant="outlined" className="activity-details-page__not-found">
         <CardContent>
@@ -39,9 +37,7 @@ function ActivityDetailsPage() {
   if (activityQuery.isPending && activityId) {
     return (
       <main className="activity-details-page">
-        <Button component={Link} to="/" startIcon={<ArrowBack />}>
-          Wróć do aktywności
-        </Button>
+        <BackButton to="/" />
         <QueryStateMessage message="Ładowanie aktywności..." isLoading />
       </main>
     )
@@ -54,9 +50,7 @@ function ActivityDetailsPage() {
   if (activityQuery.isError) {
     return (
       <main className="activity-details-page">
-        <Button component={Link} to="/" startIcon={<ArrowBack />}>
-          Wróć do aktywności
-        </Button>
+        <BackButton to="/" />
         <QueryStateMessage
           message="Nie udało się pobrać aktywności."
           isRetrying={activityQuery.isFetching}
@@ -74,9 +68,7 @@ function ActivityDetailsPage() {
 
   return (
     <main className="activity-details-page">
-      <Button component={Link} to="/" startIcon={<ArrowBack />}>
-        Wróć do aktywności
-      </Button>
+      <BackButton to="/" />
 
       <ActivityDetailsContent activity={activityQuery.data} />
     </main>

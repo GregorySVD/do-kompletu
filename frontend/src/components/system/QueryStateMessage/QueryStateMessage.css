@@ -1,9 +1,218 @@
 .query-state-message {
+  position: relative;
+  z-index: 1;
   display: grid;
+  width: min(calc(100% - var(--page-gutter) - var(--page-gutter)), 36rem);
   min-height: 12rem;
-  place-content: center;
+  align-self: center;
+  justify-self: center;
   justify-items: center;
-  padding: var(--section-gap) var(--page-gutter);
-  gap: var(--space-4);
+  padding: clamp(var(--space-6), 6vw, var(--space-10));
+  overflow: hidden;
+  gap: var(--space-3);
+  background:
+    linear-gradient(
+        125deg,
+        var(--color-surface) 0 32%,
+        color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)) 32%
+          58%,
+        color-mix(in srgb, var(--color-accent) 9%, var(--color-surface)) 58% 82%,
+        var(--color-surface) 82% 100%
+      )
+      padding-box,
+    linear-gradient(
+        90deg,
+        var(--color-primary) 0 34%,
+        var(--color-accent) 34% 68%,
+        var(--color-warning) 68% 100%
+      )
+      border-box;
+  border: 3px solid transparent;
+  border-radius: 0.6rem;
+  box-shadow:
+    0.35rem 0.35rem 0 color-mix(in srgb, var(--color-primary) 22%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, transparent);
   text-align: center;
+}
+
+.query-state-message::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.18;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.3rem,
+    color-mix(in srgb, var(--color-primary) 22%, transparent) 0.3rem 0.35rem
+  );
+}
+
+.query-state-message > * {
+  position: relative;
+  z-index: 1;
+}
+
+.query-state-message__visual {
+  position: relative;
+  display: grid;
+  width: min(100%, 20rem);
+  aspect-ratio: 3 / 2;
+  place-items: center;
+  margin-bottom: var(--space-3);
+  padding: 0.25rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 18%,
+        var(--color-surface)
+      )
+      0 50%,
+    color-mix(in srgb, var(--color-accent) 16%, var(--color-surface)) 50% 100%
+  );
+  border: 3px solid var(--category-technology-color);
+  border-radius: 0.45rem;
+  box-shadow:
+    4px 4px 0
+      color-mix(in srgb, var(--category-technology-color) 30%, transparent),
+    0 0 2rem color-mix(in srgb, var(--color-accent) 28%, transparent);
+}
+
+.query-state-message__visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  object-fit: cover;
+  border-radius: 0.2rem;
+  filter: saturate(1.12) contrast(1.06);
+}
+
+.query-state-message__visual span {
+  position: absolute;
+  inset-block-start: -0.55rem;
+  inset-inline-end: -0.55rem;
+  display: grid;
+  width: 1.65rem;
+  aspect-ratio: 1;
+  place-items: center;
+  color: #fff;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  background: var(--color-error);
+  border: 2px solid color-mix(in srgb, var(--color-error) 65%, #fff);
+  border-radius: 0.25rem;
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--color-error) 34%, transparent);
+}
+
+.query-state-message__eyebrow.MuiTypography-root {
+  color: var(--color-error);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.query-state-message__title.MuiTypography-root {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  text-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.query-state-message__message.MuiTypography-root {
+  max-width: 34ch;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+}
+
+.query-state-message__hint.MuiTypography-root {
+  max-width: 42ch;
+  line-height: 1.5;
+}
+
+.query-state-message__retry.MuiButton-root {
+  min-height: var(--touch-target-min);
+  margin-top: var(--space-3);
+  padding-inline: var(--space-6);
+  color: var(--color-text-inverse);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-700) 0 28%,
+    var(--brand-green-600) 28% 72%,
+    var(--brand-green-500) 72% 100%
+  );
+  border: 2px solid var(--brand-green-400);
+  border-radius: 0.35rem;
+  box-shadow: 4px 4px 0
+    color-mix(in srgb, var(--brand-green-700) 48%, transparent);
+  transition:
+    box-shadow 100ms steps(2, end),
+    transform 100ms steps(2, end);
+}
+
+.query-state-message__retry.MuiButton-root:hover {
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-600) 0 28%,
+    var(--brand-green-500) 28% 72%,
+    var(--color-primary) 72% 100%
+  );
+  box-shadow: 5px 5px 0
+    color-mix(in srgb, var(--brand-green-700) 54%, transparent);
+  transform: translate(-1px, -1px);
+}
+
+.query-state-message__retry.MuiButton-root:active {
+  box-shadow: 1px 1px 0
+    color-mix(in srgb, var(--brand-green-700) 42%, transparent);
+  transform: translate(2px, 2px);
+}
+
+.query-state-message__retry.MuiButton-root.Mui-disabled {
+  color: var(--color-text-muted);
+  background: var(--color-surface-strong);
+  border-color: var(--color-border);
+  box-shadow: 2px 2px 0 var(--color-border);
+}
+
+.query-state-message__retry .MuiCircularProgress-root {
+  color: currentColor;
+}
+
+.query-state-message__loader {
+  display: grid;
+  width: 4rem;
+  aspect-ratio: 1;
+  place-items: center;
+  color: var(--color-primary);
+  background: var(--color-surface-soft);
+  border: 2px solid var(--color-primary);
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-primary) 26%, transparent);
+}
+
+.query-state-message__loader .MuiCircularProgress-root {
+  color: currentColor;
+}
+
+@media (max-width: 30rem) {
+  .query-state-message {
+    width: calc(100% - var(--space-4) - var(--space-4));
+    padding: var(--space-6) var(--space-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .query-state-message__retry.MuiButton-root {
+    transition-duration: 0.01ms;
+  }
 }

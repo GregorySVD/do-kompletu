@@ -58,14 +58,10 @@ function Header({
         >
           <img
             className={`header__logo-image header__logo-image--${mode}`}
-            src={
-              mode === 'dark'
-                ? '/dokompletu_logo_dark_horizontal.png'
-                : '/dokompletu_logo_light_horizontal.png'
-            }
+            src="/dokompletu_logo_horizontal.png"
             alt="DoKompletu"
             width="2172"
-            height="362"
+            height="724"
           />
         </Typography>
 

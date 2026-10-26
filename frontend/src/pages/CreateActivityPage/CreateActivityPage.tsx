@@ -2,8 +2,9 @@ import { useRef } from 'react'
 import axios from 'axios'
 import { Alert, Button, Typography } from '@mui/material'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import ActivityForm from '../../components/activities/create/ActivityForm/ActivityForm'
+import BackButton from '../../components/navigation/BackButton/BackButton'
 import { useCreateActivityMutation } from '../../hooks/mutations/useCreateActivityMutation'
 import { activitiesQueryKey } from '../../hooks/queries/useActivitiesQuery'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
@@ -88,9 +89,7 @@ function CreateActivityPage() {
           </Typography>
         </div>
 
-        <Button component={Link} to="/">
-          Wróć do listy
-        </Button>
+        <BackButton to="/">Wróć do listy</BackButton>
       </div>
 
       {categoriesQuery.isPending && (
