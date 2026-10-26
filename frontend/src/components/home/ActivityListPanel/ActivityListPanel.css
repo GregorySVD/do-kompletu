@@ -1,12 +1,25 @@
 .activities {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  position: relative;
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--color-surface);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-primary) 1.5%, transparent) 5px 6px
+    ),
+    linear-gradient(
+      125deg,
+      var(--color-surface) 0 48%,
+      color-mix(in srgb, var(--color-primary) 2.5%, var(--color-surface)) 48%
+        76%,
+      var(--color-surface-soft) 76% 100%
+    );
 }
 
 .activities--mobile-hidden {
@@ -17,14 +30,76 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: var(--space-4) var(--page-gutter);
-  gap: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
+  position: relative;
+  isolation: isolate;
+  padding: clamp(var(--space-4), 3vw, var(--space-6)) var(--page-gutter);
+  gap: var(--space-3);
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-primary) 3%, transparent) 5px 6px
+    ),
+    linear-gradient(
+      120deg,
+      var(--color-surface) 0 42%,
+      color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)) 42% 72%,
+      color-mix(in srgb, var(--color-primary) 11%, var(--color-surface)) 72%
+        100%
+    );
+  border-bottom: 3px solid var(--color-border-strong);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--color-primary) 16%, transparent);
 }
 
-.activities__count {
+.activities__heading > div {
+  min-width: 0;
+}
+
+.activities__heading .MuiTypography-h5 {
+  width: fit-content;
+  max-width: 100%;
+  padding-inline: 0.08em;
+  color: var(--color-text-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.05em;
+  background: linear-gradient(
+    180deg,
+    transparent 0 72%,
+    color-mix(in srgb, var(--color-primary) 20%, transparent) 72% 100%
+  );
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.activities__subtitle.MuiTypography-root {
+  margin-top: var(--space-2);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+}
+
+.activities__count.MuiTypography-root {
   flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3);
   white-space: nowrap;
+  color: var(--color-text-inverse);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-700) 0 30%,
+    var(--brand-green-600) 30% 72%,
+    var(--brand-green-500) 72% 100%
+  );
+  border: 2px solid var(--brand-green-400);
+  border-radius: 0.35rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--brand-green-700) 48%, transparent);
 }
 
 .activities__scroll {
@@ -47,7 +122,8 @@
 
 .activities__scroll::-webkit-scrollbar-thumb {
   background: var(--color-scrollbar-thumb);
-  border-radius: var(--radius-pill);
+  border: 2px solid var(--color-scrollbar-track);
+  border-radius: 0;
 }
 
 .activities__scroll::-webkit-scrollbar-thumb:hover {
@@ -56,7 +132,7 @@
 
 .activities__list {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .activities__empty {
@@ -86,14 +162,14 @@
     grid-template-areas:
       'filters heading'
       'filters list';
-    grid-template-columns: 15rem minmax(0, 1fr);
+    grid-template-columns: 13.25rem minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     border-inline-end: 1px solid var(--color-border);
   }
 
   .activities__heading {
     grid-area: heading;
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-5);
   }
 
   .filters--desktop {
@@ -102,10 +178,40 @@
     align-content: start;
     min-height: 0;
     overflow-y: auto;
-    padding: var(--space-4);
-    gap: var(--space-5);
+    padding: var(--space-3);
+    gap: var(--space-4);
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent 0 5px,
+        color-mix(in srgb, var(--color-primary) 2%, transparent) 5px 6px
+      ),
+      linear-gradient(
+        125deg,
+        var(--color-surface-soft) 0 38%,
+        color-mix(in srgb, var(--color-primary) 3%, var(--color-surface-soft))
+          38% 72%,
+        var(--color-surface) 72% 100%
+      );
+    border-inline-end: 3px solid var(--color-border-strong);
+    box-shadow: inset -2px 0 0
+      color-mix(in srgb, var(--color-primary) 12%, transparent);
+    scrollbar-color: var(--color-primary) var(--color-surface-soft);
+    scrollbar-width: thin;
+  }
+
+  .filters--desktop::-webkit-scrollbar {
+    width: var(--space-2);
+  }
+
+  .filters--desktop::-webkit-scrollbar-track {
     background: var(--color-surface-soft);
-    border-inline-end: 1px solid var(--color-border);
+  }
+
+  .filters--desktop::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    border: 2px solid var(--color-surface-soft);
+    border-radius: 0;
   }
 
   .filters--desktop .filters__heading {
@@ -115,11 +221,27 @@
 
   .filters--desktop .filters__controls {
     grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+
+  .filters--desktop .filters__controls .filters__group + .filters__group {
+    padding-top: var(--space-4);
+  }
+
+  .filters--desktop .filters__group {
+    gap: var(--space-2);
   }
 
   .filters--desktop .MuiToggleButtonGroup-root {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .filters--desktop
+    .filters__options
+    .MuiToggleButtonGroup-grouped.MuiToggleButton-root {
+    min-height: 2.25rem;
+    padding: var(--space-1) var(--space-2);
   }
 
   .activities__scroll {
@@ -136,7 +258,7 @@
     grid-template-areas:
       'filters heading'
       'filters list';
-    grid-template-columns: 13.5rem minmax(0, 1fr);
+    grid-template-columns: 11.75rem minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     border-inline-end: 1px solid var(--color-border);
   }

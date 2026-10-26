@@ -30,7 +30,7 @@ function ActivityListPanel({
           <Typography id="activities-title" component="h1" variant="h5">
             Aktywności w Twojej okolicy
           </Typography>
-          <Typography color="text.secondary">
+          <Typography className="activities__subtitle" color="text.secondary">
             Znajdź aktywność i dołącz do innych
           </Typography>
         </div>

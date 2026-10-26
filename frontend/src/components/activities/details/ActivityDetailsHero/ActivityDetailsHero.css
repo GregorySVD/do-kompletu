@@ -118,43 +118,49 @@
 
 .activity-details-hero--featured {
   background:
-    radial-gradient(
-        circle at 87% 16%,
-        color-mix(in srgb, var(--activity-featured-accent) 18%, transparent) 0,
-        transparent 31%
-      )
-      padding-box,
-    radial-gradient(
-        circle at 74% 98%,
+    linear-gradient(
+        125deg,
+        var(--activity-featured-surface) 0 28%,
         color-mix(
             in srgb,
-            var(--activity-featured-gradient-end) 12%,
-            transparent
+            var(--activity-featured-accent) 4%,
+            var(--activity-featured-surface)
           )
-          0,
-        transparent 40%
-      )
-      padding-box,
-    linear-gradient(
-        var(--activity-featured-surface),
-        var(--activity-featured-surface)
+          28% 54%,
+        color-mix(
+            in srgb,
+            var(--activity-featured-gradient-end) 6%,
+            var(--activity-featured-surface)
+          )
+          54% 78%,
+        color-mix(
+            in srgb,
+            var(--activity-featured-accent) 9%,
+            var(--activity-featured-surface)
+          )
+          78% 100%
       )
       padding-box,
     linear-gradient(
         100deg,
-        var(--activity-featured-accent) 0%,
+        var(--activity-featured-accent) 0 34%,
         color-mix(
             in srgb,
             var(--activity-featured-accent) 58%,
             var(--activity-featured-gradient-end)
           )
-          48%,
-        var(--activity-featured-gradient-end)
+          34% 68%,
+        var(--activity-featured-gradient-end) 68% 100%
       )
       border-box;
+  border-width: 0.25rem;
   border-color: transparent;
-  box-shadow: 0 1rem 2.5rem
-    color-mix(in srgb, var(--activity-featured-accent) 7%, transparent);
+  border-radius: 0.8rem;
+  box-shadow:
+    0.35rem 0.35rem 0
+      color-mix(in srgb, var(--activity-featured-accent) 18%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--activity-featured-gradient-end) 16%, transparent);
 }
 
 .activity-details-hero--with-visual {
@@ -174,26 +180,29 @@
 
 .activity-details-hero--featured .activity-details-hero__category.MuiChip-root {
   color: var(--activity-featured-badge-text);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-weight: var(--font-weight-bold);
   letter-spacing: 0.035em;
   background: linear-gradient(
     100deg,
-    var(--activity-featured-accent) 0%,
+    var(--activity-featured-accent) 0 36%,
     color-mix(
         in srgb,
         var(--activity-featured-accent) 58%,
         var(--activity-featured-gradient-end)
       )
-      48%,
-    var(--activity-featured-gradient-end) 100%
+      36% 70%,
+    var(--activity-featured-gradient-end) 70% 100%
   );
+  border-width: 2px;
   border-color: color-mix(
     in srgb,
     var(--activity-featured-accent) 55%,
     var(--activity-featured-gradient-end)
   );
-  box-shadow: 0 0.35rem 1rem
-    color-mix(in srgb, var(--activity-featured-accent) 22%, transparent);
+  border-radius: 0.45rem;
+  box-shadow: 0.16rem 0.16rem 0
+    color-mix(in srgb, var(--activity-featured-accent) 32%, transparent);
 }
 
 .activity-details-hero--featured
@@ -211,35 +220,50 @@
 
 .activity-details-hero--featured .activity-details-hero__price.MuiChip-root,
 .activity-details-hero--featured .activity-details-hero__status.MuiChip-root {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-weight: var(--font-weight-semibold);
-  background: color-mix(in srgb, currentColor 9%, var(--color-surface));
-  border-color: color-mix(in srgb, currentColor 38%, transparent);
+  border-width: 2px;
+  border-radius: 0.45rem;
+  box-shadow: 0.16rem 0.16rem 0
+    color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.activity-details-hero--featured .activity-details-hero__status.MuiChip-root {
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, currentColor 8%, var(--color-surface)) 0 52%,
+    color-mix(in srgb, currentColor 15%, var(--color-surface)) 52% 100%
+  );
+  border-color: color-mix(in srgb, currentColor 52%, transparent);
+}
+
+.activity-details-hero__price-image.MuiChip-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  image-rendering: pixelated;
+  object-fit: contain;
 }
 
 .activity-details-hero--featured
   .activity-details-hero__price--free.MuiChip-root {
   color: var(--color-success);
-  background: color-mix(
-    in srgb,
-    var(--color-success) 11%,
-    var(--color-surface)
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-success) 10%, var(--color-surface)) 0 52%,
+    color-mix(in srgb, var(--color-success) 19%, var(--color-surface)) 52% 100%
   );
-  border-color: color-mix(in srgb, var(--color-success) 38%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 58%, transparent);
 }
 
 .activity-details-hero--featured
   .activity-details-hero__price--paid.MuiChip-root {
-  color: var(--color-text-primary);
-  background: color-mix(
-    in srgb,
-    var(--activity-featured-accent) 7%,
-    var(--color-surface)
+  color: var(--color-warning);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-warning) 10%, var(--color-surface)) 0 52%,
+    color-mix(in srgb, var(--color-warning) 20%, var(--color-surface)) 52% 100%
   );
-  border-color: color-mix(
-    in srgb,
-    var(--activity-featured-accent) 28%,
-    var(--color-border)
-  );
+  border-color: color-mix(in srgb, var(--color-warning) 58%, transparent);
 }
 
 .activity-details-hero--featured .activity-details-hero__title {
@@ -271,15 +295,25 @@
   width: 100%;
   height: 100%;
   content: '';
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--activity-featured-accent) 24%, transparent) 0,
-    color-mix(in srgb, var(--activity-featured-gradient-end) 11%, transparent)
-      45%,
-    transparent 72%
-  );
-  filter: blur(0.45rem);
-  transform: scale(1.4);
+  background:
+    linear-gradient(
+        color-mix(in srgb, var(--activity-featured-accent) 22%, transparent),
+        color-mix(in srgb, var(--activity-featured-accent) 22%, transparent)
+      )
+      center / 48% 48% no-repeat,
+    linear-gradient(
+        color-mix(
+          in srgb,
+          var(--activity-featured-gradient-end) 10%,
+          transparent
+        ),
+        color-mix(
+          in srgb,
+          var(--activity-featured-gradient-end) 10%,
+          transparent
+        )
+      )
+      center / 74% 74% no-repeat;
 }
 
 .activity-details-hero__category-image-large {

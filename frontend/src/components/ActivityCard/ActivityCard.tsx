@@ -6,6 +6,7 @@ import {
   type ChipProps,
 } from '@mui/material'
 import { Link } from 'react-router-dom'
+import { getActivityCategoryPresentation } from '../../config/activityCategoryPresentation'
 import type { Activity } from '../../types/activity'
 import './ActivityCard.css'
 
@@ -29,6 +30,9 @@ function ActivityCard({
   statusColor = 'primary',
   statusLabel,
 }: ActivityCardProps) {
+  const categoryPresentation = getActivityCategoryPresentation(
+    activity.category.slug,
+  )
   const isCancelled = activity.status === 'CANCELLED'
   const effectiveStatusLabel = isCancelled ? 'Anulowana' : statusLabel
   const effectiveStatusColor = isCancelled ? 'error' : statusColor
@@ -36,6 +40,11 @@ function ActivityCard({
     activity.min_participants - activity.participant_count,
     0,
   )
+  const isAlmostComplete =
+    showParticipationStats &&
+    activity.status === 'PUBLISHED' &&
+    missingToMinimum > 0 &&
+    missingToMinimum <= 2
   const hasParticipantLimit = activity.max_participants !== null
 
   return (
@@ -44,7 +53,11 @@ function ActivityCard({
       to={`/activities/${activity.id}`}
       aria-label={`Zobacz szczegóły: ${activity.title}`}
     >
-      <Card component="article" variant="outlined" className="activity-card">
+      <Card
+        component="article"
+        variant="outlined"
+        className={`activity-card activity-card--${categoryPresentation.variant}${isAlmostComplete ? ' activity-card--almost-complete' : ''}`}
+      >
         <CardContent>
           <div className="activity-card__top">
             <div>
@@ -57,9 +70,14 @@ function ActivityCard({
             </div>
 
             <div className="activity-card__chips">
-              <Chip label={activity.category.name} size="small" />
+              <Chip
+                className="activity-card__category"
+                label={activity.category.name}
+                size="small"
+              />
               {effectiveStatusLabel && (
                 <Chip
+                  className="activity-card__status"
                   label={effectiveStatusLabel}
                   size="small"
                   color={effectiveStatusColor}
@@ -83,6 +101,7 @@ function ActivityCard({
 
           <div className="activity-card__details">
             <Chip
+              className={`activity-card__price activity-card__price--${activity.price_type === 'FREE' ? 'free' : 'paid'}`}
               label={activity.price_type === 'FREE' ? 'Bezpłatna' : 'Płatna'}
               size="small"
               color={activity.price_type === 'FREE' ? 'success' : 'default'}
@@ -96,10 +115,28 @@ function ActivityCard({
                     ? `${activity.participant_count} / ${activity.max_participants} uczestników`
                     : `${activity.participant_count} uczestników`}
                 </Typography>
-                <Typography color="text.secondary">
-                  {missingToMinimum > 0
-                    ? `Brakuje ${missingToMinimum} osób do kompletu`
-                    : 'Komplet zebrany'}
+                <Typography
+                  className={
+                    isAlmostComplete
+                      ? 'activity-card__missing activity-card__missing--almost-complete'
+                      : 'activity-card__missing'
+                  }
+                  color="text.secondary"
+                >
+                  {isAlmostComplete && (
+                    <img
+                      className="activity-card__flame"
+                      src="/icons/flame-lit.gif"
+                      alt=""
+                      width="200"
+                      height="200"
+                    />
+                  )}
+                  <span>
+                    {missingToMinimum > 0
+                      ? `Brakuje${isAlmostComplete ? ' tylko' : ''} ${missingToMinimum} ${missingToMinimum === 1 ? 'osoby' : 'osób'} do kompletu`
+                      : 'Komplet zebrany'}
+                  </span>
                 </Typography>
                 <Typography color="text.secondary">
                   {hasParticipantLimit

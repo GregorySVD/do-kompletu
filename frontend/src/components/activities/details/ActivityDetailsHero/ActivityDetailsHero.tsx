@@ -43,6 +43,10 @@ function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
   const categoryHeroIconSrc = categoryPresentation.pixelHeroIconSrc
   const isFeatured = featuredCategoryVariants.has(categoryPresentation.variant)
   const priceVariant = activity.price_type === 'FREE' ? 'free' : 'paid'
+  const priceIconSrc =
+    activity.price_type === 'FREE'
+      ? '/icons/icons8-confetti-64.png'
+      : '/icons/icons8-money-64.png'
 
   return (
     <section
@@ -70,6 +74,15 @@ function ActivityDetailsHero({ activity }: ActivityDetailsHeroProps) {
           />
           <Chip
             className={`activity-details-hero__price activity-details-hero__price--${priceVariant}`}
+            icon={
+              <img
+                className="activity-details-hero__price-image"
+                src={priceIconSrc}
+                alt=""
+                width="64"
+                height="64"
+              />
+            }
             label={getPriceLabel(activity)}
             variant="outlined"
           />

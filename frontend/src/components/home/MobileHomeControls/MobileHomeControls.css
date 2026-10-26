@@ -2,42 +2,206 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--page-gutter);
+  padding: var(--space-2) var(--page-gutter);
   gap: var(--space-3);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 4px,
+      color-mix(in srgb, var(--color-primary) 2%, transparent) 4px 5px
+    ),
+    linear-gradient(
+      110deg,
+      var(--color-surface) 0 46%,
+      color-mix(in srgb, var(--color-primary) 5%, var(--color-surface)) 46% 100%
+    );
+  border-bottom: 2px solid var(--color-border-strong);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--color-primary) 14%, transparent);
 }
 
 .home-view-toggle.MuiToggleButtonGroup-root {
+  position: relative;
+  isolation: isolate;
   padding: var(--space-1);
-  background: var(--color-surface-soft);
-  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-soft) 0 50%,
+    color-mix(in srgb, var(--color-primary) 6%, var(--color-surface-soft)) 50%
+      100%
+  );
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+  box-shadow:
+    3px 3px 0 color-mix(in srgb, var(--color-border-strong) 42%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-surface) 75%, transparent);
+}
+
+.home-view-toggle.MuiToggleButtonGroup-root::before {
+  position: absolute;
+  inset-block: var(--space-1);
+  inset-inline-start: var(--space-1);
+  z-index: -1;
+  width: calc((100% - (2 * var(--space-1))) / 2);
+  content: '';
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-700) 0 30%,
+    var(--brand-green-600) 30% 72%,
+    var(--brand-green-500) 72% 100%
+  );
+  border: 2px solid var(--brand-green-400);
+  border-radius: 0.3rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--brand-green-700) 60%, transparent);
+  transition: transform 260ms steps(5, end);
+}
+
+.home-view-toggle--map.MuiToggleButtonGroup-root::before {
+  transform: translateX(100%);
 }
 
 .home-view-toggle .MuiToggleButton-root {
+  z-index: 1;
+  width: 5.25rem;
   min-height: var(--touch-target-min);
-  padding-inline: var(--space-4);
+  padding: var(--space-2);
   gap: var(--space-2);
   color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  text-transform: none;
+  background: transparent;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: 0.25rem;
+  transition:
+    color 160ms steps(3, end),
+    filter 160ms steps(3, end),
+    text-shadow 160ms steps(3, end);
+}
+
+.home-view-toggle .MuiToggleButton-root:hover {
+  color: var(--color-text-primary);
+  background: transparent;
 }
 
 .home-view-toggle .MuiToggleButton-root.Mui-selected {
   color: var(--color-text-inverse);
-  background: var(--color-primary);
+  background: transparent;
+  text-shadow: 1px 1px 0
+    color-mix(in srgb, var(--brand-green-900) 72%, transparent);
 }
 
 .home-view-toggle .MuiToggleButton-root.Mui-selected:hover {
-  background: var(--color-primary-hover);
+  color: var(--color-text-inverse);
+  background: transparent;
+  filter: brightness(1.08);
+}
+
+.home-view-toggle__icon,
+.home-page__filters-icon {
+  display: block;
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.home-view-toggle .Mui-selected .home-view-toggle__icon {
+  filter: drop-shadow(1px 1px 0 rgba(7, 52, 30, 0.55));
+  animation: home-view-icon-select 260ms steps(4, end);
 }
 
 .home-page__filters-button.MuiButton-root {
   min-height: var(--touch-target-min);
-  padding-inline: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
   color: var(--color-text-primary);
-  border-color: var(--color-border-strong);
-  border-radius: var(--radius-pill);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  text-transform: none;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0 52%,
+    color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)) 52% 100%
+  );
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-border-strong) 44%, transparent);
+  transition:
+    background 120ms steps(2, end),
+    border-color 120ms steps(2, end),
+    box-shadow 120ms steps(2, end),
+    transform 120ms steps(2, end);
+}
+
+.home-page__filters-button.MuiButton-root:hover {
+  color: var(--color-text-primary);
+  background: color-mix(
+    in srgb,
+    var(--color-primary) 10%,
+    var(--color-surface)
+  );
+  border-color: var(--color-primary);
+  transform: translate(-1px, -1px);
+}
+
+.home-page__filters-button.MuiButton-root:active {
+  box-shadow: 1px 1px 0
+    color-mix(in srgb, var(--color-border-strong) 44%, transparent);
+  transform: translate(1px, 1px);
+}
+
+.home-page__filters-button .MuiButton-startIcon {
+  margin-inline: 0 var(--space-1);
+}
+
+@keyframes home-view-icon-select {
+  0% {
+    transform: translateY(2px) scale(0.82);
+  }
+
+  55% {
+    transform: translateY(-2px) scale(1.12);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 22rem) {
+  .home-page__mobile-tools {
+    padding-inline: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .home-view-toggle .MuiToggleButton-root {
+    width: 4.75rem;
+    padding-inline: var(--space-1);
+  }
+
+  .home-page__filters-button.MuiButton-root {
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-view-toggle.MuiToggleButtonGroup-root::before,
+  .home-view-toggle .MuiToggleButton-root,
+  .home-page__filters-button.MuiButton-root {
+    transition-duration: 0.01ms;
+  }
+
+  .home-view-toggle .Mui-selected .home-view-toggle__icon {
+    animation: none;
+  }
 }
 
 @media (min-width: 75rem) {

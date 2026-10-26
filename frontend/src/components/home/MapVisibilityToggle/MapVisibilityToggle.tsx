@@ -1,4 +1,3 @@
-import { MapOutlined } from '@mui/icons-material'
 import { Button } from '@mui/material'
 import './MapVisibilityToggle.css'
 
@@ -10,7 +9,15 @@ function MapVisibilityToggle({ onShow }: MapVisibilityToggleProps) {
   return (
     <Button
       className="home-page__map-toggle"
-      startIcon={<MapOutlined />}
+      startIcon={
+        <img
+          className="home-page__map-toggle-icon"
+          src="/icons/icons8-map-64.png"
+          alt=""
+          width="64"
+          height="64"
+        />
+      }
       variant="contained"
       onClick={onShow}
     >
