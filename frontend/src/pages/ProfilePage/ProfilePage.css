@@ -1,7 +1,91 @@
 .profile-page {
   width: min(100%, var(--page-max-width));
   margin-inline: auto;
-  padding: var(--section-gap) var(--page-gutter);
+  padding: clamp(var(--space-6), 4vw, var(--space-10)) var(--page-gutter)
+    var(--space-16);
+}
+
+.profile-page__heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  padding: 0 0 var(--space-5);
+  gap: var(--space-4);
+  border-bottom: 2px solid var(--color-border-strong);
+}
+
+.profile-page__heading::after {
+  position: absolute;
+  right: 0;
+  bottom: -2px;
+  width: min(12rem, 42%);
+  height: 2px;
+  content: '';
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--brand-purple-400) 24%,
+    var(--activity-music-accent) 62%,
+    var(--brand-green-400)
+  );
+}
+
+.profile-page__eyebrow {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.1em;
+}
+
+.profile-page__heading .MuiTypography-h3 {
+  width: fit-content;
+  max-width: 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+  background: linear-gradient(
+    180deg,
+    transparent 0 75%,
+    color-mix(in srgb, var(--color-accent) 24%, transparent) 75% 100%
+  );
+  text-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.profile-page__heading .MuiTypography-body1 {
+  margin-top: var(--space-2);
+}
+
+.profile-page__sync-status {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-2);
+  color: var(--color-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  border: 1px solid
+    color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
+  border-radius: 0.3rem;
+}
+
+.profile-page__sync-status > span {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 48%, transparent);
+  animation: profile-sync-pulse 2s steps(4, end) infinite;
 }
 
 .profile-page__success {
@@ -10,90 +94,321 @@
 
 .profile-page__overview {
   display: grid;
-  gap: var(--section-gap);
-  margin-top: var(--space-6);
+  margin-top: clamp(var(--space-5), 4vw, var(--space-8));
+  gap: var(--space-5);
 }
 
-.profile-page__overview > section,
-.profile-card {
+.profile-player-card,
+.profile-command-panel {
   min-width: 0;
   height: 100%;
+  position: relative;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-primary) 2%, transparent) 5px 6px
+    ),
+    linear-gradient(
+      125deg,
+      var(--color-surface) 0 54%,
+      color-mix(in srgb, var(--color-primary) 5%, var(--color-surface)) 54% 76%,
+      color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)) 76% 100%
+    );
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 4px 4px 0
+    color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
-.profile-card__content {
+.profile-player-card::after,
+.profile-command-panel::after {
+  position: absolute;
+  right: -2rem;
+  bottom: -3rem;
+  width: 10rem;
+  height: 8rem;
+  content: '';
+  background: linear-gradient(
+    135deg,
+    transparent 0 34%,
+    color-mix(in srgb, var(--color-accent) 13%, transparent) 34% 48%,
+    transparent 48% 63%,
+    color-mix(in srgb, var(--color-primary) 15%, transparent) 63% 76%,
+    transparent 76%
+  );
+  pointer-events: none;
+}
+
+.profile-player-card__identity {
   display: flex;
-  align-items: flex-start;
-  gap: var(--component-gap);
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  padding: clamp(var(--space-4), 4vw, var(--space-6));
+  gap: var(--space-4);
 }
 
-.profile-card__details {
+.profile-player-card__avatar-frame {
+  display: grid;
+  flex: 0 0 auto;
+  position: relative;
+  width: 5.4rem;
+  height: 5.4rem;
+  padding: 0.35rem;
+  place-items: center;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-purple-400) 18%, var(--color-surface)),
+    color-mix(in srgb, var(--brand-green-400) 16%, var(--color-surface))
+  );
+  border: 2px solid var(--brand-purple-400);
+  border-radius: 0.55rem;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--brand-purple-600) 34%, transparent),
+    inset 0 0 0 2px
+      color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+.profile-player-card__avatar {
+  width: 100%;
+  height: 100%;
+  font-size: var(--font-size-h2);
+  border-radius: 0.25rem;
+}
+
+.profile-player-card__online {
+  position: absolute;
+  right: -0.3rem;
+  bottom: -0.3rem;
+  width: 1rem;
+  height: 1rem;
+  background: var(--brand-green-400);
+  border: 3px solid var(--color-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--brand-green-600);
+}
+
+.profile-player-card__details {
+  flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.profile-card__avatar {
+.profile-player-card__label,
+.profile-command-panel__heading > span {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.09em;
+}
+
+.profile-player-card__details .MuiTypography-h4 {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.04em;
+}
+
+.profile-player-card__edit.MuiButton-root {
   flex: 0 0 auto;
-  width: 4.5rem;
-  height: 4.5rem;
-  font-size: var(--font-size-h2);
-}
-
-.profile-card__edit {
-  margin-top: var(--space-4);
-}
-
-.profile-quick-actions {
-  padding: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-
-.profile-quick-actions__list {
-  display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-}
-
-.profile-quick-actions__button {
   min-height: var(--touch-target-min);
-  justify-content: flex-start;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
 }
 
-.profile-upcoming {
-  margin-top: var(--section-gap);
-}
-
-.profile-upcoming__list {
+.profile-player-card__stats {
   display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: relative;
+  z-index: 1;
+  padding: 0 var(--space-4) var(--space-4);
+  gap: var(--space-2);
 }
 
-.profile-upcoming__all {
-  margin-top: var(--space-3);
-}
-
-.profile-upcoming__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
-  padding: clamp(var(--space-4), 4vw, var(--space-6));
+.profile-player-card__stats > div {
+  display: grid;
+  min-width: 0;
+  padding: var(--space-3);
+  gap: var(--space-1);
+  background: color-mix(in srgb, var(--color-surface-strong) 58%, transparent);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: 0.35rem;
 }
 
-@media (min-width: 56.25rem) {
-  .profile-page__overview {
-    grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
-    align-items: stretch;
+.profile-player-card__stats span {
+  color: var(--color-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+.profile-player-card__stats small {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.profile-command-panel {
+  padding: clamp(var(--space-4), 4vw, var(--space-6));
+}
+
+.profile-command-panel__heading,
+.profile-command-panel__actions {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-command-panel__heading .MuiTypography-h5 {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.035em;
+}
+
+.profile-command-panel__actions {
+  display: grid;
+  margin-top: var(--space-4);
+  gap: var(--space-2);
+}
+
+.profile-command-panel__actions .MuiButton-root {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  min-height: 3.5rem;
+  padding: var(--space-2) var(--space-3);
+  column-gap: var(--space-3);
+  justify-content: stretch;
+  color: var(--color-text-primary);
+  text-align: left;
+  text-transform: none;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)) 0 55%,
+    color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)) 55% 100%
+  );
+  border: 1px solid var(--color-border);
+  border-radius: 0.35rem;
+  transition:
+    border-color 120ms steps(2, end),
+    box-shadow 120ms steps(2, end),
+    transform 120ms steps(2, end);
+}
+
+.profile-command-panel__actions .MuiButton-root:hover {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-primary) 13%, var(--color-surface)) 0 55%,
+    color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)) 55% 100%
+  );
+  border-color: var(--color-primary);
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-primary) 20%, transparent);
+  transform: translate(-1px, -1px);
+}
+
+.profile-command-panel__actions .MuiButton-startIcon {
+  grid-row: 1 / 3;
+  align-self: center;
+  margin: 0;
+  color: var(--color-primary);
+}
+
+.profile-command-panel__actions
+  .MuiButton-root
+  > span:not(.MuiButton-startIcon) {
+  grid-column: 2;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.25;
+}
+
+.profile-command-panel__actions small {
+  grid-column: 2;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.25;
+}
+
+.profile-page__activity-sections {
+  display: grid;
+  margin-top: clamp(var(--space-8), 5vw, var(--space-12));
+  gap: clamp(var(--space-10), 6vw, var(--space-16));
+}
+
+@keyframes profile-sync-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0
+      color-mix(in srgb, var(--color-primary) 48%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 0.35rem
+      color-mix(in srgb, var(--color-primary) 0%, transparent);
   }
 }
 
-@media (max-width: 30rem) {
-  .profile-card__content {
-    flex-direction: column;
+@media (min-width: 56.25rem) {
+  .profile-page__heading {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .profile-page__overview {
+    grid-template-columns: minmax(0, 1.45fr) minmax(19rem, 0.75fr);
+    align-items: stretch;
+  }
+
+  .profile-player-card__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 42rem) {
+  .profile-player-card__identity {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .profile-player-card__edit.MuiButton-root {
+    width: 100%;
+  }
+}
+
+@media (max-width: 27rem) {
+  .profile-player-card__identity {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .profile-player-card__edit.MuiButton-root {
+    grid-column: 1 / -1;
+  }
+
+  .profile-player-card__avatar-frame {
+    width: 4.4rem;
+    height: 4.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-page__sync-status > span {
+    animation: none;
+  }
+
+  .profile-command-panel__actions .MuiButton-root {
+    transition-duration: 0.01ms;
   }
 }

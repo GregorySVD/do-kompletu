@@ -16,6 +16,7 @@ import './ActivityCard.css'
 interface ActivityCardProps {
   activity: Activity
   emphasizeMetadata?: boolean
+  headingLevel?: 'h2' | 'h3'
   secondaryStatusText?: string
   showParticipationStats?: boolean
   statusColor?: ChipProps['color']
@@ -33,6 +34,7 @@ const timeFormatter = new Intl.DateTimeFormat('pl-PL', {
 function ActivityCard({
   activity,
   emphasizeMetadata = false,
+  headingLevel = 'h2',
   secondaryStatusText,
   showParticipationStats = true,
   statusColor = 'primary',
@@ -67,7 +69,7 @@ function ActivityCard({
         <CardContent>
           <div className="activity-card__top">
             <div className="activity-card__summary">
-              <Typography component="h2" variant="h6">
+              <Typography component={headingLevel} variant="h6">
                 {activity.title}
               </Typography>
               {emphasizeMetadata ? (
