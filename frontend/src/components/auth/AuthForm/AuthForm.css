@@ -139,74 +139,6 @@
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
-.auth-form__submit.MuiButton-root {
-  min-height: 3.35rem;
-  color: var(--color-text-inverse);
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: 0.025em;
-  text-transform: none;
-  background: linear-gradient(
-    90deg,
-    var(--brand-green-700) 0 18%,
-    var(--brand-green-600) 18% 78%,
-    var(--brand-green-500) 78% 100%
-  );
-  border: 3px solid color-mix(in srgb, var(--brand-green-700) 78%, #07170b);
-  border-radius: 0.2rem;
-  box-shadow:
-    inset 0 3px 0 color-mix(in srgb, var(--brand-green-400) 72%, #fff),
-    inset 0 -4px 0 color-mix(in srgb, var(--brand-green-700) 84%, #07170b),
-    4px 4px 0 color-mix(in srgb, var(--brand-green-700) 44%, transparent);
-  text-shadow: 2px 2px 0 color-mix(in srgb, var(--brand-green-700) 82%, #07170b);
-  transition:
-    box-shadow 100ms steps(2, end),
-    filter 100ms steps(2, end),
-    transform 100ms steps(2, end);
-}
-
-.auth-form__submit.MuiButton-root:hover {
-  background: linear-gradient(
-    90deg,
-    var(--brand-green-600) 0 18%,
-    var(--brand-green-500) 18% 78%,
-    color-mix(in srgb, var(--brand-green-500) 72%, #fff) 78% 100%
-  );
-  box-shadow:
-    inset 0 3px 0 color-mix(in srgb, var(--brand-green-400) 62%, #fff),
-    inset 0 -4px 0 color-mix(in srgb, var(--brand-green-700) 78%, #07170b),
-    5px 5px 0 color-mix(in srgb, var(--brand-green-700) 52%, transparent);
-  filter: brightness(1.04);
-  transform: translate(-1px, -1px);
-}
-
-.auth-form__submit.MuiButton-root:active {
-  box-shadow:
-    inset 0 2px 0 color-mix(in srgb, var(--brand-green-700) 78%, #07170b),
-    inset 0 -1px 0 color-mix(in srgb, var(--brand-green-400) 55%, #fff),
-    1px 1px 0 color-mix(in srgb, var(--brand-green-700) 42%, transparent);
-  filter: brightness(0.92);
-  transform: translate(3px, 3px);
-}
-
-.auth-form__submit.MuiButton-root.Mui-disabled {
-  color: color-mix(in srgb, var(--color-text-primary) 72%, transparent);
-  background: color-mix(
-    in srgb,
-    var(--brand-green-600) 38%,
-    var(--color-surface-strong)
-  );
-  border-color: color-mix(
-    in srgb,
-    var(--brand-green-700) 52%,
-    var(--color-border)
-  );
-  box-shadow: inset 0 2px 0
-    color-mix(in srgb, var(--brand-green-400) 24%, transparent);
-  text-shadow: none;
-}
-
 .auth-form__navigation.MuiTypography-root {
   display: flex;
   flex-wrap: wrap;
@@ -326,8 +258,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-form__field .MuiOutlinedInput-root,
-  .auth-form__submit.MuiButton-root {
+  .auth-form__field .MuiOutlinedInput-root {
     transition-duration: 0.01ms;
   }
 

@@ -1,0 +1,199 @@
+.activity-category-selector {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.activity-category-selector__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--space-3);
+}
+
+.activity-category-selector__option {
+  --category-color: var(--category-fallback-color);
+  --category-gradient-end: var(--category-fallback-gradient-end);
+  --category-soft-bg: var(--category-fallback-bg);
+
+  display: grid;
+  min-width: 0;
+  min-height: 7rem;
+  justify-items: center;
+  padding: var(--space-3);
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font: inherit;
+  text-align: center;
+  background: linear-gradient(
+    135deg,
+    var(--color-surface) 0 58%,
+    color-mix(in srgb, var(--category-soft-bg) 58%, var(--color-surface)) 58%
+      100%
+  );
+  border: 2px solid var(--color-border);
+  border-radius: 0.4rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--color-border-strong) 42%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 100ms steps(2, end),
+    box-shadow 100ms steps(2, end),
+    color 100ms steps(2, end),
+    transform 100ms steps(2, end);
+}
+
+.activity-category-selector__option:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  border-color: color-mix(
+    in srgb,
+    var(--category-color) 62%,
+    var(--color-border)
+  );
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--category-color) 28%, transparent);
+  transform: translate(-1px, -1px);
+}
+
+.activity-category-selector__option:focus-visible {
+  outline: 3px solid var(--category-color);
+  outline-offset: 3px;
+}
+
+.activity-category-selector__option:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.55);
+  opacity: 0.58;
+}
+
+.activity-category-selector__option--selected {
+  color: var(--color-text-primary);
+  background: linear-gradient(
+    135deg,
+    var(--category-soft-bg) 0 52%,
+    color-mix(in srgb, var(--category-color) 15%, var(--category-soft-bg)) 52%
+      100%
+  );
+  border-color: var(--category-color);
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--category-color),
+    4px 4px 0 color-mix(in srgb, var(--category-color) 32%, transparent);
+  transform: translate(-2px, -2px);
+}
+
+.activity-category-selector__icon {
+  display: grid;
+  width: 2.8rem;
+  aspect-ratio: 1;
+  place-items: center;
+  color: var(--category-color);
+  background: var(--category-soft-bg);
+  border: 2px solid var(--category-color);
+  border-radius: 0.4rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--category-color) 30%, transparent);
+}
+
+.activity-category-selector__icon img {
+  width: 1.85rem;
+  height: 1.85rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(
+    1px 1px 0 color-mix(in srgb, var(--category-color) 35%, transparent)
+  );
+}
+
+.activity-category-selector__icon .MuiSvgIcon-root {
+  font-size: 1.75rem;
+}
+
+.activity-category-selector__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+}
+
+.activity-category-selector__state {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.activity-category-selector__option--selected
+  .activity-category-selector__state {
+  color: var(--category-color);
+  font-weight: var(--font-weight-bold);
+}
+
+.activity-category-selector__error {
+  margin: var(--space-1) 0 0;
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+}
+
+.activity-category-selector__option--team-sport {
+  --category-color: var(--category-team-sport-color);
+  --category-gradient-end: var(--category-team-sport-gradient-end);
+  --category-soft-bg: var(--category-team-sport-bg);
+}
+
+.activity-category-selector__option--board-games {
+  --category-color: var(--category-board-games-color);
+  --category-gradient-end: var(--category-board-games-gradient-end);
+  --category-soft-bg: var(--category-board-games-bg);
+}
+
+.activity-category-selector__option--rpg {
+  --category-color: var(--category-rpg-color);
+  --category-gradient-end: var(--category-rpg-gradient-end);
+  --category-soft-bg: var(--category-rpg-bg);
+}
+
+.activity-category-selector__option--gaming {
+  --category-color: var(--category-gaming-color);
+  --category-gradient-end: var(--category-gaming-gradient-end);
+  --category-soft-bg: var(--category-gaming-bg);
+}
+
+.activity-category-selector__option--study {
+  --category-color: var(--category-study-color);
+  --category-gradient-end: var(--category-study-gradient-end);
+  --category-soft-bg: var(--category-study-bg);
+}
+
+.activity-category-selector__option--technology {
+  --category-color: var(--category-technology-color);
+  --category-gradient-end: var(--category-technology-gradient-end);
+  --category-soft-bg: var(--category-technology-bg);
+}
+
+.activity-category-selector__option--music {
+  --category-color: var(--category-music-color);
+  --category-gradient-end: var(--category-music-gradient-end);
+  --category-soft-bg: var(--category-music-bg);
+}
+
+.activity-category-selector__option--creative {
+  --category-color: var(--category-creative-color);
+  --category-gradient-end: var(--category-creative-gradient-end);
+  --category-soft-bg: var(--category-creative-bg);
+}
+
+@media (max-width: 31rem) {
+  .activity-category-selector__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .activity-category-selector__option {
+    min-height: 6.4rem;
+    padding: var(--space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-category-selector__option {
+    transition-duration: 0.01ms;
+  }
+}

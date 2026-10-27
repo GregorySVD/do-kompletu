@@ -1,14 +1,10 @@
-import {
-  Card,
-  CardContent,
-  MenuItem,
-  TextField,
-  Typography,
-} from '@mui/material'
-import { Controller } from 'react-hook-form'
+import { TextField } from '@mui/material'
+import { Controller, useWatch } from 'react-hook-form'
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form'
 import type { ActivityCategory } from '../../../../types/activity'
 import type { ActivityFormValues } from '../../../../types/activityForm'
+import ActivityCategorySelector from '../ActivityCategorySelector/ActivityCategorySelector'
+import ActivityFormSection from '../ActivityFormSection/ActivityFormSection'
 
 interface ActivityBasicInfoSectionProps {
   categories: ActivityCategory[]
@@ -25,55 +21,67 @@ function ActivityBasicInfoSection({
   errors,
   register,
 }: ActivityBasicInfoSectionProps) {
+  const title = useWatch({ control, name: 'title' })
+  const description = useWatch({ control, name: 'description' })
+
   return (
-    <Card component="section" variant="outlined">
-      <CardContent>
-        <Typography component="h2" variant="h6" gutterBottom>
-          Informacje podstawowe
-        </Typography>
+    <ActivityFormSection
+      step="01"
+      title="Podstawowe informacje"
+      description="Powiedz krótko, co organizujesz i wybierz najlepiej pasującą kategorię."
+      iconSrc="/icons/icons8-add-64.png"
+    >
+      <div className="activity-form__fields">
+        <TextField
+          className="activity-form__field"
+          label="Tytuł aktywności"
+          placeholder="Np. Wieczór z planszówkami"
+          disabled={disabled}
+          error={Boolean(errors.title)}
+          helperText={errors.title?.message ?? `${title.length}/80 znaków`}
+          slotProps={{ htmlInput: { maxLength: 80 } }}
+          {...register('title')}
+        />
 
-        <div className="activity-form__fields">
-          <TextField
-            label="Tytuł"
-            disabled={disabled}
-            error={Boolean(errors.title)}
-            helperText={errors.title?.message}
-            {...register('title')}
-          />
+        <TextField
+          className="activity-form__field"
+          label="Opis"
+          placeholder="Napisz, czego mogą spodziewać się uczestnicy i czy powinni coś ze sobą zabrać."
+          disabled={disabled}
+          multiline
+          minRows={5}
+          error={Boolean(errors.description)}
+          helperText={
+            errors.description?.message ?? `${description.length}/1000 znaków`
+          }
+          slotProps={{ htmlInput: { maxLength: 1000 } }}
+          {...register('description')}
+        />
 
-          <TextField
-            label="Opis"
-            disabled={disabled}
-            multiline
-            minRows={4}
-            error={Boolean(errors.description)}
-            helperText={errors.description?.message}
-            {...register('description')}
-          />
+        <div className="activity-form__choice-field">
+          <div>
+            <span className="activity-form__choice-label">Kategoria</span>
+            <span className="activity-form__choice-hint">
+              Kolor i ikona pomogą wyróżnić aktywność na liście.
+            </span>
+          </div>
 
           <Controller
             name="category_id"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                select
+              <ActivityCategorySelector
+                categories={categories}
                 disabled={disabled}
-                label="Kategoria"
-                error={Boolean(errors.category_id)}
-                helperText={errors.category_id?.message}
-              >
-                {categories.map((category) => (
-                  <MenuItem key={category.id} value={category.id}>
-                    {category.name}
-                  </MenuItem>
-                ))}
-              </TextField>
+                error={errors.category_id?.message}
+                value={field.value}
+                onChange={field.onChange}
+              />
             )}
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </ActivityFormSection>
   )
 }
 

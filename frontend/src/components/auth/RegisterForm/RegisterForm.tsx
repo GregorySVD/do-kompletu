@@ -11,7 +11,6 @@ import {
 } from '@mui/icons-material'
 import {
   Alert,
-  Button,
   Card,
   CardContent,
   Link as MuiLink,
@@ -26,6 +25,7 @@ import {
   registerFormDefaultValues,
   registerFormSchema,
 } from '../../../validation/authFormSchemas'
+import AuthPrimaryButton from '../AuthPrimaryButton/AuthPrimaryButton'
 import AuthTextField from '../AuthTextField/AuthTextField'
 import '../AuthForm/AuthForm.css'
 
@@ -194,16 +194,13 @@ function RegisterForm() {
             </ul>
           </div>
 
-          <Button
-            className="auth-form__submit"
+          <AuthPrimaryButton
             type="submit"
-            variant="contained"
-            size="large"
             disabled={isSubmitting || !isValid}
             startIcon={<HowToRegRounded aria-hidden="true" />}
           >
             {isSubmitting ? 'Tworzenie konta...' : 'Utwórz konto'}
-          </Button>
+          </AuthPrimaryButton>
 
           <Typography className="auth-form__navigation">
             <span>Masz już konto?</span>

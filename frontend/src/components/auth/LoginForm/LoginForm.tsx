@@ -8,7 +8,6 @@ import {
 import axios from 'axios'
 import {
   Alert,
-  Button,
   Card,
   CardContent,
   Link as MuiLink,
@@ -22,6 +21,7 @@ import {
   loginFormDefaultValues,
   loginFormSchema,
 } from '../../../validation/authFormSchemas'
+import AuthPrimaryButton from '../AuthPrimaryButton/AuthPrimaryButton'
 import AuthTextField from '../AuthTextField/AuthTextField'
 import '../AuthForm/AuthForm.css'
 
@@ -134,16 +134,13 @@ function LoginForm() {
             startIcon={<LockOutlined aria-hidden="true" />}
           />
 
-          <Button
-            className="auth-form__submit"
+          <AuthPrimaryButton
             type="submit"
-            variant="contained"
-            size="large"
             disabled={isSubmitting || !isValid}
             startIcon={<LoginRounded aria-hidden="true" />}
           >
             {isSubmitting ? 'Logowanie...' : 'Zaloguj się'}
-          </Button>
+          </AuthPrimaryButton>
 
           <Typography className="auth-form__navigation">
             <span>Nie masz jeszcze konta?</span>

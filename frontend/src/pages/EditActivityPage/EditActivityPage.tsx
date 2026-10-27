@@ -8,34 +8,14 @@ import UserAvatar from '../../components/UserAvatar/UserAvatar'
 import { useUpdateActivityMutation } from '../../hooks/mutations/useUpdateActivityMutation'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
 import { useActivityDetailsQuery } from '../../hooks/queries/useActivityDetailsQuery'
-import type {
-  ActivityDetails,
-  UpdateActivityPayload,
-} from '../../types/activity'
+import type { ActivityDetails } from '../../types/activity'
 import type { ActivityFormValues } from '../../types/activityForm'
+import {
+  mapActivityFormValuesToPayload,
+  mapActivityToFormValues,
+} from '../../utils/activityFormMappers'
 import { getUpdateActivityErrorMessage } from '../../utils/updateActivityError'
 import './EditActivityPage.css'
-
-function mapActivityToFormValues(
-  activity: ActivityDetails,
-): ActivityFormValues {
-  return {
-    title: activity.title,
-    description: activity.description,
-    category_id: activity.category.id,
-    start_at: activity.start_at,
-    end_at: activity.end_at,
-    location_name: activity.location_name,
-    address: activity.address,
-    latitude: activity.latitude,
-    longitude: activity.longitude,
-    min_participants: activity.min_participants,
-    has_participant_limit: activity.max_participants !== null,
-    max_participants: activity.max_participants,
-    price_type: activity.price_type,
-    price_amount: activity.price_amount,
-  }
-}
 
 function getActivityLoadErrorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {
@@ -128,30 +108,10 @@ function EditActivityPage() {
     activityQuery.isError || (canEditActivity && categoriesQuery.isError)
 
   async function handleUpdate(values: ActivityFormValues) {
-    if (
-      activityId === '' ||
-      values.latitude === null ||
-      values.longitude === null ||
-      isUpdatingRef.current
-    ) {
-      return
-    }
+    const payload = mapActivityFormValuesToPayload(values)
 
-    const payload: UpdateActivityPayload = {
-      title: values.title,
-      description: values.description,
-      category_id: values.category_id,
-      start_at: values.start_at,
-      end_at: values.end_at,
-      location_name: values.location_name,
-      address: values.address,
-      latitude: values.latitude,
-      longitude: values.longitude,
-      min_participants: values.min_participants,
-      has_participant_limit: values.has_participant_limit,
-      max_participants: values.max_participants,
-      price_type: values.price_type,
-      price_amount: values.price_amount,
+    if (activityId === '' || payload === null || isUpdatingRef.current) {
+      return
     }
 
     isUpdatingRef.current = true
@@ -250,6 +210,7 @@ function EditActivityPage() {
             disabled={updateMutation.isPending}
             submitLabel="Zapisz zmiany"
             submittingLabel="Zapisywanie..."
+            submitIconSrc="/icons/icons8-edit-64.png"
             onSubmit={handleUpdate}
           />
         )}

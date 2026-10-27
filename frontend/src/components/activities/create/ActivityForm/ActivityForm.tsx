@@ -1,16 +1,19 @@
 import { useEffect, useRef } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import 'dayjs/locale/pl'
-import { Button } from '@mui/material'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { useForm, useWatch } from 'react-hook-form'
 import type { ActivityCategory } from '../../../../types/activity'
 import type { ActivityFormValues } from '../../../../types/activityForm'
+import { activityFormDefaultValues } from '../../../../utils/activityFormMappers'
 import { activityFormSchema } from '../../../../validation/activityFormSchema'
 import ActivityBasicInfoSection from '../ActivityBasicInfoSection/ActivityBasicInfoSection'
+import ActivityFormSubmitBar from '../ActivityFormSubmitBar/ActivityFormSubmitBar'
+import ActivityFormSummary from '../ActivityFormSummary/ActivityFormSummary'
+import ActivityLocationSection from '../ActivityLocationSection/ActivityLocationSection'
 import ActivityParticipantsPriceSection from '../ActivityParticipantsPriceSection/ActivityParticipantsPriceSection'
-import ActivityScheduleLocationSection from '../ActivityScheduleLocationSection/ActivityScheduleLocationSection'
+import ActivityScheduleSection from '../ActivityScheduleSection/ActivityScheduleSection'
 import './ActivityForm.css'
 
 interface ActivityFormProps {
@@ -18,47 +21,76 @@ interface ActivityFormProps {
   initialValues?: ActivityFormValues
   disabled?: boolean
   submitLabel: string
+  submitIconSrc?: string
   submittingLabel: string
   onSubmit: (values: ActivityFormValues) => void | Promise<void>
 }
 
-const defaultActivityFormValues: ActivityFormValues = {
-  title: '',
-  description: '',
-  category_id: '',
-  start_at: '',
-  end_at: '',
-  location_name: '',
-  address: '',
-  latitude: null,
-  longitude: null,
-  min_participants: 2,
-  has_participant_limit: false,
-  max_participants: null,
-  price_type: 'FREE',
-  price_amount: null,
+const requiredFormElementCount = 10
+
+function isValidDate(value: string) {
+  return value !== '' && !Number.isNaN(Date.parse(value))
+}
+
+function getCompletedFormElementCount(values: ActivityFormValues) {
+  const participantSettingsAreValid =
+    Number.isInteger(values.min_participants) &&
+    values.min_participants >= 2 &&
+    values.min_participants <= 100 &&
+    (!values.has_participant_limit ||
+      (values.max_participants !== null &&
+        Number.isInteger(values.max_participants) &&
+        values.max_participants >= values.min_participants &&
+        values.max_participants <= 100))
+  const priceSettingsAreValid =
+    values.price_type === 'FREE' ||
+    (values.price_amount !== null && values.price_amount > 0)
+  const checks = [
+    values.title.trim().length >= 3,
+    values.description.trim().length >= 10,
+    values.category_id !== '',
+    isValidDate(values.start_at),
+    isValidDate(values.end_at) &&
+      new Date(values.end_at) > new Date(values.start_at),
+    values.location_name.trim().length > 0,
+    values.address.trim().length > 0,
+    values.latitude !== null && values.longitude !== null,
+    participantSettingsAreValid,
+    priceSettingsAreValid,
+  ]
+
+  return checks.filter(Boolean).length
 }
 
 function ActivityForm({
   categories,
-  initialValues = defaultActivityFormValues,
+  initialValues = activityFormDefaultValues,
   disabled = false,
   submitLabel,
+  submitIconSrc = '/icons/icons8-add-64.png',
   submittingLabel,
   onSubmit,
 }: ActivityFormProps) {
   const {
     clearErrors,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
     handleSubmit,
     register,
     setValue,
+    trigger,
   } = useForm<ActivityFormValues>({
     resolver: zodResolver(activityFormSchema),
     defaultValues: initialValues,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
   })
 
+  const watchedValues = useWatch({ control })
+  const values: ActivityFormValues = {
+    ...initialValues,
+    ...watchedValues,
+  }
   const priceType = useWatch({ control, name: 'price_type' })
   const hasParticipantLimit = useWatch({
     control,
@@ -66,9 +98,12 @@ function ActivityForm({
   })
   const maxParticipants = useWatch({ control, name: 'max_participants' })
   const startAt = useWatch({ control, name: 'start_at' })
+  const endAt = useWatch({ control, name: 'end_at' })
+  const minParticipants = useWatch({ control, name: 'min_participants' })
   const latitude = useWatch({ control, name: 'latitude' })
   const longitude = useWatch({ control, name: 'longitude' })
   const formDisabled = disabled || isSubmitting
+  const completedFieldCount = getCompletedFormElementCount(values)
   const previousHasParticipantLimit = useRef(hasParticipantLimit)
 
   useEffect(() => {
@@ -77,6 +112,18 @@ function ActivityForm({
       clearErrors('price_amount')
     }
   }, [clearErrors, priceType, setValue])
+
+  useEffect(() => {
+    if (endAt) {
+      void trigger('end_at')
+    }
+  }, [endAt, startAt, trigger])
+
+  useEffect(() => {
+    if (hasParticipantLimit && maxParticipants !== null) {
+      void trigger('max_participants')
+    }
+  }, [hasParticipantLimit, maxParticipants, minParticipants, trigger])
 
   useEffect(() => {
     if (
@@ -115,38 +162,57 @@ function ActivityForm({
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
-        <ActivityBasicInfoSection
-          categories={categories}
-          control={control}
-          disabled={formDisabled}
-          errors={errors}
-          register={register}
-        />
+        <div className="activity-form__layout">
+          <div className="activity-form__sections">
+            <ActivityBasicInfoSection
+              categories={categories}
+              control={control}
+              disabled={formDisabled}
+              errors={errors}
+              register={register}
+            />
 
-        <ActivityScheduleLocationSection
-          control={control}
-          disabled={formDisabled}
-          errors={errors}
-          latitude={latitude}
-          longitude={longitude}
-          onLocationChange={handleLocationChange}
-          register={register}
-          startAt={startAt}
-        />
+            <ActivityScheduleSection
+              control={control}
+              disabled={formDisabled}
+              errors={errors}
+            />
 
-        <ActivityParticipantsPriceSection
-          control={control}
-          disabled={formDisabled}
-          errors={errors}
-          hasParticipantLimit={hasParticipantLimit}
-          priceType={priceType}
-        />
+            <ActivityLocationSection
+              disabled={formDisabled}
+              errors={errors}
+              latitude={latitude}
+              longitude={longitude}
+              onLocationChange={handleLocationChange}
+              register={register}
+            />
 
-        <div className="activity-form__actions">
-          <Button disabled={formDisabled} type="submit" variant="contained">
-            {formDisabled ? submittingLabel : submitLabel}
-          </Button>
+            <ActivityParticipantsPriceSection
+              control={control}
+              disabled={formDisabled}
+              errors={errors}
+              hasParticipantLimit={hasParticipantLimit}
+              priceType={priceType}
+            />
+          </div>
+
+          <ActivityFormSummary
+            categories={categories}
+            completedFieldCount={completedFieldCount}
+            requiredFieldCount={requiredFormElementCount}
+            values={values}
+          />
         </div>
+
+        <ActivityFormSubmitBar
+          completedFieldCount={completedFieldCount}
+          disabled={formDisabled || !isValid}
+          isSubmitting={formDisabled}
+          requiredFieldCount={requiredFormElementCount}
+          submitIconSrc={submitIconSrc}
+          submitLabel={submitLabel}
+          submittingLabel={submittingLabel}
+        />
       </form>
     </LocalizationProvider>
   )
