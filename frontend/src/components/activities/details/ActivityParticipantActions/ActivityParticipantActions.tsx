@@ -22,6 +22,7 @@ import type {
   ActivityDetails,
   ActivityParticipation,
 } from '../../../../types/activity'
+import { getActivityAvailability } from '../../../../utils/activityAvailability'
 import {
   getActivityParticipantActionErrorMessage,
   getCheckInActivityErrorMessage,
@@ -126,7 +127,7 @@ function ParticipationStatus({
     case 'WAITLISTED':
       return (
         <ParticipationStatusPanel
-          eyebrow="Lista oczekujących"
+          eyebrow="Lista rezerwowa"
           iconSrc="/icons/icons8-list-64.png"
           title="Czekasz na wolne miejsce"
           tone="waiting"
@@ -137,7 +138,7 @@ function ParticipationStatus({
             </p>
           )}
           <p className="activity-participant-actions__status-detail">
-            Osób na liście oczekujących: {activity.waitlist_count}
+            Osób na liście rezerwowej: {activity.waitlist_count}
           </p>
         </ParticipationStatusPanel>
       )
@@ -353,7 +354,7 @@ function ActivityParticipantActions({
 
         setJoinSuccessMessage(
           joinedWaitlist
-            ? 'Zapisaliśmy Cię na listę oczekujących.'
+            ? 'Zapisaliśmy Cię na listę rezerwową.'
             : 'Udało się! Dołączyłeś do aktywności.',
         )
 
@@ -464,10 +465,9 @@ function ActivityParticipantActions({
     return null
   }
 
-  const joinLabel =
-    activity.max_participants !== null && activity.available_slots === 0
-      ? 'Dołącz do kolejki'
-      : 'Dołącz do kompletu'
+  const availability = getActivityAvailability(activity)
+  const isJoiningWaitlist = availability.state === 'waitlist'
+  const joinLabel = availability.joinLabel
   const shouldHighlightJoinAction = canJoin || canPromptLogin
 
   return (
@@ -500,13 +500,15 @@ function ActivityParticipantActions({
             />
           ) : (
             <ParticipationStatusPanel
-              eyebrow="Wolne miejsce"
+              eyebrow={isJoiningWaitlist ? 'Lista rezerwowa' : 'Wolne miejsce'}
               iconSrc="/icons/icons8-add-64.png"
-              title="Dołącz do aktywności"
+              title={joinLabel}
               tone="active"
             >
               <p className="activity-participant-actions__status-detail">
-                Zapisz się, aby dołączyć do kompletu lub listy oczekujących.
+                {isJoiningWaitlist
+                  ? 'Aktywność jest pełna, ale możesz zapisać się na listę rezerwową.'
+                  : availability.primaryMessage}
               </p>
             </ParticipationStatusPanel>
           )}
@@ -663,7 +665,7 @@ function ActivityParticipantActions({
                   />
                 }
               >
-                {isWaitlisted ? 'Opuść kolejkę' : 'Zrezygnuj'}
+                {isWaitlisted ? 'Opuść listę rezerwową' : 'Zrezygnuj'}
               </Button>
             )}
           </div>
@@ -682,7 +684,7 @@ function ActivityParticipantActions({
         }}
       >
         <DialogTitle className="activity-participant-actions__dialog-title">
-          {isWaitlisted ? 'Opuścić kolejkę?' : 'Zrezygnować z udziału?'}
+          {isWaitlisted ? 'Opuścić listę rezerwową?' : 'Zrezygnować z udziału?'}
         </DialogTitle>
         <DialogContent>
           {!isWaitlisted && (
@@ -717,7 +719,7 @@ function ActivityParticipantActions({
             {leaveMutation.isPending
               ? 'Zapisywanie...'
               : isWaitlisted
-                ? 'Opuść kolejkę'
+                ? 'Opuść listę rezerwową'
                 : 'Zrezygnuj'}
           </Button>
         </DialogActions>

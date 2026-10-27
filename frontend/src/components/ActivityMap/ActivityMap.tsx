@@ -17,6 +17,7 @@ import {
   type ActivityCategoryVisualVariant,
 } from '../../config/activityCategoryPresentation'
 import type { Activity } from '../../types/activity'
+import { getActivityAvailability } from '../../utils/activityAvailability'
 import { getMapTileConfig, poznanMapCenter } from '../../utils/mapConfig'
 import 'leaflet/dist/leaflet.css'
 import './ActivityMap.css'
@@ -167,10 +168,7 @@ function ActivityMap({
         {userLocation !== null && <UserLocationLayer location={userLocation} />}
 
         {activities.map((activity) => {
-          const missingToMinimum = Math.max(
-            activity.min_participants - activity.participant_count,
-            0,
-          )
+          const availability = getActivityAvailability(activity)
           const hasParticipantLimit = activity.max_participants !== null
           const markerLabel = `${activity.title} — ${activity.category.name}`
 
@@ -193,19 +191,8 @@ function ActivityMap({
                       ? `${activity.participant_count} / ${activity.max_participants} uczestników`
                       : `${activity.participant_count} uczestników`}
                   </p>
-                  <p>
-                    {missingToMinimum > 0
-                      ? `Brakuje ${missingToMinimum} osób do kompletu`
-                      : 'Komplet zebrany'}
-                  </p>
-                  <p>
-                    {hasParticipantLimit
-                      ? activity.available_slots !== null &&
-                        activity.available_slots > 0
-                        ? `${activity.available_slots} wolnych miejsc`
-                        : 'Brak wolnych miejsc'
-                      : 'Bez limitu miejsc'}
-                  </p>
+                  <p>{availability.primaryMessage}</p>
+                  <p>{availability.secondaryMessage}</p>
                   <Link
                     className="activity-map__details-link"
                     to={`/activities/${activity.id}`}

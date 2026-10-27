@@ -1,6 +1,7 @@
 import { HourglassBottom } from '@mui/icons-material'
 import { Card, CardContent, Typography } from '@mui/material'
 import type { ActivityDetails } from '../../../../types/activity'
+import { getActivityAvailability } from '../../../../utils/activityAvailability'
 import ActivityCapacityIndicator from '../ActivityCapacityIndicator/ActivityCapacityIndicator'
 import './ActivityParticipantsCard.css'
 
@@ -9,10 +10,7 @@ interface ActivityParticipantsCardProps {
 }
 
 function ActivityParticipantsCard({ activity }: ActivityParticipantsCardProps) {
-  const missingToMinimum = Math.max(
-    activity.min_participants - activity.participant_count,
-    0,
-  )
+  const availability = getActivityAvailability(activity)
 
   return (
     <Card
@@ -49,14 +47,10 @@ function ActivityParticipantsCard({ activity }: ActivityParticipantsCardProps) {
             <dd>{activity.min_participants} osób</dd>
           </div>
           <div
-            className={`activity-participants-card__metric activity-participants-card__metric--status activity-participants-card__metric--${missingToMinimum > 0 ? 'waiting' : 'complete'}`}
+            className={`activity-participants-card__metric activity-participants-card__metric--status activity-participants-card__metric--${availability.state}`}
           >
-            <dt>Status kompletu</dt>
-            <dd>
-              {missingToMinimum > 0
-                ? `Brakuje ${missingToMinimum} osób`
-                : 'Komplet zebrany'}
-            </dd>
+            <dt>Status zapisów</dt>
+            <dd>{availability.primaryMessage}</dd>
           </div>
           <div className="activity-participants-card__metric activity-participants-card__metric--waitlist">
             <dt>

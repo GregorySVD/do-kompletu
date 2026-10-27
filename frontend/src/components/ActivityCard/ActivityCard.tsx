@@ -8,6 +8,7 @@ import {
 import { Link } from 'react-router-dom'
 import { getActivityCategoryPresentation } from '../../config/activityCategoryPresentation'
 import type { Activity } from '../../types/activity'
+import { getActivityAvailability } from '../../utils/activityAvailability'
 import ActivityCategoryBadge from '../ActivityCategoryBadge/ActivityCategoryBadge'
 import ActivityPriceBadge from '../ActivityPriceBadge/ActivityPriceBadge'
 import './ActivityCard.css'
@@ -45,15 +46,11 @@ function ActivityCard({
   const isCancelled = activity.status === 'CANCELLED'
   const effectiveStatusLabel = isCancelled ? 'Anulowana' : statusLabel
   const effectiveStatusColor = isCancelled ? 'error' : statusColor
-  const missingToMinimum = Math.max(
-    activity.min_participants - activity.participant_count,
-    0,
-  )
-  const isAlmostComplete =
+  const availability = getActivityAvailability(activity)
+  const shouldBoostActivity =
     showParticipationStats &&
     activity.status === 'PUBLISHED' &&
-    missingToMinimum > 0 &&
-    missingToMinimum <= 2
+    availability.isNearMinimum
   const hasParticipantLimit = activity.max_participants !== null
 
   return (
@@ -65,7 +62,7 @@ function ActivityCard({
       <Card
         component="article"
         variant="outlined"
-        className={`activity-card activity-card--${categoryPresentation.variant}${isAlmostComplete ? ' activity-card--almost-complete' : ''}`}
+        className={`activity-card activity-card--${categoryPresentation.variant}${shouldBoostActivity ? ' activity-card--near-minimum' : ''}`}
       >
         <CardContent>
           <div className="activity-card__top">
@@ -172,14 +169,10 @@ function ActivityCard({
                     : `${activity.participant_count} uczestników`}
                 </Typography>
                 <Typography
-                  className={
-                    isAlmostComplete
-                      ? 'activity-card__missing activity-card__missing--almost-complete'
-                      : 'activity-card__missing'
-                  }
+                  className={`activity-card__availability activity-card__availability--${availability.state}${shouldBoostActivity ? ' activity-card__availability--near-minimum' : ''}`}
                   color="text.secondary"
                 >
-                  {isAlmostComplete && (
+                  {shouldBoostActivity && (
                     <img
                       className="activity-card__flame"
                       src="/icons/flame-lit.gif"
@@ -188,19 +181,10 @@ function ActivityCard({
                       height="200"
                     />
                   )}
-                  <span>
-                    {missingToMinimum > 0
-                      ? `Brakuje${isAlmostComplete ? ' tylko' : ''} ${missingToMinimum} ${missingToMinimum === 1 ? 'osoby' : 'osób'} do kompletu`
-                      : 'Komplet zebrany'}
-                  </span>
+                  <span>{availability.primaryMessage}</span>
                 </Typography>
                 <Typography color="text.secondary">
-                  {hasParticipantLimit
-                    ? activity.available_slots !== null &&
-                      activity.available_slots > 0
-                      ? `${activity.available_slots} wolnych miejsc`
-                      : 'Brak wolnych miejsc'
-                    : 'Bez limitu miejsc'}
+                  {availability.secondaryMessage}
                 </Typography>
               </div>
             )}

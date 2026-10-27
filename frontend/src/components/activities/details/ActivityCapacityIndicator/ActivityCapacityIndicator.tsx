@@ -89,7 +89,7 @@ function ActivityCapacityIndicator({
       </div>
 
       <div className="activity-capacity__progress-copy" aria-hidden="true">
-        <span>EXP kompletu</span>
+        <span>EXP miejsc</span>
         <strong>{roundedOccupiedPercentage}%</strong>
       </div>
       <LinearProgress
@@ -110,7 +110,7 @@ function ActivityCapacityIndicator({
 
       {isFull && activity.status === 'PUBLISHED' && (
         <Typography className="activity-capacity__waitlist-note">
-          Kolejne zgłoszenia trafiają na listę rezerwową.
+          Brak wolnych miejsc. Nadal możesz dołączyć do listy rezerwowej.
         </Typography>
       )}
     </div>

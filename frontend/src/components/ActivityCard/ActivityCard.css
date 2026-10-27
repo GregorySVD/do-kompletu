@@ -124,7 +124,7 @@
   --activity-card-gradient-end: var(--category-creative-gradient-end);
 }
 
-.activity-card.MuiCard-root.activity-card--almost-complete {
+.activity-card.MuiCard-root.activity-card--near-minimum {
   background:
     var(--activity-card-surface-background) padding-box,
     repeating-linear-gradient(
@@ -149,7 +149,7 @@
 }
 
 .activity-card__link:hover
-  .activity-card.MuiCard-root.activity-card--almost-complete {
+  .activity-card.MuiCard-root.activity-card--near-minimum {
   box-shadow:
     5px 5px 0 color-mix(in srgb, var(--color-warning) 46%, transparent),
     0 0 0 1px color-mix(in srgb, var(--color-error) 30%, transparent);
@@ -353,7 +353,7 @@
   text-align: left;
 }
 
-.activity-card__missing--almost-complete {
+.activity-card__availability--near-minimum {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -377,7 +377,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .activity-card.MuiCard-root,
-  .activity-card.MuiCard-root.activity-card--almost-complete {
+  .activity-card.MuiCard-root.activity-card--near-minimum {
     animation: none;
     transition-duration: 0.01ms;
   }
@@ -419,7 +419,7 @@
     text-align: right;
   }
 
-  .activity-card__missing--almost-complete {
+  .activity-card__availability--near-minimum {
     justify-content: flex-end;
   }
 }

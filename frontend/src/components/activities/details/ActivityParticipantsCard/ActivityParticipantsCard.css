@@ -124,12 +124,17 @@
     color-mix(in srgb, var(--participants-card-accent) 16%, transparent);
 }
 
-.activity-participants-card__metric--waiting dd {
+.activity-participants-card__metric--needs-minimum dd,
+.activity-participants-card__metric--waitlist dd {
   color: var(--color-warning);
 }
 
-.activity-participants-card__metric--complete dd {
+.activity-participants-card__metric--available dd {
   color: var(--color-success);
+}
+
+.activity-participants-card__metric--unavailable dd {
+  color: var(--color-error);
 }
 
 .activity-participants-card__metrics dt {

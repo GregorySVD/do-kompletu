@@ -213,10 +213,10 @@ function MyActivitiesPage() {
 
       <ActivityQuerySection
         id="waitlisted-activities-title"
-        title="Waitlista"
+        title="Lista rezerwowa"
         query={waitlistedActivitiesQuery}
         emptyMessage="Nie oczekujesz obecnie na miejsce w żadnej aktywności."
-        statusLabel="Lista oczekujących"
+        statusLabel="Lista rezerwowa"
         secondaryStatusText={(activity) => {
           const participation = activity.current_user_participation
 

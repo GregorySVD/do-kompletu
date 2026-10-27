@@ -1,11 +1,20 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  AccountCircleOutlined,
+  LockOutlined,
+  LoginRounded,
+  VisibilityOffOutlined,
+  VisibilityOutlined,
+} from '@mui/icons-material'
 import axios from 'axios'
 import {
   Alert,
   Button,
   Card,
   CardContent,
+  IconButton,
+  InputAdornment,
   Link as MuiLink,
   TextField,
   Typography,
@@ -78,6 +87,7 @@ function getSafePostLoginPath(state: unknown) {
 
 function LoginForm() {
   const [apiError, setApiError] = useState<string | null>(null)
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const { login } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
@@ -109,46 +119,95 @@ function LoginForm() {
 
   return (
     <>
-      {apiError && <Alert severity="error">{apiError}</Alert>}
-
       <Card variant="outlined" className="login-card">
-        <CardContent>
+        <CardContent className="login-card__content">
+          {apiError && (
+            <Alert className="login-form__error" severity="error">
+              {apiError}
+            </Alert>
+          )}
+
           <form
             className="login-form"
             noValidate
             onSubmit={handleSubmit(submitForm)}
           >
             <TextField
+              className="login-form__field"
               label="E-mail lub nazwa użytkownika"
               type="text"
               autoComplete="username"
               error={Boolean(errors.identifier)}
               helperText={errors.identifier?.message}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <AccountCircleOutlined aria-hidden="true" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
               {...register('identifier')}
             />
 
             <TextField
+              className="login-form__field"
               label="Hasło"
-              type="password"
+              type={isPasswordVisible ? 'text' : 'password'}
               autoComplete="current-password"
               error={Boolean(errors.password)}
               helperText={errors.password?.message}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlined aria-hidden="true" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label={
+                          isPasswordVisible ? 'Ukryj hasło' : 'Pokaż hasło'
+                        }
+                        edge="end"
+                        onClick={() =>
+                          setIsPasswordVisible((isVisible) => !isVisible)
+                        }
+                      >
+                        {isPasswordVisible ? (
+                          <VisibilityOffOutlined />
+                        ) : (
+                          <VisibilityOutlined />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
               {...register('password')}
             />
 
             <Button
+              className="login-form__submit"
               type="submit"
               variant="contained"
               size="large"
               disabled={isSubmitting}
+              startIcon={<LoginRounded aria-hidden="true" />}
             >
               {isSubmitting ? 'Logowanie...' : 'Zaloguj się'}
             </Button>
 
             <Typography className="login-form__navigation">
-              Nie masz konta?{' '}
-              <MuiLink component={Link} to="/register">
-                Zarejestruj się
+              <span>Nie masz jeszcze konta?</span>
+              <MuiLink
+                className="login-form__register-link"
+                component={Link}
+                to="/register"
+              >
+                Utwórz konto
               </MuiLink>
             </Typography>
           </form>
