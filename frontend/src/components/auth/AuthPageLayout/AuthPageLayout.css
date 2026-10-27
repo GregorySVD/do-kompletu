@@ -1,18 +1,18 @@
-.login-page {
+.auth-page {
   width: min(100%, 74rem);
   margin-inline: auto;
   padding: clamp(var(--space-5), 4vw, var(--space-10)) var(--page-gutter)
     var(--section-gap);
 }
 
-.login-page__back-container {
+.auth-page__back-container {
   display: flex;
   justify-content: center;
   margin-top: clamp(var(--space-5), 3vw, var(--space-8));
 }
 
-.login-page__panel {
-  --login-accent: var(--color-accent);
+.auth-page__panel {
+  --auth-accent: var(--color-accent);
 
   position: relative;
   display: grid;
@@ -20,14 +20,14 @@
   overflow: hidden;
   background: var(--color-surface);
   border: 2px solid
-    color-mix(in srgb, var(--login-accent) 55%, var(--color-border));
+    color-mix(in srgb, var(--auth-accent) 55%, var(--color-border));
   border-radius: 0.6rem;
   box-shadow:
-    6px 6px 0 color-mix(in srgb, var(--login-accent) 22%, transparent),
+    6px 6px 0 color-mix(in srgb, var(--auth-accent) 22%, transparent),
     inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
-.login-page__panel::before {
+.auth-page__panel::before {
   position: absolute;
   z-index: 3;
   inset: 0 0 auto;
@@ -38,19 +38,19 @@
     90deg,
     var(--color-primary) 0 1.2rem,
     var(--brand-green-400) 1.2rem 2.4rem,
-    var(--login-accent) 2.4rem 3.6rem,
+    var(--auth-accent) 2.4rem 3.6rem,
     var(--activity-music-accent) 3.6rem 4.8rem
   );
 }
 
-.login-page__welcome,
-.login-page__form-column {
+.auth-page__welcome,
+.auth-page__form-column {
   position: relative;
   min-width: 0;
   padding: clamp(var(--space-6), 5vw, var(--space-10));
 }
 
-.login-page__welcome {
+.auth-page__welcome {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -58,16 +58,16 @@
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--color-primary) 13%, var(--color-surface)) 0 43%,
-    color-mix(in srgb, var(--login-accent) 12%, var(--color-surface)) 43% 72%,
+    color-mix(in srgb, var(--auth-accent) 12%, var(--color-surface)) 43% 72%,
     color-mix(in srgb, var(--activity-music-accent) 9%, var(--color-surface))
       72% 100%
   );
   border-bottom: 1px solid
-    color-mix(in srgb, var(--login-accent) 32%, var(--color-border));
+    color-mix(in srgb, var(--auth-accent) 32%, var(--color-border));
 }
 
-.login-page__welcome::after,
-.login-page__form-column::after {
+.auth-page__welcome::after,
+.auth-page__form-column::after {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -76,18 +76,18 @@
   background: repeating-linear-gradient(
     0deg,
     transparent 0 0.3rem,
-    color-mix(in srgb, var(--login-accent) 28%, transparent) 0.3rem 0.35rem
+    color-mix(in srgb, var(--auth-accent) 28%, transparent) 0.3rem 0.35rem
   );
 }
 
-.login-page__welcome > *,
-.login-page__form-column > * {
+.auth-page__welcome > *,
+.auth-page__form-column > * {
   position: relative;
   z-index: 1;
 }
 
-.login-page__eyebrow,
-.login-page__form-step {
+.auth-page__eyebrow,
+.auth-page__form-step {
   width: fit-content;
   color: var(--color-primary);
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
@@ -97,7 +97,7 @@
   text-transform: uppercase;
 }
 
-.login-page__eyebrow {
+.auth-page__eyebrow {
   padding: 0.35rem 0.65rem;
   color: var(--color-text-primary);
   background: color-mix(
@@ -112,7 +112,7 @@
     color-mix(in srgb, var(--color-primary) 24%, transparent);
 }
 
-.login-page__brand-mark {
+.auth-page__brand-mark {
   display: grid;
   width: clamp(5rem, 14vw, 7.5rem);
   aspect-ratio: 1;
@@ -120,34 +120,34 @@
   place-items: center;
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--login-accent) 18%, var(--color-surface)) 0 50%,
+    color-mix(in srgb, var(--auth-accent) 18%, var(--color-surface)) 0 50%,
     color-mix(in srgb, var(--color-primary) 18%, var(--color-surface)) 50% 100%
   );
   border: 3px solid
-    color-mix(in srgb, var(--login-accent) 66%, var(--color-border));
+    color-mix(in srgb, var(--auth-accent) 66%, var(--color-border));
   border-radius: 0.6rem;
   box-shadow:
     inset 3px 3px 0 color-mix(in srgb, var(--color-surface) 64%, #fff),
-    5px 5px 0 color-mix(in srgb, var(--login-accent) 30%, transparent);
+    5px 5px 0 color-mix(in srgb, var(--auth-accent) 30%, transparent);
   transform: rotate(-2deg);
 }
 
-.login-page__brand-mark img {
+.auth-page__brand-mark img {
   display: block;
   width: 82%;
   height: 82%;
   object-fit: contain;
   filter: drop-shadow(
-    0 0 0.55rem color-mix(in srgb, var(--login-accent) 44%, transparent)
+    0 0 0.55rem color-mix(in srgb, var(--auth-accent) 44%, transparent)
   );
 }
 
-.login-page__welcome-copy {
+.auth-page__welcome-copy {
   margin-top: var(--space-6);
 }
 
-.login-page__welcome-title.MuiTypography-root,
-.login-page__title.MuiTypography-root {
+.auth-page__welcome-title.MuiTypography-root,
+.auth-page__title.MuiTypography-root {
   width: fit-content;
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-weight: var(--font-weight-bold);
@@ -156,24 +156,23 @@
   background: linear-gradient(
     180deg,
     transparent 0 72%,
-    color-mix(in srgb, var(--login-accent) 25%, transparent) 72% 100%
+    color-mix(in srgb, var(--auth-accent) 25%, transparent) 72% 100%
   );
-  text-shadow: 2px 2px 0
-    color-mix(in srgb, var(--login-accent) 22%, transparent);
+  text-shadow: 2px 2px 0 color-mix(in srgb, var(--auth-accent) 22%, transparent);
 }
 
-.login-page__welcome-title.MuiTypography-root {
+.auth-page__welcome-title.MuiTypography-root {
   font-size: clamp(1.6rem, 4vw, 2.45rem);
 }
 
-.login-page__welcome-text.MuiTypography-root {
+.auth-page__welcome-text.MuiTypography-root {
   max-width: 36rem;
   margin-top: var(--space-3);
   color: var(--color-text-secondary);
   line-height: 1.65;
 }
 
-.login-page__benefits {
+.auth-page__benefits {
   display: grid;
   margin: var(--space-6) 0 0;
   padding: 0;
@@ -181,7 +180,7 @@
   list-style: none;
 }
 
-.login-page__benefits li {
+.auth-page__benefits li {
   display: grid;
   grid-template-columns: 2rem minmax(0, 1fr);
   align-items: center;
@@ -190,36 +189,36 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   background: color-mix(in srgb, var(--color-surface) 76%, transparent);
-  border: 1px solid color-mix(in srgb, var(--login-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--auth-accent) 18%, transparent);
   border-radius: 0.25rem;
 }
 
-.login-page__benefits li span {
-  color: var(--login-accent);
+.auth-page__benefits li span {
+  color: var(--auth-accent);
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
 }
 
-.login-page__form-column {
+.auth-page__form-column {
   align-self: stretch;
   background: linear-gradient(
     120deg,
     var(--color-surface) 0 62%,
-    color-mix(in srgb, var(--login-accent) 6%, var(--color-surface)) 62% 100%
+    color-mix(in srgb, var(--auth-accent) 6%, var(--color-surface)) 62% 100%
   );
 }
 
-.login-page__heading {
+.auth-page__heading {
   margin-bottom: var(--space-6);
 }
 
-.login-page__title.MuiTypography-root {
+.auth-page__title.MuiTypography-root {
   margin-top: var(--space-2);
   font-size: clamp(2rem, 5vw, 3rem);
 }
 
-.login-page__subtitle.MuiTypography-root {
+.auth-page__subtitle.MuiTypography-root {
   max-width: 31rem;
   margin-top: var(--space-2);
   color: var(--color-text-secondary);
@@ -227,28 +226,28 @@
 }
 
 @media (min-width: 52rem) {
-  .login-page__panel {
+  .auth-page__panel {
     grid-template-columns: minmax(19rem, 0.9fr) minmax(24rem, 1.1fr);
   }
 
-  .login-page__welcome {
+  .auth-page__welcome {
     border-right: 1px solid
-      color-mix(in srgb, var(--login-accent) 32%, var(--color-border));
+      color-mix(in srgb, var(--auth-accent) 32%, var(--color-border));
     border-bottom: 0;
   }
 }
 
 @media (max-width: 36rem) {
-  .login-page__welcome,
-  .login-page__form-column {
+  .auth-page__welcome,
+  .auth-page__form-column {
     padding: var(--space-6) var(--space-4);
   }
 
-  .login-page__brand-mark {
+  .auth-page__brand-mark {
     width: 4.75rem;
   }
 
-  .login-page__benefits {
+  .auth-page__benefits {
     display: none;
   }
 }

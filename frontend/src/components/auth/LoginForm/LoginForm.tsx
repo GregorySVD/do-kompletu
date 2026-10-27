@@ -4,8 +4,6 @@ import {
   AccountCircleOutlined,
   LockOutlined,
   LoginRounded,
-  VisibilityOffOutlined,
-  VisibilityOutlined,
 } from '@mui/icons-material'
 import axios from 'axios'
 import {
@@ -13,34 +11,19 @@ import {
   Button,
   Card,
   CardContent,
-  IconButton,
-  InputAdornment,
   Link as MuiLink,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { z } from 'zod'
 import { useAuth } from '../../../context/auth'
 import type { LoginFormValues } from '../../../types/auth'
-import './LoginForm.css'
-
-const loginSchema = z.object({
-  identifier: z
-    .string()
-    .min(1, 'Wprowadź e-mail lub nazwę użytkownika.')
-    .max(320, 'E-mail lub nazwa użytkownika może mieć maksymalnie 320 znaków'),
-  password: z
-    .string()
-    .min(1, 'Hasło jest wymagane')
-    .max(128, 'Hasło może mieć maksymalnie 128 znaków'),
-})
-
-const defaultValues: LoginFormValues = {
-  identifier: '',
-  password: '',
-}
+import {
+  loginFormDefaultValues,
+  loginFormSchema,
+} from '../../../validation/authFormSchemas'
+import AuthTextField from '../AuthTextField/AuthTextField'
+import '../AuthForm/AuthForm.css'
 
 interface LoginLocationState {
   from?: {
@@ -87,17 +70,18 @@ function getSafePostLoginPath(state: unknown) {
 
 function LoginForm() {
   const [apiError, setApiError] = useState<string | null>(null)
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const { login } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues,
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: loginFormDefaultValues,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
   })
 
   async function submitForm(values: LoginFormValues) {
@@ -118,102 +102,62 @@ function LoginForm() {
   }
 
   return (
-    <>
-      <Card variant="outlined" className="login-card">
-        <CardContent className="login-card__content">
-          {apiError && (
-            <Alert className="login-form__error" severity="error">
-              {apiError}
-            </Alert>
-          )}
+    <Card variant="outlined" className="auth-card">
+      <CardContent className="auth-card__content">
+        {apiError && (
+          <Alert className="auth-form__error" severity="error">
+            {apiError}
+          </Alert>
+        )}
 
-          <form
-            className="login-form"
-            noValidate
-            onSubmit={handleSubmit(submitForm)}
+        <form
+          className="auth-form"
+          noValidate
+          onSubmit={handleSubmit(submitForm)}
+        >
+          <AuthTextField
+            label="E-mail lub nazwa użytkownika"
+            autoComplete="username"
+            disabled={isSubmitting}
+            errorMessage={errors.identifier?.message}
+            registration={register('identifier')}
+            startIcon={<AccountCircleOutlined aria-hidden="true" />}
+          />
+
+          <AuthTextField
+            label="Hasło"
+            type="password"
+            autoComplete="current-password"
+            disabled={isSubmitting}
+            errorMessage={errors.password?.message}
+            registration={register('password')}
+            startIcon={<LockOutlined aria-hidden="true" />}
+          />
+
+          <Button
+            className="auth-form__submit"
+            type="submit"
+            variant="contained"
+            size="large"
+            disabled={isSubmitting || !isValid}
+            startIcon={<LoginRounded aria-hidden="true" />}
           >
-            <TextField
-              className="login-form__field"
-              label="E-mail lub nazwa użytkownika"
-              type="text"
-              autoComplete="username"
-              error={Boolean(errors.identifier)}
-              helperText={errors.identifier?.message}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <AccountCircleOutlined aria-hidden="true" />
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              {...register('identifier')}
-            />
+            {isSubmitting ? 'Logowanie...' : 'Zaloguj się'}
+          </Button>
 
-            <TextField
-              className="login-form__field"
-              label="Hasło"
-              type={isPasswordVisible ? 'text' : 'password'}
-              autoComplete="current-password"
-              error={Boolean(errors.password)}
-              helperText={errors.password?.message}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockOutlined aria-hidden="true" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label={
-                          isPasswordVisible ? 'Ukryj hasło' : 'Pokaż hasło'
-                        }
-                        edge="end"
-                        onClick={() =>
-                          setIsPasswordVisible((isVisible) => !isVisible)
-                        }
-                      >
-                        {isPasswordVisible ? (
-                          <VisibilityOffOutlined />
-                        ) : (
-                          <VisibilityOutlined />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              {...register('password')}
-            />
-
-            <Button
-              className="login-form__submit"
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={isSubmitting}
-              startIcon={<LoginRounded aria-hidden="true" />}
+          <Typography className="auth-form__navigation">
+            <span>Nie masz jeszcze konta?</span>
+            <MuiLink
+              className="auth-form__secondary-link"
+              component={Link}
+              to="/register"
             >
-              {isSubmitting ? 'Logowanie...' : 'Zaloguj się'}
-            </Button>
-
-            <Typography className="login-form__navigation">
-              <span>Nie masz jeszcze konta?</span>
-              <MuiLink
-                className="login-form__register-link"
-                component={Link}
-                to="/register"
-              >
-                Utwórz konto
-              </MuiLink>
-            </Typography>
-          </form>
-        </CardContent>
-      </Card>
-    </>
+              Utwórz konto
+            </MuiLink>
+          </Typography>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 

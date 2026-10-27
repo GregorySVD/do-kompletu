@@ -1,4 +1,4 @@
-.login-card.MuiCard-root {
+.auth-card.MuiCard-root {
   overflow: visible;
   background: color-mix(in srgb, var(--color-surface-soft) 72%, transparent);
   border: 1px solid
@@ -9,33 +9,33 @@
     inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
-.login-card__content.MuiCardContent-root {
+.auth-card__content.MuiCardContent-root {
   padding: clamp(var(--space-4), 4vw, var(--space-6));
 }
 
-.login-card__content.MuiCardContent-root:last-child {
+.auth-card__content.MuiCardContent-root:last-child {
   padding-bottom: clamp(var(--space-4), 4vw, var(--space-6));
 }
 
-.login-form {
+.auth-form {
   display: grid;
   gap: var(--space-5);
 }
 
-.login-form__error.MuiAlert-root {
+.auth-form__error.MuiAlert-root {
   margin-bottom: var(--space-4);
   border: 1px solid
     color-mix(in srgb, var(--color-error) 52%, var(--color-border));
   border-radius: 0.3rem;
 }
 
-.login-form__field .MuiInputLabel-root {
+.auth-form__field .MuiInputLabel-root {
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
 }
 
-.login-form__field .MuiOutlinedInput-root {
+.auth-form__field .MuiOutlinedInput-root {
   position: relative;
   min-height: 3.6rem;
   background: color-mix(in srgb, var(--color-surface) 86%, transparent);
@@ -46,7 +46,7 @@
     transform 90ms steps(2, end);
 }
 
-.login-form__field .MuiOutlinedInput-input {
+.auth-form__field .MuiOutlinedInput-input {
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-weight: var(--font-weight-medium);
   letter-spacing: 0.015em;
@@ -54,12 +54,12 @@
   caret-shape: block;
 }
 
-.login-form__field .MuiOutlinedInput-input::selection {
+.auth-form__field .MuiOutlinedInput-input::selection {
   color: var(--color-text-primary);
   background: color-mix(in srgb, var(--color-accent) 42%, var(--color-primary));
 }
 
-.login-form__field .MuiOutlinedInput-notchedOutline {
+.auth-form__field .MuiOutlinedInput-notchedOutline {
   border-width: 2px;
   border-color: color-mix(
     in srgb,
@@ -68,11 +68,11 @@
   );
 }
 
-.login-form__field .MuiOutlinedInput-root:hover {
+.auth-form__field .MuiOutlinedInput-root:hover {
   background: var(--color-surface);
 }
 
-.login-form__field
+.auth-form__field
   .MuiOutlinedInput-root:hover
   .MuiOutlinedInput-notchedOutline {
   border-color: color-mix(
@@ -82,16 +82,16 @@
   );
 }
 
-.login-form__field .MuiOutlinedInput-root.Mui-focused {
+.auth-form__field .MuiOutlinedInput-root.Mui-focused {
   background: var(--color-surface);
   box-shadow:
     3px 3px 0 color-mix(in srgb, var(--color-primary) 24%, transparent),
     0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent);
   transform: translate(-1px, -1px);
-  animation: login-input-activate 360ms steps(4, end);
+  animation: auth-input-activate 360ms steps(4, end);
 }
 
-.login-form__field .MuiOutlinedInput-root.Mui-focused::after {
+.auth-form__field .MuiOutlinedInput-root.Mui-focused::after {
   position: absolute;
   top: -0.75rem;
   right: 0.55rem;
@@ -107,39 +107,39 @@
   background: var(--color-surface);
   text-shadow: 0 0 0.35rem
     color-mix(in srgb, var(--color-primary) 72%, transparent);
-  animation: login-terminal-cursor 900ms steps(1, end) infinite;
+  animation: auth-terminal-cursor 900ms steps(1, end) infinite;
 }
 
-.login-form__field .MuiOutlinedInput-root.Mui-error.Mui-focused::after {
+.auth-form__field .MuiOutlinedInput-root.Mui-error.Mui-focused::after {
   color: var(--color-error);
   text-shadow: 0 0 0.35rem
     color-mix(in srgb, var(--color-error) 72%, transparent);
 }
 
-.login-form__field .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-input {
+.auth-form__field .MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-input {
   caret-color: var(--color-error);
 }
 
-.login-form__field
+.auth-form__field
   .MuiOutlinedInput-root.Mui-focused
   .MuiOutlinedInput-notchedOutline {
   border-color: var(--color-primary);
 }
 
-.login-form__field .MuiInputAdornment-root {
+.auth-form__field .MuiInputAdornment-root {
   color: color-mix(in srgb, var(--color-accent) 78%, var(--color-text-primary));
 }
 
-.login-form__field .MuiIconButton-root {
+.auth-form__field .MuiIconButton-root {
   color: var(--color-text-secondary);
 }
 
-.login-form__field .MuiFormHelperText-root {
+.auth-form__field .MuiFormHelperText-root {
   margin-inline: 0.15rem;
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
-.login-form__submit.MuiButton-root {
+.auth-form__submit.MuiButton-root {
   min-height: 3.35rem;
   color: var(--color-text-inverse);
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
@@ -166,7 +166,7 @@
     transform 100ms steps(2, end);
 }
 
-.login-form__submit.MuiButton-root:hover {
+.auth-form__submit.MuiButton-root:hover {
   background: linear-gradient(
     90deg,
     var(--brand-green-600) 0 18%,
@@ -181,7 +181,7 @@
   transform: translate(-1px, -1px);
 }
 
-.login-form__submit.MuiButton-root:active {
+.auth-form__submit.MuiButton-root:active {
   box-shadow:
     inset 0 2px 0 color-mix(in srgb, var(--brand-green-700) 78%, #07170b),
     inset 0 -1px 0 color-mix(in srgb, var(--brand-green-400) 55%, #fff),
@@ -190,22 +190,24 @@
   transform: translate(3px, 3px);
 }
 
-.login-form__submit.MuiButton-root.Mui-disabled {
-  color: color-mix(in srgb, var(--color-text-inverse) 58%, transparent);
+.auth-form__submit.MuiButton-root.Mui-disabled {
+  color: color-mix(in srgb, var(--color-text-primary) 72%, transparent);
   background: color-mix(
     in srgb,
-    var(--brand-green-700) 54%,
-    var(--color-surface)
+    var(--brand-green-600) 38%,
+    var(--color-surface-strong)
   );
   border-color: color-mix(
     in srgb,
-    var(--brand-green-700) 44%,
+    var(--brand-green-700) 52%,
     var(--color-border)
   );
-  box-shadow: none;
+  box-shadow: inset 0 2px 0
+    color-mix(in srgb, var(--brand-green-400) 24%, transparent);
+  text-shadow: none;
 }
 
-.login-form__navigation.MuiTypography-root {
+.auth-form__navigation.MuiTypography-root {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -216,7 +218,7 @@
   text-align: center;
 }
 
-.login-form__register-link.MuiLink-root {
+.auth-form__secondary-link.MuiLink-root {
   padding: 0.3rem 0.55rem;
   color: var(--color-accent);
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
@@ -226,12 +228,62 @@
   border-radius: 0.2rem;
 }
 
-.login-form__register-link.MuiLink-root:hover {
+.auth-form__secondary-link.MuiLink-root:hover {
   color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 9%, transparent);
 }
 
-@keyframes login-input-activate {
+.auth-form__requirements {
+  padding: var(--space-3);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)) 0 48%,
+    color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)) 48% 100%
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--color-accent) 30%, var(--color-border));
+  border-radius: 0.3rem;
+}
+
+.auth-form__requirements-title {
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-form__requirements ul {
+  display: grid;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.auth-form__requirement {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.auth-form__requirement .MuiSvgIcon-root {
+  flex: 0 0 auto;
+  font-size: var(--font-size-lg);
+}
+
+.auth-form__requirement--valid {
+  color: var(--color-success);
+}
+
+.auth-form__requirement--invalid {
+  color: var(--color-error);
+}
+
+@keyframes auth-input-activate {
   0% {
     box-shadow: none;
     transform: translate(0, 0);
@@ -261,7 +313,7 @@
   }
 }
 
-@keyframes login-terminal-cursor {
+@keyframes auth-terminal-cursor {
   0%,
   48% {
     opacity: 1;
@@ -274,13 +326,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .login-form__field .MuiOutlinedInput-root,
-  .login-form__submit.MuiButton-root {
+  .auth-form__field .MuiOutlinedInput-root,
+  .auth-form__submit.MuiButton-root {
     transition-duration: 0.01ms;
   }
 
-  .login-form__field .MuiOutlinedInput-root.Mui-focused,
-  .login-form__field .MuiOutlinedInput-root.Mui-focused::after {
+  .auth-form__field .MuiOutlinedInput-root.Mui-focused,
+  .auth-form__field .MuiOutlinedInput-root.Mui-focused::after {
     animation: none;
   }
 }
