@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import { getActivityCategoryPresentation } from '../../config/activityCategoryPresentation'
 import type { Activity } from '../../types/activity'
 import { getActivityAvailability } from '../../utils/activityAvailability'
+import type { ActivityReturnPath } from '../../utils/activityNavigation'
 import ActivityCategoryBadge from '../ActivityCategoryBadge/ActivityCategoryBadge'
 import ActivityPriceBadge from '../ActivityPriceBadge/ActivityPriceBadge'
 import './ActivityCard.css'
@@ -17,6 +18,7 @@ interface ActivityCardProps {
   activity: Activity
   emphasizeMetadata?: boolean
   headingLevel?: 'h2' | 'h3'
+  returnTo?: ActivityReturnPath
   secondaryStatusText?: string
   showParticipationStats?: boolean
   statusColor?: ChipProps['color']
@@ -35,6 +37,7 @@ function ActivityCard({
   activity,
   emphasizeMetadata = false,
   headingLevel = 'h2',
+  returnTo,
   secondaryStatusText,
   showParticipationStats = true,
   statusColor = 'primary',
@@ -59,6 +62,7 @@ function ActivityCard({
     <Link
       className="activity-card__link"
       to={`/activities/${activity.id}`}
+      state={returnTo ? { activityReturnTo: returnTo } : undefined}
       aria-label={`Zobacz szczegóły: ${activity.title}`}
     >
       <Card

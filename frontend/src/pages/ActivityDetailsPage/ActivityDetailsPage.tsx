@@ -1,15 +1,29 @@
 import axios from 'axios'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import ActivityDetailsContent from '../../components/activities/details/ActivityDetailsContent/ActivityDetailsContent'
 import BackButton from '../../components/navigation/BackButton/BackButton'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import { useActivityDetailsQuery } from '../../hooks/queries/useActivityDetailsQuery'
+import {
+  getActivityReturnLabel,
+  getActivityReturnPath,
+  type ActivityReturnPath,
+} from '../../utils/activityNavigation'
 import './ActivityDetailsPage.css'
 
-function ActivityNotFound() {
+interface ActivityBackNavigation {
+  label: string
+  path: ActivityReturnPath
+}
+
+function ActivityBackButton({ label, path }: ActivityBackNavigation) {
+  return <BackButton to={path}>{label}</BackButton>
+}
+
+function ActivityNotFound({ label, path }: ActivityBackNavigation) {
   return (
     <main className="activity-details-page activity-details-page--not-found">
-      <BackButton to="/" />
+      <ActivityBackButton label={label} path={path} />
 
       <section
         className="activity-not-found"
@@ -42,7 +56,13 @@ function ActivityNotFound() {
 
 function ActivityDetailsPage() {
   const { activityId } = useParams()
+  const location = useLocation()
   const activityQuery = useActivityDetailsQuery(activityId ?? '')
+  const returnPath = getActivityReturnPath(location.state)
+  const backNavigation: ActivityBackNavigation = {
+    label: getActivityReturnLabel(returnPath),
+    path: returnPath,
+  }
   const isNotFound =
     !activityId ||
     (axios.isAxiosError(activityQuery.error) &&
@@ -51,20 +71,20 @@ function ActivityDetailsPage() {
   if (activityQuery.isPending && activityId) {
     return (
       <main className="activity-details-page">
-        <BackButton to="/" />
+        <ActivityBackButton {...backNavigation} />
         <QueryStateMessage message="Ładowanie aktywności..." isLoading />
       </main>
     )
   }
 
   if (isNotFound) {
-    return <ActivityNotFound />
+    return <ActivityNotFound {...backNavigation} />
   }
 
   if (activityQuery.isError) {
     return (
       <main className="activity-details-page">
-        <BackButton to="/" />
+        <ActivityBackButton {...backNavigation} />
         <QueryStateMessage
           message="Nie udało się pobrać aktywności."
           isRetrying={activityQuery.isFetching}
@@ -77,12 +97,12 @@ function ActivityDetailsPage() {
   }
 
   if (!activityQuery.data) {
-    return <ActivityNotFound />
+    return <ActivityNotFound {...backNavigation} />
   }
 
   return (
     <main className="activity-details-page">
-      <BackButton to="/" />
+      <ActivityBackButton {...backNavigation} />
 
       <ActivityDetailsContent activity={activityQuery.data} />
     </main>

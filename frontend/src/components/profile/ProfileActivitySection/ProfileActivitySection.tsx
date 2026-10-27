@@ -2,6 +2,7 @@ import { Button, Typography, type ChipProps } from '@mui/material'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { ActivityDetails } from '../../../types/activity'
+import type { ActivityReturnPath } from '../../../utils/activityNavigation'
 import ActivityCard from '../../ActivityCard/ActivityCard'
 import './ProfileActivitySection.css'
 
@@ -14,6 +15,7 @@ export interface ProfileActivityStatusPresentation {
 export interface ProfileActivitySectionProps {
   actionLabel?: string
   actionTo?: string
+  activityReturnTo?: ActivityReturnPath
   activities: ActivityDetails[]
   contentFallback?: ReactNode
   description: string
@@ -26,12 +28,14 @@ export interface ProfileActivitySectionProps {
   statusPresentation?: (
     activity: ActivityDetails,
   ) => ProfileActivityStatusPresentation | undefined
+  tone?: 'default' | 'upcoming' | 'waitlist' | 'organized' | 'history'
   title: string
 }
 
 function ProfileActivitySection({
   actionLabel,
   actionTo,
+  activityReturnTo,
   activities,
   contentFallback,
   description,
@@ -42,6 +46,7 @@ function ProfileActivitySection({
   limit,
   showParticipationStats = true,
   statusPresentation,
+  tone = 'default',
   title,
 }: ProfileActivitySectionProps) {
   const visibleActivities =
@@ -51,7 +56,10 @@ function ProfileActivitySection({
     contentFallback === undefined ? String(activities.length) : '—'
 
   return (
-    <section className="profile-activity-section" aria-labelledby={id}>
+    <section
+      className={`profile-activity-section profile-activity-section--${tone}`}
+      aria-labelledby={id}
+    >
       <div className="profile-activity-section__heading">
         <div>
           <Typography
@@ -108,6 +116,7 @@ function ProfileActivitySection({
                     activity={activity}
                     emphasizeMetadata
                     headingLevel="h3"
+                    returnTo={activityReturnTo}
                     secondaryStatusText={presentation?.secondaryStatusText}
                     showParticipationStats={showParticipationStats}
                     statusColor={presentation?.color}

@@ -1,5 +1,96 @@
 .profile-activity-section {
+  --profile-section-accent: var(--color-primary);
+  --profile-section-secondary: var(--color-accent);
+
   min-width: 0;
+}
+
+.profile-activity-section--upcoming,
+.profile-activity-section--waitlist,
+.profile-activity-section--organized,
+.profile-activity-section--history {
+  position: relative;
+  isolation: isolate;
+  padding: clamp(var(--space-4), 3vw, var(--space-6));
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    color-mix(in srgb, var(--profile-section-accent) 5%, var(--color-surface)) 0
+      52%,
+    color-mix(
+        in srgb,
+        var(--profile-section-secondary) 7%,
+        var(--color-surface)
+      )
+      52% 78%,
+    color-mix(in srgb, var(--profile-section-accent) 9%, var(--color-surface))
+      78% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--profile-section-accent) 36%, var(--color-border));
+  border-radius: var(--radius-md);
+  box-shadow:
+    6px 6px 0 color-mix(in srgb, var(--profile-section-accent) 14%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--profile-section-secondary) 10%, transparent);
+}
+
+.profile-activity-section--upcoming {
+  --profile-section-accent: var(--brand-green-400);
+  --profile-section-secondary: var(--category-technology-color);
+}
+
+.profile-activity-section--waitlist {
+  --profile-section-accent: var(--brand-purple-400);
+  --profile-section-secondary: var(--activity-music-accent);
+}
+
+.profile-activity-section--organized {
+  --profile-section-accent: var(--activity-music-accent);
+  --profile-section-secondary: var(--brand-green-400);
+}
+
+.profile-activity-section--history {
+  --profile-section-accent: var(--category-technology-color);
+  --profile-section-secondary: var(--brand-purple-400);
+}
+
+.profile-activity-section--upcoming::before,
+.profile-activity-section--waitlist::before,
+.profile-activity-section--organized::before,
+.profile-activity-section--history::before {
+  position: absolute;
+  z-index: -1;
+  inset: -35% -20%;
+  content: '';
+  opacity: 0.16;
+  background: repeating-linear-gradient(
+    118deg,
+    transparent 0 16rem,
+    var(--profile-section-accent) 16rem 16.25rem,
+    transparent 16.25rem 23rem,
+    var(--profile-section-secondary) 23rem 23.15rem,
+    transparent 23.15rem 34rem
+  );
+  pointer-events: none;
+  animation: profile-section-signal 11s steps(14, end) infinite;
+}
+
+.profile-activity-section--upcoming::after,
+.profile-activity-section--waitlist::after,
+.profile-activity-section--organized::after,
+.profile-activity-section--history::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: '';
+  opacity: 0.32;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 5px,
+    color-mix(in srgb, var(--profile-section-accent) 5%, transparent) 5px 6px
+  );
+  pointer-events: none;
 }
 
 .profile-activity-section__heading {
@@ -14,18 +105,25 @@
     repeating-linear-gradient(
       0deg,
       transparent 0 5px,
-      color-mix(in srgb, var(--color-primary) 2%, transparent) 5px 6px
+      color-mix(in srgb, var(--profile-section-accent) 2%, transparent) 5px 6px
     ),
     linear-gradient(
       125deg,
       var(--color-surface) 0 54%,
-      color-mix(in srgb, var(--color-accent) 5%, var(--color-surface)) 54% 78%,
-      color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)) 78% 100%
+      color-mix(
+          in srgb,
+          var(--profile-section-secondary) 5%,
+          var(--color-surface)
+        )
+        54% 78%,
+      color-mix(in srgb, var(--profile-section-accent) 8%, var(--color-surface))
+        78% 100%
     );
-  border: 1px solid var(--color-border);
+  border: 1px solid
+    color-mix(in srgb, var(--profile-section-accent) 30%, var(--color-border));
   border-radius: var(--radius-sm);
   box-shadow: 3px 3px 0
-    color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color-mix(in srgb, var(--profile-section-accent) 10%, transparent);
 }
 
 .profile-activity-section__heading::after {
@@ -38,9 +136,10 @@
   background: linear-gradient(
     135deg,
     transparent 0 38%,
-    color-mix(in srgb, var(--color-accent) 15%, transparent) 38% 52%,
+    color-mix(in srgb, var(--profile-section-secondary) 15%, transparent) 38%
+      52%,
     transparent 52% 66%,
-    color-mix(in srgb, var(--color-primary) 18%, transparent) 66% 78%,
+    color-mix(in srgb, var(--profile-section-accent) 18%, transparent) 66% 78%,
     transparent 78%
   );
   pointer-events: none;
@@ -52,7 +151,7 @@
 
 .profile-activity-section__kicker.MuiTypography-root {
   margin-bottom: var(--space-2);
-  color: var(--color-primary);
+  color: var(--profile-section-accent);
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
@@ -71,10 +170,11 @@
   background: linear-gradient(
     180deg,
     transparent 0 74%,
-    color-mix(in srgb, var(--color-accent) 20%, transparent) 74% 100%
+    color-mix(in srgb, var(--profile-section-secondary) 20%, transparent) 74%
+      100%
   );
   text-shadow: 2px 2px 0
-    color-mix(in srgb, var(--color-accent) 18%, transparent);
+    color-mix(in srgb, var(--profile-section-secondary) 18%, transparent);
 }
 
 .profile-activity-section__description.MuiTypography-root {
@@ -91,14 +191,14 @@
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   background: linear-gradient(
     90deg,
-    var(--brand-purple-600) 0 38%,
-    var(--brand-purple-500) 38% 68%,
-    var(--brand-green-500) 68% 100%
+    color-mix(in srgb, var(--profile-section-secondary) 78%, #1b1231) 0 38%,
+    var(--profile-section-secondary) 38% 68%,
+    var(--profile-section-accent) 68% 100%
   );
-  border: 2px solid var(--brand-purple-400);
+  border: 2px solid var(--profile-section-secondary);
   border-radius: 0.35rem;
   box-shadow: 3px 3px 0
-    color-mix(in srgb, var(--brand-purple-700) 40%, transparent);
+    color-mix(in srgb, var(--profile-section-secondary) 40%, transparent);
 }
 
 .profile-activity-section__count span {
@@ -215,7 +315,12 @@
   background: linear-gradient(
     115deg,
     var(--color-surface) 0 65%,
-    color-mix(in srgb, var(--color-accent) 6%, var(--color-surface)) 65% 100%
+    color-mix(
+        in srgb,
+        var(--profile-section-secondary) 6%,
+        var(--color-surface)
+      )
+      65% 100%
   );
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -223,7 +328,7 @@
 
 .profile-activity-section__empty-code {
   flex: 0 0 auto;
-  color: var(--color-accent);
+  color: var(--profile-section-secondary);
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
@@ -307,6 +412,25 @@
   }
 }
 
+@keyframes profile-section-signal {
+  0%,
+  100% {
+    transform: translate3d(-5%, 0, 0);
+  }
+
+  48% {
+    transform: translate3d(4%, 0, 0);
+  }
+
+  52% {
+    transform: translate3d(3%, 0.35rem, 0);
+  }
+
+  56% {
+    transform: translate3d(5%, 0, 0);
+  }
+}
+
 @media (min-width: 37.5rem) {
   .profile-activity-section__heading {
     flex-direction: row;
@@ -325,5 +449,12 @@
   .profile-activity-section__item--nearest::before,
   .profile-activity-section__item--nearest::after {
     display: none;
+  }
+
+  .profile-activity-section--upcoming::before,
+  .profile-activity-section--waitlist::before,
+  .profile-activity-section--organized::before,
+  .profile-activity-section--history::before {
+    animation: none;
   }
 }

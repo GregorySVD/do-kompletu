@@ -331,6 +331,7 @@ function ProfilePage() {
           limit={profileSectionLimit}
           actionLabel="Zobacz wszystkie zapisy"
           actionTo="/profile/activities"
+          activityReturnTo="/profile"
         />
 
         <ProfileActivityQuerySection
@@ -345,6 +346,7 @@ function ProfilePage() {
           limit={profileSectionLimit}
           actionLabel="Zarządzaj aktywnościami"
           actionTo="/profile/activities"
+          activityReturnTo="/profile"
         />
 
         <ProfileActivityQuerySection
@@ -360,6 +362,7 @@ function ProfilePage() {
           limit={profileSectionLimit}
           actionLabel="Otwórz pełną historię"
           actionTo="/profile/activities"
+          activityReturnTo="/profile"
         />
       </div>
 
