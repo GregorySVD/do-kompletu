@@ -1,0 +1,92 @@
+.minecraft-back-button.MuiButton-root {
+  min-height: var(--touch-target-min);
+  padding: 0.25rem 0.9rem 0.25rem 0.35rem;
+  color: #fff;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  letter-spacing: 0.015em;
+  text-transform: none;
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-700) 0 24%,
+    var(--brand-green-600) 24% 72%,
+    var(--brand-green-500) 72% 100%
+  );
+  border: 3px solid color-mix(in srgb, var(--brand-green-700) 78%, #07170b);
+  border-radius: 0.15rem;
+  box-shadow:
+    inset 0 3px 0 color-mix(in srgb, var(--brand-green-400) 76%, #fff),
+    inset 0 -4px 0 color-mix(in srgb, var(--brand-green-700) 86%, #07170b),
+    4px 4px 0 color-mix(in srgb, var(--brand-green-700) 58%, transparent);
+  text-shadow: 2px 2px 0 color-mix(in srgb, var(--brand-green-700) 82%, #07170b);
+  transition:
+    box-shadow 100ms steps(2, end),
+    filter 100ms steps(2, end),
+    transform 100ms steps(2, end);
+}
+
+.minecraft-back-button.MuiButton-root:hover {
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-600) 0 24%,
+    var(--brand-green-500) 24% 72%,
+    color-mix(in srgb, var(--brand-green-500) 72%, #fff) 72% 100%
+  );
+  box-shadow:
+    inset 0 3px 0 color-mix(in srgb, var(--brand-green-400) 62%, #fff),
+    inset 0 -4px 0 color-mix(in srgb, var(--brand-green-700) 78%, #07170b),
+    5px 5px 0 color-mix(in srgb, var(--brand-green-700) 64%, transparent);
+  filter: brightness(1.04);
+  transform: translate(-1px, -1px);
+}
+
+.minecraft-back-button.MuiButton-root:active {
+  box-shadow:
+    inset 0 2px 0 color-mix(in srgb, var(--brand-green-700) 78%, #07170b),
+    inset 0 -1px 0 color-mix(in srgb, var(--brand-green-400) 55%, #fff),
+    1px 1px 0 color-mix(in srgb, var(--brand-green-700) 52%, transparent);
+  filter: brightness(0.92);
+  transform: translate(3px, 3px);
+}
+
+.minecraft-back-button.MuiButton-root:focus-visible {
+  outline: 3px solid var(--color-warning);
+  outline-offset: 3px;
+}
+
+.minecraft-back-button.MuiButton-root .MuiButton-startIcon {
+  margin-inline: 0 var(--space-2);
+}
+
+.minecraft-back-button__icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface) 88%, #fff) 0 50%,
+    color-mix(in srgb, var(--color-surface-strong) 86%, #94a399) 50% 100%
+  );
+  border: 2px solid color-mix(in srgb, var(--color-text-primary) 76%, #07170b);
+  box-shadow:
+    inset 2px 2px 0 color-mix(in srgb, var(--color-surface) 62%, #fff),
+    inset -2px -2px 0 color-mix(in srgb, var(--color-text-primary) 28%, #07170b);
+}
+
+.minecraft-back-button__icon img {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(1px 1px 0 rgba(5, 18, 9, 0.55));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .minecraft-back-button.MuiButton-root {
+    transition-duration: 0.01ms;
+  }
+}

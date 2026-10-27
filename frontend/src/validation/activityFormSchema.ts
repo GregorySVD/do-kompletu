@@ -11,15 +11,17 @@ export const activityFormSchema = z
   .object({
     title: z
       .string()
+      .trim()
       .min(1, 'Tytuł jest wymagany')
       .min(3, 'Tytuł musi mieć co najmniej 3 znaki')
       .max(80, 'Tytuł może mieć maksymalnie 80 znaków'),
     description: z
       .string()
+      .trim()
       .min(1, 'Opis jest wymagany')
       .min(10, 'Opis musi mieć co najmniej 10 znaków')
       .max(1000, 'Opis może mieć maksymalnie 1000 znaków'),
-    category_id: z.string().min(1, 'Kategoria jest wymagana'),
+    category_id: z.string().trim().min(1, 'Kategoria jest wymagana'),
     start_at: z
       .string()
       .min(1, 'Data rozpoczęcia jest wymagana')
@@ -36,10 +38,12 @@ export const activityFormSchema = z
       ),
     location_name: z
       .string()
+      .trim()
       .min(1, 'Nazwa miejsca jest wymagana')
       .max(120, 'Nazwa miejsca może mieć maksymalnie 120 znaków'),
     address: z
       .string()
+      .trim()
       .min(1, 'Adres jest wymagany')
       .max(300, 'Adres może mieć maksymalnie 300 znaków'),
     latitude: z.number().min(-90).max(90).nullable(),

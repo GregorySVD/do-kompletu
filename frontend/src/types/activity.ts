@@ -1,7 +1,14 @@
 export type ActivityStatus = 'PUBLISHED' | 'ONGOING' | 'ENDED' | 'CANCELLED'
 
 export type ActivityParticipationStatus =
-  'JOINED' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'NO_SHOW'
+  | 'WAITLISTED'
+  | 'JOINED'
+  | 'CONFIRMED'
+  | 'CHECKED_IN'
+  | 'COMPLETED'
+  | 'NO_SHOW'
+  | 'CONFIRMATION_EXPIRED'
+  | 'WAITLIST_EXPIRED'
 
 export const priceTypes = ['FREE', 'PAID'] as const
 export type PriceType = (typeof priceTypes)[number]
@@ -46,6 +53,12 @@ export interface UpdateActivityPayload {
   price_amount?: number | null
 }
 
+export interface CheckInActivityPayload {
+  latitude: number
+  longitude: number
+  accuracy_m: number
+}
+
 export interface Activity {
   id: string
   title: string
@@ -81,7 +94,12 @@ export interface ActivityTag {
 
 export interface ActivityParticipation {
   status: ActivityParticipationStatus
-  joined_at: string
+  joined_at: string | null
+  waitlisted_at: string | null
+  waitlist_position: number | null
+  effective_confirmation_deadline_at: string | null
+  confirmation_expired_at: string | null
+  waitlist_expired_at: string | null
   confirmed_at: string | null
   checked_in_at: string | null
   completed_at: string | null

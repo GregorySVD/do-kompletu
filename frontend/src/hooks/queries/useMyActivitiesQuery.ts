@@ -40,5 +40,6 @@ export function useMyActivitiesQuery(
     enabled: Boolean(user?.id),
     staleTime: 60_000,
     retry: 1,
+    refetchOnWindowFocus: true,
   })
 }

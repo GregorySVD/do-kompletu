@@ -1,0 +1,597 @@
+.activity-participant-actions {
+  --participant-actions-accent: var(--color-accent);
+
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    var(--color-surface) 0 42%,
+    color-mix(
+        in srgb,
+        var(--participant-actions-accent) 6%,
+        var(--color-surface)
+      )
+      42% 72%,
+    color-mix(in srgb, var(--brand-green-500) 6%, var(--color-surface)) 72% 100%
+  );
+  border: 2px solid
+    color-mix(
+      in srgb,
+      var(--participant-actions-accent) 48%,
+      var(--color-border)
+    );
+  border-radius: 0.55rem;
+  box-shadow:
+    4px 4px 0
+      color-mix(in srgb, var(--participant-actions-accent) 22%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--participant-actions-accent) 12%, transparent);
+}
+
+.activity-participant-actions::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.12;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.3rem,
+    color-mix(in srgb, var(--participant-actions-accent) 26%, transparent)
+      0.3rem 0.35rem
+  );
+}
+
+.activity-participant-actions--joinable {
+  --participant-actions-accent: var(--category-technology-color);
+
+  border-color: color-mix(
+    in srgb,
+    var(--brand-green-400) 72%,
+    var(--category-technology-color)
+  );
+  box-shadow:
+    5px 5px 0
+      color-mix(in srgb, var(--category-technology-color) 28%, transparent),
+    0 0 1.25rem color-mix(in srgb, var(--brand-green-400) 20%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--category-technology-color) 18%, transparent);
+  animation: participant-join-card-glow 2.6s ease-in-out infinite;
+}
+
+.activity-participant-actions--joinable::before {
+  opacity: 0.2;
+}
+
+.activity-participant-actions__content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.activity-participant-actions__confetti {
+  position: fixed !important;
+  inset: 0;
+  z-index: 1500;
+  pointer-events: none;
+}
+
+.activity-participant-actions__success-message {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  color: var(--color-text-primary);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--brand-green-500) 24%, var(--color-surface)) 0 38%,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 14%,
+        var(--color-surface)
+      )
+      38% 72%,
+    color-mix(in srgb, var(--color-accent) 12%, var(--color-surface)) 72% 100%
+  );
+  border: 2px solid var(--brand-green-400);
+  border-radius: 0.4rem;
+  box-shadow:
+    3px 3px 0 color-mix(in srgb, var(--brand-green-500) 30%, transparent),
+    0 0 1rem color-mix(in srgb, var(--brand-green-400) 18%, transparent);
+  animation: participant-success-arrival 280ms ease-out both;
+}
+
+.activity-participant-actions__success-message img {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 0 0.4rem color-mix(in srgb, var(--brand-green-400) 60%, transparent)
+  );
+}
+
+.activity-participant-actions__success-message div {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.activity-participant-actions__success-message strong {
+  color: var(--brand-green-400);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-lg);
+}
+
+.activity-participant-actions__success-message span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.activity-participant-actions__status {
+  --participant-status-accent: var(--color-accent);
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  background: linear-gradient(
+    105deg,
+    color-mix(
+        in srgb,
+        var(--participant-status-accent) 14%,
+        var(--color-surface)
+      )
+      0 36%,
+    color-mix(
+        in srgb,
+        var(--participant-status-accent) 6%,
+        var(--color-surface)
+      )
+      36% 100%
+  );
+  border: 2px solid
+    color-mix(
+      in srgb,
+      var(--participant-status-accent) 52%,
+      var(--color-border)
+    );
+  border-radius: 0.45rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--participant-status-accent) 22%, transparent);
+}
+
+.activity-participant-actions__status--active,
+.activity-participant-actions__status--complete {
+  --participant-status-accent: var(--color-success);
+}
+
+.activity-participant-actions__status--confirmed {
+  --participant-status-accent: var(--category-technology-color);
+}
+
+.activity-participant-actions__status--waiting {
+  --participant-status-accent: var(--color-warning);
+}
+
+.activity-participant-actions__status--warning {
+  --participant-status-accent: var(--color-error);
+}
+
+.activity-participant-actions__status-icon {
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  background: color-mix(
+    in srgb,
+    var(--participant-status-accent) 15%,
+    var(--color-surface)
+  );
+  border: 2px solid
+    color-mix(
+      in srgb,
+      var(--participant-status-accent) 58%,
+      var(--color-border)
+    );
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--participant-status-accent) 28%, transparent);
+}
+
+.activity-participant-actions__status-icon img {
+  display: block;
+  width: 2.35rem;
+  height: 2.35rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 0 0.35rem
+      color-mix(in srgb, var(--participant-status-accent) 48%, transparent)
+  );
+}
+
+.activity-participant-actions__status-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.activity-participant-actions__eyebrow,
+.activity-participant-actions__title,
+.activity-participant-actions__status-detail,
+.activity-participant-actions__location-note {
+  margin: 0;
+}
+
+.activity-participant-actions__eyebrow {
+  color: var(--participant-status-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.activity-participant-actions__title {
+  width: fit-content;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+  background: linear-gradient(
+    180deg,
+    transparent 0 74%,
+    color-mix(in srgb, var(--participant-status-accent) 24%, transparent) 74%
+      100%
+  );
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--participant-status-accent) 22%, transparent);
+}
+
+.activity-participant-actions__status-detail {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.activity-participant-actions__status-detail strong {
+  color: var(--participant-status-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.activity-participant-actions__deadline {
+  display: block;
+  width: fit-content;
+  margin-top: var(--space-2);
+  padding: 0.25rem 0.45rem;
+  color: var(--color-warning);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: color-mix(
+    in srgb,
+    var(--color-warning) 10%,
+    var(--color-surface)
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--color-warning) 68%, var(--color-border));
+  border-radius: 0.25rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--color-warning) 22%, transparent);
+}
+
+.activity-participant-actions__location-note {
+  padding: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  background: color-mix(
+    in srgb,
+    var(--category-technology-color) 8%,
+    var(--color-surface)
+  );
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--category-technology-color) 36%,
+      var(--color-border)
+    );
+  border-radius: 0.35rem;
+}
+
+.activity-participant-actions__buttons {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.activity-participant-actions__button.activity-participant-actions__button {
+  min-height: var(--touch-target-min);
+  justify-content: flex-start;
+  padding: 0.55rem 0.8rem;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.01em;
+  border-width: 2px;
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0 color-mix(in srgb, currentColor 24%, transparent);
+  transition:
+    translate 120ms ease,
+    box-shadow 120ms ease,
+    filter 120ms ease;
+}
+
+.activity-participant-actions__button.activity-participant-actions__button:hover {
+  translate: -1px -1px;
+  box-shadow: 4px 4px 0 color-mix(in srgb, currentColor 30%, transparent);
+  filter: brightness(1.06);
+}
+
+.activity-participant-actions__button.activity-participant-actions__button:active {
+  translate: 2px 2px;
+  box-shadow: 1px 1px 0 color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.activity-participant-actions__button--primary.activity-participant-actions__button--primary {
+  position: relative;
+  min-height: 3.65rem;
+  color: var(--color-text-primary);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--brand-green-500) 68%, var(--color-surface)) 0%,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 48%,
+        var(--color-surface)
+      )
+      38%,
+    color-mix(in srgb, var(--color-accent) 38%, var(--color-surface)) 68%,
+    color-mix(in srgb, var(--brand-green-500) 68%, var(--color-surface)) 100%
+  );
+  background-size: 240% 100%;
+  border-color: color-mix(
+    in srgb,
+    var(--brand-green-400) 72%,
+    var(--category-technology-color)
+  );
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--brand-green-500) 34%, transparent),
+    0 0 1.1rem
+      color-mix(in srgb, var(--category-technology-color) 24%, transparent);
+  font-size: var(--font-size-md);
+  animation:
+    participant-join-gradient 3.2s linear infinite,
+    participant-join-button-glow 1.8s ease-in-out infinite;
+}
+
+.activity-participant-actions__button--primary.activity-participant-actions__button--primary:hover {
+  box-shadow:
+    5px 5px 0 color-mix(in srgb, var(--brand-green-500) 42%, transparent),
+    0 0 1.5rem
+      color-mix(in srgb, var(--category-technology-color) 34%, transparent);
+}
+
+.activity-participant-actions__button--primary
+  .activity-participant-actions__button-icon {
+  animation: participant-join-icon-pulse 1.4s ease-in-out infinite;
+}
+
+.activity-participant-actions__button--confirm.activity-participant-actions__button--confirm {
+  color: var(--color-text-primary);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-warning) 38%, var(--color-surface)) 0 34%,
+    color-mix(in srgb, var(--color-warning) 20%, var(--color-surface)) 34% 100%
+  );
+  border-color: var(--color-warning);
+}
+
+.activity-participant-actions__button--check-in.activity-participant-actions__button--check-in {
+  color: var(--color-text-primary);
+  background: linear-gradient(
+    100deg,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 42%,
+        var(--color-surface)
+      )
+      0 34%,
+    color-mix(
+        in srgb,
+        var(--category-technology-color) 22%,
+        var(--color-surface)
+      )
+      34% 100%
+  );
+  border-color: var(--category-technology-color);
+}
+
+.activity-participant-actions__button--leave.activity-participant-actions__button--leave {
+  color: var(--color-error);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-error) 12%, var(--color-surface)) 0 34%,
+    color-mix(in srgb, var(--color-error) 5%, var(--color-surface)) 34% 100%
+  );
+  border-color: color-mix(in srgb, var(--color-error) 72%, transparent);
+}
+
+.activity-participant-actions__button-icon {
+  display: block;
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0.16rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  background: color-mix(in srgb, currentColor 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, currentColor 46%, transparent);
+  border-radius: 0.2rem;
+}
+
+.activity-participant-actions__dialog-paper.MuiPaper-root {
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    var(--color-surface) 0 48%,
+    color-mix(in srgb, var(--color-error) 7%, var(--color-surface)) 48% 78%,
+    color-mix(in srgb, var(--color-accent) 6%, var(--color-surface)) 78% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--color-error) 58%, var(--color-border));
+  border-radius: 0.55rem;
+  box-shadow: 6px 6px 0 color-mix(in srgb, var(--color-error) 24%, transparent);
+}
+
+.activity-participant-actions__dialog-title {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  text-shadow: 2px 2px 0 color-mix(in srgb, var(--color-error) 22%, transparent);
+}
+
+.activity-participant-actions__dialog-description {
+  color: var(--color-text-secondary);
+}
+
+.activity-participant-actions__dialog-error {
+  margin-top: var(--space-4);
+}
+
+.activity-participant-actions__dialog-actions {
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6) var(--space-5);
+}
+
+.activity-participant-actions__dialog-button.activity-participant-actions__dialog-button {
+  min-height: var(--touch-target-min);
+  padding-inline: var(--space-4);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  border: 2px solid currentColor;
+  border-radius: 0.3rem;
+  box-shadow: 2px 2px 0 color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.activity-participant-actions__dialog-button--back.activity-participant-actions__dialog-button--back {
+  color: var(--color-text-secondary);
+}
+
+.activity-participant-actions__dialog-button--leave.activity-participant-actions__dialog-button--leave {
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-error) 54%, var(--color-surface));
+  border-color: var(--color-error);
+}
+
+@media (max-width: 30rem) {
+  .activity-participant-actions__status {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+
+  .activity-participant-actions__status-copy {
+    justify-items: center;
+  }
+
+  .activity-participant-actions__deadline {
+    margin-inline: auto;
+  }
+
+  .activity-participant-actions__buttons {
+    align-items: stretch;
+  }
+
+  .activity-participant-actions__button.activity-participant-actions__button {
+    width: 100%;
+  }
+
+  .activity-participant-actions__dialog-actions.MuiDialogActions-root {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    padding: var(--space-4) var(--space-6) var(--space-5);
+  }
+
+  .activity-participant-actions__dialog-button.activity-participant-actions__dialog-button {
+    width: 100%;
+    margin: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-participant-actions--joinable,
+  .activity-participant-actions__button--primary.activity-participant-actions__button--primary,
+  .activity-participant-actions__button--primary
+    .activity-participant-actions__button-icon,
+  .activity-participant-actions__success-message {
+    animation: none;
+  }
+
+  .activity-participant-actions__confetti {
+    display: none;
+  }
+
+  .activity-participant-actions__button.activity-participant-actions__button {
+    transition: none;
+  }
+}
+
+@keyframes participant-join-card-glow {
+  0%,
+  100% {
+    filter: drop-shadow(
+      0 0 0.15rem color-mix(in srgb, var(--brand-green-400) 24%, transparent)
+    );
+  }
+
+  50% {
+    filter: drop-shadow(
+      0 0 0.45rem
+        color-mix(in srgb, var(--category-technology-color) 38%, transparent)
+    );
+  }
+}
+
+@keyframes participant-join-gradient {
+  to {
+    background-position: 240% 0;
+  }
+}
+
+@keyframes participant-join-button-glow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes participant-join-icon-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes participant-success-arrival {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

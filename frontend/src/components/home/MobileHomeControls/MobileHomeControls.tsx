@@ -1,8 +1,3 @@
-import {
-  FilterList,
-  List as ListIcon,
-  Map as MapIcon,
-} from '@mui/icons-material'
 import { Button, ToggleButton, ToggleButtonGroup } from '@mui/material'
 import './MobileHomeControls.css'
 
@@ -24,7 +19,7 @@ function MobileHomeControls({
   return (
     <div className="home-page__mobile-tools">
       <ToggleButtonGroup
-        className="home-view-toggle"
+        className={`home-view-toggle home-view-toggle--${viewMode}`}
         aria-label="Widok strony głównej"
         exclusive
         size="small"
@@ -36,11 +31,23 @@ function MobileHomeControls({
         }}
       >
         <ToggleButton value="list">
-          <ListIcon aria-hidden="true" fontSize="small" />
+          <img
+            className="home-view-toggle__icon"
+            src="/icons/icons8-list-64.png"
+            alt=""
+            width="64"
+            height="64"
+          />
           Lista
         </ToggleButton>
         <ToggleButton value="map">
-          <MapIcon aria-hidden="true" fontSize="small" />
+          <img
+            className="home-view-toggle__icon"
+            src="/icons/icons8-map-64.png"
+            alt=""
+            width="64"
+            height="64"
+          />
           Mapa
         </ToggleButton>
       </ToggleButtonGroup>
@@ -49,7 +56,15 @@ function MobileHomeControls({
         <Button
           className="home-page__filters-button"
           aria-haspopup="dialog"
-          startIcon={<FilterList />}
+          startIcon={
+            <img
+              className="home-page__filters-icon"
+              src="/icons/icons8-filter-64.png"
+              alt=""
+              width="64"
+              height="64"
+            />
+          }
           variant="outlined"
           onClick={onOpenFilters}
         >

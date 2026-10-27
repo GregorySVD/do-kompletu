@@ -1,19 +1,46 @@
-.activity-details-content__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
-.activity-details-content__grid {
+.activity-details-content__layout,
+.activity-details-content__actions,
+.activity-details-content__main,
+.activity-details-content__sidebar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
-  margin-top: var(--space-4);
+  min-width: 0;
+  gap: var(--component-gap);
 }
 
-@media (min-width: 43.75rem) {
-  .activity-details-content__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+.activity-details-content__layout {
+  grid-template-areas:
+    'actions'
+    'main'
+    'sidebar';
+  margin-top: var(--component-gap);
+}
+
+.activity-details-content__layout .MuiCard-root {
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-accent));
+}
+
+.activity-details-content__actions {
+  grid-area: actions;
+}
+
+.activity-details-content__main {
+  grid-area: main;
+}
+
+.activity-details-content__sidebar {
+  grid-area: sidebar;
+}
+
+@media (min-width: 64rem) {
+  .activity-details-content__layout {
+    grid-template-areas:
+      'main actions'
+      'main sidebar';
+    grid-template-columns: minmax(0, 1.75fr) minmax(19rem, 1fr);
+    align-items: start;
+  }
+
+  .activity-details-content__main {
+    grid-row: 1 / span 2;
   }
 }

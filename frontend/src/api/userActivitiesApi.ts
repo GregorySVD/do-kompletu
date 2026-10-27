@@ -1,7 +1,7 @@
 import type { ActivityDetails } from '../types/activity'
 import apiClient from './apiClient'
 
-export type ActivityRelation = 'joined' | 'organized'
+export type ActivityRelation = 'joined' | 'organized' | 'waitlisted'
 export type ActivityScope = 'upcoming' | 'history'
 
 interface GetMyActivitiesParams {

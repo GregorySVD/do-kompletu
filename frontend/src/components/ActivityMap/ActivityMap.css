@@ -1,11 +1,30 @@
 .activity-map {
+  position: relative;
+  isolation: isolate;
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+  border: 3px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--color-primary) 16%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-surface) 72%, transparent);
+}
+
+.activity-map::after {
+  position: absolute;
+  inset: 0;
+  z-index: 250;
+  pointer-events: none;
+  content: '';
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 5px,
+    color-mix(in srgb, var(--color-text-primary) 2.5%, transparent) 5px 6px
+  );
 }
 
 .activity-map__map {
@@ -16,20 +35,350 @@
 
 .activity-map__popup {
   min-width: min(12.5rem, 70vw);
+  color: var(--color-text-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
 
 .activity-map__popup h2 {
   margin: 0 0 var(--space-2);
   font-size: var(--font-size-md);
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
 .activity-map__popup p {
   margin: var(--space-1) 0;
 }
 
-.activity-map__details-link {
+.activity-map .activity-map__details-link {
   display: inline-block;
   margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: #f8fff9;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  text-decoration: none;
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-700) 0 30%,
+    var(--brand-green-600) 30% 72%,
+    var(--brand-green-500) 72% 100%
+  );
+  border: 2px solid var(--brand-green-400);
+  border-radius: 0.3rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--brand-green-700) 60%, transparent);
+  transition:
+    filter 120ms steps(2, end),
+    transform 120ms steps(2, end);
+}
+
+.activity-map .activity-map__details-link:hover,
+.activity-map .activity-map__details-link:focus-visible {
+  color: #f8fff9;
+  filter: brightness(1.1);
+  transform: translate(-1px, -1px);
+}
+
+.activity-map .activity-map__details-link:active {
+  color: #f8fff9;
+  transform: translate(1px, 1px);
+}
+
+.activity-map .leaflet-control-zoom {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.activity-map .leaflet-control-zoom a {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  color: var(--color-text-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  background: linear-gradient(
+    135deg,
+    var(--color-surface) 0 52%,
+    var(--color-surface-soft) 52% 100%
+  );
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-border-strong) 52%, transparent);
+  transition:
+    background 100ms steps(2, end),
+    border-color 100ms steps(2, end),
+    box-shadow 100ms steps(2, end),
+    transform 100ms steps(2, end);
+}
+
+.activity-map .leaflet-control-zoom a + a {
+  margin-top: var(--space-2);
+}
+
+.activity-map .leaflet-control-zoom a:hover {
+  color: var(--color-text-primary);
+  background: color-mix(
+    in srgb,
+    var(--color-primary) 11%,
+    var(--color-surface)
+  );
+  border-color: var(--color-primary);
+  transform: translate(-1px, -1px);
+}
+
+.activity-map .leaflet-control-zoom a:active {
+  box-shadow: 1px 1px 0
+    color-mix(in srgb, var(--color-border-strong) 52%, transparent);
+  transform: translate(1px, 1px);
+}
+
+.activity-map .leaflet-control-zoom a.leaflet-disabled {
+  color: var(--color-text-muted);
+  background: var(--color-surface-soft);
+  border-color: var(--color-border);
+  box-shadow: 1px 1px 0 var(--color-border);
+  opacity: 0.72;
+}
+
+.activity-map .leaflet-control-attribution {
+  padding: 0.2rem 0.35rem;
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.625rem;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  border: 1px solid var(--color-border-strong);
+  border-width: 1px 0 0 1px;
+}
+
+.activity-map .leaflet-control-attribution a {
   color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+}
+
+.activity-map .leaflet-popup-content-wrapper {
+  color: var(--color-text-primary);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 4px,
+      color-mix(in srgb, var(--color-primary) 2%, transparent) 4px 5px
+    ),
+    var(--color-surface);
+  border: 2px solid var(--color-primary);
+  border-radius: 0.4rem;
+  box-shadow: 4px 4px 0
+    color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.activity-map .leaflet-popup-tip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.activity-map .leaflet-popup-close-button {
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+}
+
+.activity-map .leaflet-popup-close-button:hover {
+  color: var(--color-error);
+}
+
+.activity-map__category-marker {
+  --marker-color: var(--category-fallback-color);
+  --marker-gradient-end: var(--category-fallback-gradient-end);
+  --marker-soft-bg: var(--category-fallback-bg);
+
+  background: transparent;
+  border: 0;
+}
+
+.activity-map__category-marker-visual {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: var(--color-text-inverse);
+  background: linear-gradient(
+    135deg,
+    var(--marker-soft-bg),
+    color-mix(in srgb, var(--marker-gradient-end) 22%, var(--color-surface))
+  );
+  border: 3px solid var(--marker-color);
+  border-radius: 0.45rem;
+  box-shadow:
+    0 0 0 1px var(--marker-soft-bg),
+    0.3rem 0.3rem 0
+      color-mix(in srgb, var(--marker-gradient-end) 55%, transparent);
+  transition:
+    box-shadow 160ms steps(3, end),
+    transform 160ms steps(3, end);
+  animation: activity-map-marker-spawn 240ms steps(4, end);
+}
+
+.activity-map__category-marker-icon.MuiSvgIcon-root {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.activity-map__category-marker-pixel-icon {
+  width: 2rem;
+  height: 2rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+  filter: drop-shadow(
+    2px 2px 0 color-mix(in srgb, var(--marker-color) 32%, transparent)
+  );
+}
+
+.activity-map__category-marker:hover .activity-map__category-marker-visual,
+.activity-map__category-marker:focus-visible
+  .activity-map__category-marker-visual {
+  box-shadow:
+    0 0 0 2px var(--marker-soft-bg),
+    0.45rem 0.45rem 0
+      color-mix(in srgb, var(--marker-gradient-end) 68%, transparent);
+  transform: translate(-2px, -2px) scale(1.04);
+}
+
+.activity-map__category-marker:focus-visible {
+  outline: none;
+}
+
+.activity-map__category-marker:focus-visible
+  .activity-map__category-marker-visual {
+  outline: 3px solid var(--color-surface);
+  outline-offset: 3px;
+}
+
+.activity-map__category-marker--team-sport {
+  --marker-color: var(--category-team-sport-color);
+  --marker-gradient-end: var(--category-team-sport-gradient-end);
+  --marker-soft-bg: var(--category-team-sport-bg);
+}
+
+.activity-map__category-marker--board-games {
+  --marker-color: var(--category-board-games-color);
+  --marker-gradient-end: var(--category-board-games-gradient-end);
+  --marker-soft-bg: var(--category-board-games-bg);
+}
+
+.activity-map__category-marker--rpg {
+  --marker-color: var(--category-rpg-color);
+  --marker-gradient-end: var(--category-rpg-gradient-end);
+  --marker-soft-bg: var(--category-rpg-bg);
+}
+
+.activity-map__category-marker--gaming {
+  --marker-color: var(--category-gaming-color);
+  --marker-gradient-end: var(--category-gaming-gradient-end);
+  --marker-soft-bg: var(--category-gaming-bg);
+}
+
+.activity-map__category-marker--study {
+  --marker-color: var(--category-study-color);
+  --marker-gradient-end: var(--category-study-gradient-end);
+  --marker-soft-bg: var(--category-study-bg);
+}
+
+.activity-map__category-marker--technology {
+  --marker-color: var(--category-technology-color);
+  --marker-gradient-end: var(--category-technology-gradient-end);
+  --marker-soft-bg: var(--category-technology-bg);
+}
+
+.activity-map__category-marker--music {
+  --marker-color: var(--category-music-color);
+  --marker-gradient-end: var(--category-music-gradient-end);
+  --marker-soft-bg: var(--category-music-bg);
+}
+
+.activity-map__category-marker--creative {
+  --marker-color: var(--category-creative-color);
+  --marker-gradient-end: var(--category-creative-gradient-end);
+  --marker-soft-bg: var(--category-creative-bg);
+}
+
+.activity-map__category-marker--fallback {
+  --marker-color: var(--category-fallback-color);
+  --marker-soft-bg: var(--category-fallback-bg);
+}
+
+.activity-map__user-accuracy {
+  fill: var(--color-primary);
+  fill-opacity: 0.12;
+  stroke: var(--color-primary);
+  stroke-opacity: 0.72;
+  stroke-width: 2;
+}
+
+.activity-map__user-marker {
+  fill: var(--color-primary);
+  fill-opacity: 1;
+  stroke: var(--color-surface);
+  stroke-opacity: 1;
+  stroke-width: 4;
+}
+
+.activity-map__user-marker-pane {
+  z-index: 650;
+}
+
+.activity-map__user-popup {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-primary);
+}
+
+.activity-map__user-popup-container .leaflet-popup-content-wrapper,
+.activity-map__user-popup-container .leaflet-popup-tip {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+}
+
+.activity-map__user-popup-container .leaflet-popup-close-button {
+  color: var(--color-text-secondary);
+}
+
+.activity-map__user-popup span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+@keyframes activity-map-marker-spawn {
+  0% {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.7);
+  }
+
+  65% {
+    opacity: 1;
+    transform: translateY(-0.15rem) scale(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-map__category-marker-visual,
+  .activity-map__details-link,
+  .activity-map .leaflet-control-zoom a {
+    animation: none;
+    transition-duration: 0.01ms;
+  }
 }

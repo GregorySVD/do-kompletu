@@ -1,12 +1,24 @@
 .activity-form {
   display: grid;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
+  gap: var(--space-6);
 }
 
+.activity-form__layout {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-6);
+}
+
+.activity-form__sections,
 .activity-form__fields {
   display: grid;
+  min-width: 0;
   gap: var(--space-4);
+}
+
+.activity-form__sections {
+  gap: var(--space-5);
 }
 
 .activity-form__grid {
@@ -15,15 +27,182 @@
   gap: var(--space-4);
 }
 
-.activity-form__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+.activity-form__field .MuiInputLabel-root,
+.activity-form .MuiPickersInputBase-root + .MuiFormHelperText-root {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.activity-form__field .MuiOutlinedInput-root,
+.activity-form .MuiPickersOutlinedInput-root {
+  background: color-mix(in srgb, var(--color-surface-soft) 76%, transparent);
+  border-radius: 0.35rem;
+  transition:
+    background-color 110ms ease,
+    box-shadow 110ms ease,
+    transform 110ms ease;
+}
+
+.activity-form__field .MuiOutlinedInput-notchedOutline,
+.activity-form .MuiPickersOutlinedInput-notchedOutline {
+  border-width: 2px;
+  border-color: color-mix(
+    in srgb,
+    var(--color-border-strong) 84%,
+    var(--color-accent)
+  );
+}
+
+.activity-form__field .MuiOutlinedInput-root:hover,
+.activity-form .MuiPickersOutlinedInput-root:hover {
+  background: var(--color-surface);
+}
+
+.activity-form__field .MuiOutlinedInput-root.Mui-focused,
+.activity-form .MuiPickersOutlinedInput-root.Mui-focused {
+  background: var(--color-surface);
+  box-shadow:
+    3px 3px 0 color-mix(in srgb, var(--color-primary) 20%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent);
+  transform: translate(-1px, -1px);
+}
+
+.activity-form__field
+  .MuiOutlinedInput-root.Mui-focused
+  .MuiOutlinedInput-notchedOutline,
+.activity-form
+  .MuiPickersOutlinedInput-root.Mui-focused
+  .MuiPickersOutlinedInput-notchedOutline {
+  border-color: var(--color-primary);
+}
+
+.activity-form__field .MuiFormHelperText-root,
+.activity-form .MuiPickersInputBase-root + .MuiFormHelperText-root {
+  margin-inline: 0.15rem;
+  line-height: 1.4;
+}
+
+.activity-form__choice-field {
+  display: grid;
+  padding-top: var(--space-2);
   gap: var(--space-3);
+}
+
+.activity-form__choice-field > div:first-child {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.activity-form__choice-label {
+  color: var(--color-text-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.03em;
+}
+
+.activity-form__choice-hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.activity-form__switch-card.MuiFormControlLabel-root {
+  min-height: 4.75rem;
+  margin: 0;
+  padding: var(--space-3);
+  align-items: center;
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-soft)) 0 44%,
+    var(--color-surface-soft) 44% 100%
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  border-radius: 0.35rem;
+}
+
+.activity-form__switch-card .MuiFormControlLabel-label {
+  min-width: 0;
+}
+
+.activity-form__switch-card .MuiFormControlLabel-label > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.activity-form__switch-card strong {
+  font-size: var(--font-size-sm);
+}
+
+.activity-form__switch-card small {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.activity-form__price-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.activity-form__price-toggle.MuiToggleButtonGroup-root {
+  min-height: 3.5rem;
+  background: var(--color-surface-soft);
+  border-radius: 0.35rem;
+}
+
+.activity-form__price-toggle .MuiToggleButton-root {
+  flex: 1 1 0;
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  text-transform: none;
+  border-width: 2px;
+  border-color: var(--color-border-strong);
+}
+
+.activity-form__price-toggle .MuiToggleButton-root.Mui-selected {
+  color: var(--color-text-primary);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-primary) 20%, var(--color-surface)) 0 54%,
+    color-mix(in srgb, var(--color-accent) 13%, var(--color-surface)) 54% 100%
+  );
+  border-color: var(--color-primary);
+  box-shadow: inset 0 -3px 0
+    color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+.activity-form__map-field {
+  margin-top: var(--space-5);
 }
 
 @media (min-width: 43.75rem) {
   .activity-form__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .activity-form__layout {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 23rem);
+    align-items: start;
+  }
+}
+
+@media (max-width: 38rem) {
+  .activity-form__price-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-form__field .MuiOutlinedInput-root,
+  .activity-form .MuiPickersOutlinedInput-root {
+    transition: none;
   }
 }

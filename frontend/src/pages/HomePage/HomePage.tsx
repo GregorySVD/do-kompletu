@@ -8,6 +8,8 @@ import MobileFiltersDrawer from '../../components/home/MobileFiltersDrawer/Mobil
 import MobileHomeControls, {
   type ViewMode,
 } from '../../components/home/MobileHomeControls/MobileHomeControls'
+import BouncingLogo from '../../components/system/BouncingLogo/BouncingLogo'
+import LoadingSkeleton from '../../components/system/LoadingSkeleton/LoadingSkeleton'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import { useActivitiesQuery } from '../../hooks/queries/useActivitiesQuery'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
@@ -103,6 +105,9 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
     : categoriesQuery.isError
       ? 'Nie udało się pobrać kategorii.'
       : null
+  const queryErrorTitle = activitiesQuery.isError
+    ? 'Nie możemy pobrać aktywności'
+    : 'Nie możemy pobrać kategorii'
   const isRetrying = activitiesQuery.isFetching || categoriesQuery.isFetching
 
   function retryHomeData() {
@@ -112,7 +117,10 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   if (isInitialLoading) {
     return (
       <main className="home-page home-page--query-state">
-        <QueryStateMessage message="Ładowanie aktywności..." isLoading />
+        <LoadingSkeleton
+          message="Ładowanie aktywności i kategorii..."
+          variant="activity-list"
+        />
       </main>
     )
   }
@@ -120,8 +128,11 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   if (queryErrorMessage) {
     return (
       <main className="home-page home-page--query-state">
+        <BouncingLogo />
         <QueryStateMessage
+          title={queryErrorTitle}
           message={queryErrorMessage}
+          hint="Serwer może być chwilowo niedostępny. Spróbuj ponownie za moment."
           isRetrying={isRetrying}
           onRetry={retryHomeData}
         />

@@ -1,0 +1,94 @@
+.activity-category-badge.MuiChip-root {
+  --activity-category-badge-color: var(--category-fallback-color);
+  --activity-category-badge-gradient-end: var(--category-fallback-gradient-end);
+  --activity-category-badge-text: var(--color-text-inverse);
+
+  color: var(--activity-category-badge-text);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.035em;
+  background: linear-gradient(
+    100deg,
+    var(--activity-category-badge-color) 0 36%,
+    color-mix(
+        in srgb,
+        var(--activity-category-badge-color) 58%,
+        var(--activity-category-badge-gradient-end)
+      )
+      36% 70%,
+    var(--activity-category-badge-gradient-end) 70% 100%
+  );
+  border: 2px solid
+    color-mix(
+      in srgb,
+      var(--activity-category-badge-color) 55%,
+      var(--activity-category-badge-gradient-end)
+    );
+  border-radius: 0.45rem;
+  box-shadow: 0.16rem 0.16rem 0
+    color-mix(in srgb, var(--activity-category-badge-color) 32%, transparent);
+}
+
+.activity-category-badge--team-sport.MuiChip-root {
+  --activity-category-badge-color: var(--category-team-sport-color);
+  --activity-category-badge-gradient-end: var(
+    --category-team-sport-gradient-end
+  );
+}
+
+.activity-category-badge--board-games.MuiChip-root {
+  --activity-category-badge-color: var(--category-board-games-color);
+  --activity-category-badge-gradient-end: var(
+    --category-board-games-gradient-end
+  );
+}
+
+.activity-category-badge--rpg.MuiChip-root {
+  --activity-category-badge-color: var(--category-rpg-color);
+  --activity-category-badge-gradient-end: var(--category-rpg-gradient-end);
+}
+
+.activity-category-badge--gaming.MuiChip-root {
+  --activity-category-badge-color: var(--category-gaming-color);
+  --activity-category-badge-gradient-end: var(--category-gaming-gradient-end);
+}
+
+.activity-category-badge--study.MuiChip-root {
+  --activity-category-badge-color: var(--category-study-color);
+  --activity-category-badge-gradient-end: var(--category-study-gradient-end);
+}
+
+.activity-category-badge--technology.MuiChip-root {
+  --activity-category-badge-color: var(--category-technology-color);
+  --activity-category-badge-gradient-end: var(
+    --category-technology-gradient-end
+  );
+}
+
+.activity-category-badge--music.MuiChip-root {
+  --activity-category-badge-color: var(--category-music-color);
+  --activity-category-badge-gradient-end: var(--category-music-gradient-end);
+  --activity-category-badge-text: #fff;
+}
+
+.activity-category-badge--creative.MuiChip-root {
+  --activity-category-badge-color: var(--category-creative-color);
+  --activity-category-badge-gradient-end: var(--category-creative-gradient-end);
+}
+
+.activity-category-badge .MuiChip-icon {
+  color: inherit;
+}
+
+.activity-category-badge__image.MuiChip-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.activity-category-badge.MuiChip-sizeSmall
+  .activity-category-badge__image.MuiChip-icon {
+  width: 1rem;
+  height: 1rem;
+}

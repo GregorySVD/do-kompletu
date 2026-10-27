@@ -1,193 +1,28 @@
-import { useState } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
-import axios from 'axios'
-import {
-  Alert,
-  Button,
-  Card,
-  CardContent,
-  Link as MuiLink,
-  TextField,
-  Typography,
-} from '@mui/material'
-import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
-import { z } from 'zod'
-import { useAuth } from '../../context/auth'
-import type { RegisterFormValues } from '../../types/auth'
-import './RegisterPage.css'
+import AuthPageLayout, {
+  type AuthPageBenefit,
+} from '../../components/auth/AuthPageLayout/AuthPageLayout'
+import RegisterForm from '../../components/auth/RegisterForm/RegisterForm'
 
-const registerSchema = z
-  .object({
-    display_name: z
-      .string()
-      .min(1, 'Nazwa użytkownika jest wymagana')
-      .min(3, 'Nazwa użytkownika musi mieć co najmniej 3 znaki')
-      .max(40, 'Nazwa użytkownika może mieć maksymalnie 40 znaków'),
-    email: z
-      .string()
-      .min(1, 'Adres e-mail jest wymagany')
-      .email('Podaj poprawny adres e-mail'),
-    password: z
-      .string()
-      .min(1, 'Hasło jest wymagane')
-      .min(8, 'Hasło musi mieć co najmniej 8 znaków')
-      .max(128, 'Hasło może mieć maksymalnie 128 znaków'),
-    confirm_password: z.string().min(1, 'Powtórzenie hasła jest wymagane'),
-  })
-  .superRefine((values, context) => {
-    if (
-      values.confirm_password &&
-      values.confirm_password !== values.password
-    ) {
-      context.addIssue({
-        code: 'custom',
-        path: ['confirm_password'],
-        message: 'Hasła muszą być identyczne',
-      })
-    }
-  })
-
-const defaultValues: RegisterFormValues = {
-  display_name: '',
-  email: '',
-  password: '',
-  confirm_password: '',
-}
-
-interface RegistrationErrorResponse {
-  detail?: string
-}
+const registrationBenefits: readonly AuthPageBenefit[] = [
+  { code: '01', text: 'Znajduj ludzi o podobnych zainteresowaniach' },
+  { code: '02', text: 'Dołączaj do spotkań lub list rezerwowych' },
+  { code: '03', text: 'Organizuj własne aktywności' },
+]
 
 function RegisterPage() {
-  const [apiError, setApiError] = useState<string | null>(null)
-  const { register: registerUser } = useAuth()
-  const navigate = useNavigate()
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues,
-  })
-
-  async function submitForm(values: RegisterFormValues) {
-    setApiError(null)
-
-    try {
-      await registerUser(values)
-      navigate('/register/success', { replace: true })
-    } catch (error) {
-      const isApiError = axios.isAxiosError<RegistrationErrorResponse>(error)
-      const errorDetail = isApiError ? error.response?.data.detail : undefined
-
-      if (
-        isApiError &&
-        error.response?.status === 409 &&
-        errorDetail === 'Username is already taken'
-      ) {
-        setError('display_name', {
-          type: 'server',
-          message: 'Ta nazwa użytkownika jest już zajęta.',
-        })
-      } else if (
-        isApiError &&
-        error.response?.status === 409 &&
-        errorDetail === 'Email address is already registered'
-      ) {
-        setApiError('Konto z tym adresem e-mail już istnieje.')
-      } else if (isApiError && error.response?.status === 422) {
-        setApiError('Sprawdź poprawność danych formularza.')
-      } else if (isApiError && !error.response) {
-        setApiError('Nie udało się połączyć z serwerem.')
-      } else {
-        setApiError('Nie udało się utworzyć konta. Spróbuj ponownie.')
-      }
-    }
-  }
-
   return (
-    <main className="register-page">
-      <div className="register-page__heading">
-        <div>
-          <Typography component="h1" variant="h4">
-            Zarejestruj się
-          </Typography>
-          <Typography color="text.secondary">
-            Utwórz konto, aby w przyszłości dołączać do aktywności.
-          </Typography>
-        </div>
-
-        <Button component={Link} to="/">
-          Wróć do strony głównej
-        </Button>
-      </div>
-
-      {apiError && <Alert severity="error">{apiError}</Alert>}
-
-      <Card variant="outlined" className="register-card">
-        <CardContent>
-          <form
-            className="register-form"
-            noValidate
-            onSubmit={handleSubmit(submitForm)}
-          >
-            <TextField
-              label="Nazwa użytkownika"
-              autoComplete="nickname"
-              error={Boolean(errors.display_name)}
-              helperText={errors.display_name?.message}
-              {...register('display_name')}
-            />
-
-            <TextField
-              label="Adres e-mail"
-              type="email"
-              autoComplete="email"
-              error={Boolean(errors.email)}
-              helperText={errors.email?.message}
-              {...register('email')}
-            />
-
-            <TextField
-              label="Hasło"
-              type="password"
-              autoComplete="new-password"
-              error={Boolean(errors.password)}
-              helperText={errors.password?.message}
-              {...register('password')}
-            />
-
-            <TextField
-              label="Powtórz hasło"
-              type="password"
-              autoComplete="new-password"
-              error={Boolean(errors.confirm_password)}
-              helperText={errors.confirm_password?.message}
-              {...register('confirm_password')}
-            />
-
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Rejestracja...' : 'Zarejestruj się'}
-            </Button>
-
-            <Typography className="register-form__navigation">
-              Masz już konto?{' '}
-              <MuiLink component={Link} to="/login">
-                Zaloguj się
-              </MuiLink>
-            </Typography>
-          </form>
-        </CardContent>
-      </Card>
-    </main>
+    <AuthPageLayout
+      pageTitleId="register-page-title"
+      pageTitle="Utwórz konto"
+      pageSubtitle="Podaj swoje dane. Poprawność formularza sprawdzamy od razu."
+      formEyebrow="Nowy profil"
+      welcomeEyebrow="Nowy gracz"
+      welcomeTitle="Dołącz do społeczności"
+      welcomeText="Załóż konto, odkrywaj aktywności w okolicy i buduj własną ekipę do wspólnego spędzania czasu."
+      benefits={registrationBenefits}
+    >
+      <RegisterForm />
+    </AuthPageLayout>
   )
 }
 

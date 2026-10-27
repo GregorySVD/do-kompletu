@@ -1,0 +1,259 @@
+.activity-details-hero {
+  --activity-category-color: var(--category-fallback-color);
+
+  position: relative;
+  min-width: 0;
+  margin-top: var(--space-4);
+  padding: clamp(var(--space-6), 5vw, var(--space-12));
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    color-mix(in srgb, var(--color-surface) 88%, var(--color-accent)),
+    color-mix(in srgb, var(--color-surface) 96%, var(--color-accent))
+  );
+  border: 0.35rem solid var(--activity-category-color);
+  border-radius: var(--radius-lg);
+}
+
+.activity-details-hero__content {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.activity-details-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.activity-details-hero__title {
+  max-width: 54rem;
+  margin-top: var(--space-5);
+  overflow-wrap: anywhere;
+}
+
+.activity-details-hero__description {
+  max-width: 58rem;
+  margin-top: var(--space-4);
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.activity-details-hero--team-sport {
+  --activity-category-color: var(--category-team-sport-color);
+  --activity-featured-accent: var(--category-team-sport-color);
+  --activity-featured-gradient-end: var(--category-team-sport-gradient-end);
+  --activity-featured-surface: #fdfcfb;
+}
+
+.activity-details-hero--board-games {
+  --activity-category-color: var(--category-board-games-color);
+  --activity-featured-accent: var(--category-board-games-color);
+  --activity-featured-gradient-end: var(--category-board-games-gradient-end);
+  --activity-featured-surface: #fdfcf8;
+}
+
+.activity-details-hero--rpg {
+  --activity-category-color: var(--category-rpg-color);
+  --activity-featured-accent: var(--category-rpg-color);
+  --activity-featured-gradient-end: var(--category-rpg-gradient-end);
+  --activity-featured-surface: #fcfbfe;
+}
+
+.activity-details-hero--gaming {
+  --activity-category-color: var(--category-gaming-color);
+  --activity-featured-accent: var(--category-gaming-color);
+  --activity-featured-gradient-end: var(--category-gaming-gradient-end);
+  --activity-featured-surface: #fdfafd;
+}
+
+.activity-details-hero--study {
+  --activity-category-color: var(--category-study-color);
+  --activity-featured-accent: var(--category-study-color);
+  --activity-featured-gradient-end: var(--category-study-gradient-end);
+  --activity-featured-surface: #f9fdfc;
+}
+
+.activity-details-hero--technology {
+  --activity-category-color: var(--category-technology-color);
+  --activity-featured-accent: var(--category-technology-color);
+  --activity-featured-gradient-end: var(--category-technology-gradient-end);
+  --activity-featured-surface: #f9fcfe;
+}
+
+.activity-details-hero--music {
+  --activity-category-color: var(--category-music-color);
+  --activity-featured-accent: var(--activity-music-accent);
+  --activity-featured-gradient-end: var(--category-music-gradient-end);
+  --activity-featured-surface: #fdfcfd;
+}
+
+.activity-details-hero--featured {
+  background:
+    linear-gradient(
+        125deg,
+        var(--activity-featured-surface) 0 28%,
+        color-mix(
+            in srgb,
+            var(--activity-featured-accent) 4%,
+            var(--activity-featured-surface)
+          )
+          28% 54%,
+        color-mix(
+            in srgb,
+            var(--activity-featured-gradient-end) 6%,
+            var(--activity-featured-surface)
+          )
+          54% 78%,
+        color-mix(
+            in srgb,
+            var(--activity-featured-accent) 9%,
+            var(--activity-featured-surface)
+          )
+          78% 100%
+      )
+      padding-box,
+    linear-gradient(
+        100deg,
+        var(--activity-featured-accent) 0 34%,
+        color-mix(
+            in srgb,
+            var(--activity-featured-accent) 58%,
+            var(--activity-featured-gradient-end)
+          )
+          34% 68%,
+        var(--activity-featured-gradient-end) 68% 100%
+      )
+      border-box;
+  border-width: 0.25rem;
+  border-color: transparent;
+  border-radius: 0.8rem;
+  box-shadow:
+    0.35rem 0.35rem 0
+      color-mix(in srgb, var(--activity-featured-accent) 18%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--activity-featured-gradient-end) 16%, transparent);
+}
+
+.activity-details-hero--with-visual {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(var(--space-6), 6vw, var(--space-12));
+  align-items: center;
+}
+
+[data-theme='dark'] .activity-details-hero--featured {
+  --activity-featured-surface: #17171a;
+}
+
+.activity-details-hero--featured .activity-details-hero__chips {
+  gap: var(--space-3);
+}
+
+.activity-details-hero--featured .activity-details-hero__status.MuiChip-root {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-semibold);
+  border-width: 2px;
+  border-radius: 0.45rem;
+  box-shadow: 0.16rem 0.16rem 0
+    color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.activity-details-hero--featured .activity-details-hero__status.MuiChip-root {
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, currentColor 8%, var(--color-surface)) 0 52%,
+    color-mix(in srgb, currentColor 15%, var(--color-surface)) 52% 100%
+  );
+  border-color: color-mix(in srgb, currentColor 52%, transparent);
+}
+
+.activity-details-hero--featured .activity-details-hero__title {
+  max-width: 46rem;
+  margin-top: clamp(var(--space-5), 3vw, var(--space-8));
+  font-size: clamp(2rem, 4vw, 3.65rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.activity-details-hero--featured .activity-details-hero__description {
+  max-width: 62ch;
+  font-size: clamp(1rem, 1.5vw, 1.125rem);
+}
+
+.activity-details-hero__category-visual {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: clamp(7.5rem, 14vw, 10rem);
+  aspect-ratio: 1;
+  place-items: center;
+  isolation: isolate;
+}
+
+.activity-details-hero__category-visual::before {
+  position: absolute;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  content: '';
+  background:
+    linear-gradient(
+        color-mix(in srgb, var(--activity-featured-accent) 22%, transparent),
+        color-mix(in srgb, var(--activity-featured-accent) 22%, transparent)
+      )
+      center / 48% 48% no-repeat,
+    linear-gradient(
+        color-mix(
+          in srgb,
+          var(--activity-featured-gradient-end) 10%,
+          transparent
+        ),
+        color-mix(
+          in srgb,
+          var(--activity-featured-gradient-end) 10%,
+          transparent
+        )
+      )
+      center / 74% 74% no-repeat;
+}
+
+.activity-details-hero__category-image-large {
+  display: block;
+  width: 4rem;
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(
+    0.25rem 0.25rem 0
+      color-mix(in srgb, var(--activity-featured-accent) 32%, transparent)
+  );
+}
+
+.activity-details-hero--creative {
+  --activity-category-color: var(--category-creative-color);
+  --activity-featured-accent: var(--category-creative-color);
+  --activity-featured-gradient-end: var(--category-creative-gradient-end);
+  --activity-featured-surface: #fdfafd;
+}
+
+@media (max-width: 30rem) {
+  .activity-details-hero {
+    padding: var(--space-6) var(--space-5);
+    border-radius: var(--radius-md);
+  }
+
+  .activity-details-hero--with-visual {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .activity-details-hero__category-visual {
+    display: none;
+  }
+
+  .activity-details-hero--featured .activity-details-hero__title {
+    font-size: clamp(1.8rem, 9vw, 2.5rem);
+    line-height: 1.12;
+  }
+}

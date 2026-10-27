@@ -1,49 +1,87 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  AccountCircleOutlined,
+  LockOutlined,
+  LoginRounded,
+} from '@mui/icons-material'
 import axios from 'axios'
 import {
   Alert,
-  Button,
   Card,
   CardContent,
   Link as MuiLink,
-  TextField,
   Typography,
 } from '@mui/material'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
-import { z } from 'zod'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/auth'
 import type { LoginFormValues } from '../../../types/auth'
-import './LoginForm.css'
+import {
+  loginFormDefaultValues,
+  loginFormSchema,
+} from '../../../validation/authFormSchemas'
+import AuthPrimaryButton from '../AuthPrimaryButton/AuthPrimaryButton'
+import AuthTextField from '../AuthTextField/AuthTextField'
+import '../AuthForm/AuthForm.css'
 
-const loginSchema = z.object({
-  identifier: z
-    .string()
-    .min(1, 'Wprowadź e-mail lub nazwę użytkownika.')
-    .max(320, 'E-mail lub nazwa użytkownika może mieć maksymalnie 320 znaków'),
-  password: z
-    .string()
-    .min(1, 'Hasło jest wymagane')
-    .max(128, 'Hasło może mieć maksymalnie 128 znaków'),
-})
+interface LoginLocationState {
+  from?: {
+    hash?: unknown
+    pathname?: unknown
+    search?: unknown
+  }
+}
 
-const defaultValues: LoginFormValues = {
-  identifier: '',
-  password: '',
+function getSafePostLoginPath(state: unknown) {
+  if (typeof state !== 'object' || state === null) {
+    return '/'
+  }
+
+  const { from } = state as LoginLocationState
+
+  if (typeof from !== 'object' || from === null) {
+    return '/'
+  }
+
+  const { hash, pathname, search } = from
+
+  if (
+    typeof pathname !== 'string' ||
+    !pathname.startsWith('/') ||
+    pathname.startsWith('//') ||
+    pathname.includes('\\') ||
+    pathname === '/login'
+  ) {
+    return '/'
+  }
+
+  const safeSearch =
+    typeof search === 'string' && (search === '' || search.startsWith('?'))
+      ? search
+      : ''
+  const safeHash =
+    typeof hash === 'string' && (hash === '' || hash.startsWith('#'))
+      ? hash
+      : ''
+
+  return `${pathname}${safeSearch}${safeHash}`
 }
 
 function LoginForm() {
   const [apiError, setApiError] = useState<string | null>(null)
   const { login } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues,
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: loginFormDefaultValues,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
   })
 
   async function submitForm(values: LoginFormValues) {
@@ -51,7 +89,7 @@ function LoginForm() {
 
     try {
       await login(values)
-      navigate('/profile', { replace: true })
+      navigate(getSafePostLoginPath(location.state), { replace: true })
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         setApiError('Nieprawidłowe dane logowania.')
@@ -64,53 +102,59 @@ function LoginForm() {
   }
 
   return (
-    <>
-      {apiError && <Alert severity="error">{apiError}</Alert>}
+    <Card variant="outlined" className="auth-card">
+      <CardContent className="auth-card__content">
+        {apiError && (
+          <Alert className="auth-form__error" severity="error">
+            {apiError}
+          </Alert>
+        )}
 
-      <Card variant="outlined" className="login-card">
-        <CardContent>
-          <form
-            className="login-form"
-            noValidate
-            onSubmit={handleSubmit(submitForm)}
+        <form
+          className="auth-form"
+          noValidate
+          onSubmit={handleSubmit(submitForm)}
+        >
+          <AuthTextField
+            label="E-mail lub nazwa użytkownika"
+            autoComplete="username"
+            disabled={isSubmitting}
+            errorMessage={errors.identifier?.message}
+            registration={register('identifier')}
+            startIcon={<AccountCircleOutlined aria-hidden="true" />}
+          />
+
+          <AuthTextField
+            label="Hasło"
+            type="password"
+            autoComplete="current-password"
+            disabled={isSubmitting}
+            errorMessage={errors.password?.message}
+            registration={register('password')}
+            startIcon={<LockOutlined aria-hidden="true" />}
+          />
+
+          <AuthPrimaryButton
+            type="submit"
+            disabled={isSubmitting || !isValid}
+            startIcon={<LoginRounded aria-hidden="true" />}
           >
-            <TextField
-              label="E-mail lub nazwa użytkownika"
-              type="text"
-              autoComplete="username"
-              error={Boolean(errors.identifier)}
-              helperText={errors.identifier?.message}
-              {...register('identifier')}
-            />
+            {isSubmitting ? 'Logowanie...' : 'Zaloguj się'}
+          </AuthPrimaryButton>
 
-            <TextField
-              label="Hasło"
-              type="password"
-              autoComplete="current-password"
-              error={Boolean(errors.password)}
-              helperText={errors.password?.message}
-              {...register('password')}
-            />
-
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={isSubmitting}
+          <Typography className="auth-form__navigation">
+            <span>Nie masz jeszcze konta?</span>
+            <MuiLink
+              className="auth-form__secondary-link"
+              component={Link}
+              to="/register"
             >
-              {isSubmitting ? 'Logowanie...' : 'Zaloguj się'}
-            </Button>
-
-            <Typography className="login-form__navigation">
-              Nie masz konta?{' '}
-              <MuiLink component={Link} to="/register">
-                Zarejestruj się
-              </MuiLink>
-            </Typography>
-          </form>
-        </CardContent>
-      </Card>
-    </>
+              Utwórz konto
+            </MuiLink>
+          </Typography>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 

@@ -19,9 +19,12 @@ export function useUpdateActivityMutation() {
   return useMutation({
     mutationFn: ({ activityId, payload }: UpdateActivityVariables) =>
       updateActivity(activityId, payload),
-    onSuccess: async (activity) => {
+    onMutate: () => ({ userId: user?.id }),
+    onSuccess: async (activity, _variables, mutationContext) => {
+      const userId = mutationContext?.userId
+
       queryClient.setQueryData(
-        getActivityDetailsQueryKey(activity.id),
+        getActivityDetailsQueryKey(activity.id, userId),
         activity,
       )
 
@@ -30,20 +33,23 @@ export function useUpdateActivityMutation() {
           queryKey: activitiesQueryKey,
           exact: true,
         }),
-        user?.id
+        userId
           ? queryClient.invalidateQueries({
-              queryKey: getMyActivitiesUserQueryKey(user.id),
+              queryKey: getMyActivitiesUserQueryKey(userId),
             })
           : Promise.resolve(),
       ])
     },
-    onError: (error, { activityId }) => {
+    onError: (error, { activityId }, mutationContext) => {
       if (
         axios.isAxiosError(error) &&
         (error.response?.status === 403 || error.response?.status === 409)
       ) {
         void queryClient.invalidateQueries({
-          queryKey: getActivityDetailsQueryKey(activityId),
+          queryKey: getActivityDetailsQueryKey(
+            activityId,
+            mutationContext?.userId,
+          ),
         })
       }
     },

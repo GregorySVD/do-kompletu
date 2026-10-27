@@ -1,0 +1,115 @@
+.activity-tags-card {
+  --tags-card-accent: var(--color-warning);
+
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--space-4);
+  background: linear-gradient(
+    125deg,
+    var(--color-surface) 0 44%,
+    color-mix(in srgb, var(--tags-card-accent) 5%, var(--color-surface)) 44% 72%,
+    color-mix(in srgb, var(--tags-card-accent) 9%, var(--color-surface)) 72%
+      100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--tags-card-accent) 48%, var(--color-border));
+  border-radius: 0.55rem;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--tags-card-accent) 20%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--tags-card-accent) 10%, transparent);
+}
+
+.activity-tags-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.12;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.3rem,
+    color-mix(in srgb, var(--tags-card-accent) 26%, transparent) 0.3rem 0.35rem
+  );
+}
+
+.activity-tags-card__heading,
+.activity-tags-card__list {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.activity-tags-card__heading-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  color: var(--tags-card-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  background: color-mix(
+    in srgb,
+    var(--tags-card-accent) 10%,
+    var(--color-surface)
+  );
+  border: 2px solid var(--tags-card-accent);
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--tags-card-accent) 26%, transparent);
+}
+
+.activity-tags-card__title {
+  width: fit-content;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    180deg,
+    transparent 0 72%,
+    color-mix(in srgb, var(--tags-card-accent) 24%, transparent) 72% 100%
+  );
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--tags-card-accent) 22%, transparent);
+}
+
+.activity-tags-card__list,
+.activity-tags-card__empty {
+  margin-top: var(--space-3);
+}
+
+.activity-tags-card__tag.activity-tags-card__tag {
+  color: var(--tags-card-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--tags-card-accent) 14%, var(--color-surface)) 0 42%,
+    color-mix(in srgb, var(--tags-card-accent) 7%, var(--color-surface)) 42%
+      100%
+  );
+  border: 1px solid var(--tags-card-accent);
+  border-radius: 0.3rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--tags-card-accent) 24%, transparent);
+}
+
+.activity-tags-card__empty {
+  position: relative;
+  z-index: 1;
+  padding: var(--space-3);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  background: color-mix(
+    in srgb,
+    var(--tags-card-accent) 6%,
+    var(--color-surface)
+  );
+  border: 1px dashed
+    color-mix(in srgb, var(--tags-card-accent) 46%, var(--color-border));
+  border-radius: 0.35rem;
+}

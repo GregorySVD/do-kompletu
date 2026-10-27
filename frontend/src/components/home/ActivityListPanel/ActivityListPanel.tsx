@@ -30,7 +30,7 @@ function ActivityListPanel({
           <Typography id="activities-title" component="h1" variant="h5">
             Aktywności w Twojej okolicy
           </Typography>
-          <Typography color="text.secondary">
+          <Typography className="activities__subtitle" color="text.secondary">
             Znajdź aktywność i dołącz do innych
           </Typography>
         </div>
@@ -51,7 +51,11 @@ function ActivityListPanel({
         <div className="activities__list">
           {activities.length > 0 ? (
             activities.map((activity) => (
-              <ActivityCard key={activity.id} activity={activity} />
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                emphasizeMetadata
+              />
             ))
           ) : (
             <div className="activities__empty">
