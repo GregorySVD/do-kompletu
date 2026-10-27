@@ -1,0 +1,48 @@
+.bouncing-logo {
+  position: absolute;
+  z-index: 0;
+  inset: var(--space-3);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bouncing-logo__image {
+  --bouncing-logo-hue: 0deg;
+
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  display: block;
+  width: clamp(7.5rem, 16vw, 12rem);
+  height: auto;
+  opacity: 0.58;
+  image-rendering: auto;
+  mix-blend-mode: multiply;
+  object-fit: contain;
+  filter: hue-rotate(var(--bouncing-logo-hue)) saturate(1.25);
+  will-change: transform, filter;
+}
+
+[data-theme='dark'] .bouncing-logo__image {
+  opacity: 0.64;
+  mix-blend-mode: screen;
+  filter: invert(1) hue-rotate(calc(180deg + var(--bouncing-logo-hue)))
+    saturate(1.35) brightness(1.08);
+}
+
+@media (max-width: 30rem) {
+  .bouncing-logo {
+    inset: var(--space-2);
+  }
+
+  .bouncing-logo__image {
+    width: clamp(6.5rem, 32vw, 8.5rem);
+    opacity: 0.56;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bouncing-logo {
+    display: none;
+  }
+}

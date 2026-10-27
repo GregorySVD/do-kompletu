@@ -5,14 +5,84 @@
   gap: var(--space-3);
 }
 
+.filters__heading .MuiTypography-h6 {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.filters__heading .MuiButton-root {
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+  transition:
+    color 100ms steps(2, end),
+    background 100ms steps(2, end),
+    border-color 100ms steps(2, end),
+    box-shadow 100ms steps(2, end),
+    filter 100ms steps(2, end),
+    transform 100ms steps(2, end);
+}
+
+.filters__heading .MuiButton-root:not(.Mui-disabled) {
+  color: #fff;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-error) 82%, #4a1010) 0 34%,
+    var(--color-error) 34% 72%,
+    color-mix(in srgb, var(--color-error) 76%, #ffb0b0) 72% 100%
+  );
+  border: 2px solid color-mix(in srgb, var(--color-error) 64%, #fff);
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-error) 48%, rgba(23, 4, 4, 0.8));
+  transform: translate(-1px, -1px);
+}
+
+.filters__heading .MuiButton-root:not(.Mui-disabled):hover {
+  color: #fff;
+  filter: brightness(1.12);
+  transform: translate(-2px, -2px);
+}
+
+.filters__heading .MuiButton-root:not(.Mui-disabled):active {
+  box-shadow: 1px 1px 0
+    color-mix(in srgb, var(--color-error) 48%, rgba(23, 4, 4, 0.8));
+  transform: translate(1px, 1px);
+}
+
+.filters__heading .MuiButton-root:not(.Mui-disabled):focus-visible {
+  outline: 2px solid var(--color-error);
+  outline-offset: 3px;
+}
+
+.filters__heading .MuiButton-root.Mui-disabled {
+  color: var(--color-text-muted);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 0.58;
+  transform: none;
+}
+
 .filters__group {
   display: grid;
   gap: var(--space-3);
 }
 
 .filters__group .MuiTypography-subtitle1 {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
 }
 
 .filters__controls {
@@ -22,7 +92,9 @@
 
 .filters__controls .filters__group + .filters__group {
   padding-top: var(--space-5);
-  border-top: 1px solid var(--color-border);
+  border-top: 2px solid var(--color-border);
+  box-shadow: inset 0 1px 0
+    color-mix(in srgb, var(--color-surface) 70%, transparent);
 }
 
 .filters__options.MuiToggleButtonGroup-root {
@@ -32,43 +104,152 @@
 }
 
 .filters__options .MuiToggleButtonGroup-grouped.MuiToggleButton-root {
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   justify-content: flex-start;
   padding: var(--space-2) var(--space-3);
   color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.25;
   text-align: start;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border) !important;
-  border-radius: var(--radius-pill) !important;
+  text-transform: none;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0 52%,
+    color-mix(in srgb, var(--color-surface-strong) 55%, var(--color-surface))
+      52% 100%
+  );
+  border: 2px solid var(--color-border) !important;
+  border-radius: 0.4rem !important;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--color-border-strong) 46%, transparent);
+  transition:
+    color 100ms steps(2, end),
+    background 100ms steps(2, end),
+    border-color 100ms steps(2, end),
+    box-shadow 100ms steps(2, end),
+    transform 100ms steps(2, end);
 }
 
 .filters__options .MuiToggleButtonGroup-grouped.MuiToggleButton-root:hover {
   color: var(--color-text-primary);
-  background: var(--color-surface-strong);
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-strong) 0 52%,
+    var(--color-surface) 52% 100%
+  );
+  border-color: var(--color-border-strong) !important;
+  transform: translateY(-1px);
 }
 
 .filters__options
   .MuiToggleButtonGroup-grouped.MuiToggleButton-root.Mui-selected {
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
-  background: color-mix(
-    in srgb,
-    var(--color-primary) 12%,
-    var(--color-surface)
+  color: var(--color-text-inverse);
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-700) 0 30%,
+    var(--brand-green-600) 30% 72%,
+    var(--brand-green-500) 72% 100%
   );
-  border-color: var(--color-primary) !important;
+  border-color: var(--brand-green-400) !important;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--brand-green-700) 62%, transparent);
+}
+
+.filters__options
+  .MuiToggleButtonGroup-grouped.MuiToggleButton-root.Mui-selected:hover {
+  color: var(--color-text-inverse);
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-600) 0 30%,
+    var(--brand-green-500) 30% 72%,
+    var(--brand-green-400) 72% 100%
+  );
+}
+
+.filters__options .MuiToggleButtonGroup-grouped.MuiToggleButton-root:active {
+  box-shadow: 1px 1px 0
+    color-mix(in srgb, var(--color-border-strong) 46%, transparent);
+  transform: translate(1px, 1px);
+}
+
+.filters__options
+  .MuiToggleButtonGroup-grouped.MuiToggleButton-root:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .filters__availability.MuiFormControlLabel-root {
   align-items: flex-start;
   margin: 0;
+  gap: var(--space-2);
+}
+
+.filters__availability .MuiSwitch-root {
+  width: 3rem;
+  height: 1.75rem;
+  padding: 0;
+  overflow: visible;
+}
+
+.filters__availability .MuiSwitch-switchBase {
+  padding: 0;
+  margin: 0.1875rem;
+  color: var(--color-text-muted);
+  transition:
+    color 160ms steps(3, end),
+    transform 160ms steps(3, end);
+}
+
+.filters__availability .MuiSwitch-thumb {
+  width: 1.375rem;
+  height: 1.375rem;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0.25rem;
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--color-text-primary) 24%, transparent);
+}
+
+.filters__availability .MuiSwitch-track {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-strong) 0 50%,
+    var(--color-surface-soft) 50% 100%
+  );
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0.35rem;
+  opacity: 1;
+}
+
+.filters__availability .MuiSwitch-switchBase.Mui-checked {
+  color: var(--brand-green-500);
+  transform: translateX(1.25rem);
+}
+
+.filters__availability .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-700) 0 42%,
+    var(--brand-green-500) 42% 100%
+  );
+  border-color: var(--brand-green-400);
+  opacity: 1;
 }
 
 .filters__availability .MuiFormControlLabel-label {
-  padding-top: 0.45rem;
+  padding-top: 0.25rem;
   color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
   line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filters__options .MuiToggleButtonGroup-grouped.MuiToggleButton-root,
+  .filters__availability .MuiSwitch-switchBase {
+    transition-duration: 0.01ms;
+  }
 }

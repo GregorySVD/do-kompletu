@@ -9,9 +9,12 @@ export interface AuthContextValue {
   user: UserProfile | null
   isAuthenticated: boolean
   isLoading: boolean
+  isSessionRestoreRetrying: boolean
+  sessionRestoreError: boolean
   login: (values: LoginFormValues) => Promise<void>
   register: (values: RegisterFormValues) => Promise<void>
   logout: () => void
+  retrySessionRestore: () => void
   refreshUser: () => Promise<void>
   syncUserProfile: (profile: UserProfile) => void
 }

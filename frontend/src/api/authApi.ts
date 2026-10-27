@@ -1,12 +1,12 @@
 import apiClient from './apiClient'
 import type {
-  AccessTokenResponse,
   LoginFormValues,
   RegisterFormValues,
   TokenPair,
   UpdateUserProfilePayload,
   UserProfile,
 } from '../types/auth'
+export { requestAccessTokenRefresh as refreshAccessToken } from './authRefreshApi'
 
 type RegisterPayload = Omit<RegisterFormValues, 'confirm_password'>
 
@@ -25,17 +25,6 @@ export async function loginUser(payload: LoginFormValues): Promise<TokenPair> {
   const response = await apiClient.post<TokenPair>(
     '/api/v1/auth/login',
     payload,
-  )
-
-  return response.data
-}
-
-export async function refreshAccessToken(
-  refreshToken: string,
-): Promise<AccessTokenResponse> {
-  const response = await apiClient.post<AccessTokenResponse>(
-    '/api/v1/auth/refresh',
-    { refresh_token: refreshToken },
   )
 
   return response.data

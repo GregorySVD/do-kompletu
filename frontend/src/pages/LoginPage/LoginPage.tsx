@@ -1,28 +1,28 @@
-import { Button, Typography } from '@mui/material'
-import { Link } from 'react-router-dom'
+import AuthPageLayout, {
+  type AuthPageBenefit,
+} from '../../components/auth/AuthPageLayout/AuthPageLayout'
 import LoginForm from '../../components/auth/LoginForm/LoginForm'
-import './LoginPage.css'
+
+const loginBenefits: readonly AuthPageBenefit[] = [
+  { code: '01', text: 'Odkrywaj aktywności w swojej okolicy' },
+  { code: '02', text: 'Kontroluj zapisy i ważne terminy' },
+  { code: '03', text: 'Twórz własne wydarzenia dla innych' },
+]
 
 function LoginPage() {
   return (
-    <main className="login-page">
-      <div className="login-page__heading">
-        <div>
-          <Typography component="h1" variant="h4">
-            Zaloguj się
-          </Typography>
-          <Typography color="text.secondary">
-            Wprowadź dane swojego konta.
-          </Typography>
-        </div>
-
-        <Button component={Link} to="/">
-          Wróć do strony głównej
-        </Button>
-      </div>
-
+    <AuthPageLayout
+      pageTitleId="login-page-title"
+      pageTitle="Zaloguj się"
+      pageSubtitle="Wprowadź e-mail lub nazwę użytkownika i swoje hasło."
+      formEyebrow="Dostęp do konta"
+      welcomeEyebrow="Panel gracza"
+      welcomeTitle="Wróć do swojej ekipy"
+      welcomeText="Zaloguj się, aby dołączać do aktywności, zarządzać zapisami i nie przegapić kolejnego spotkania."
+      benefits={loginBenefits}
+    >
       <LoginForm />
-    </main>
+    </AuthPageLayout>
   )
 }
 

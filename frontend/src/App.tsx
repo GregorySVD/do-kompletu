@@ -1,18 +1,13 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import Header from './components/Header/Header'
 import RequireAuth from './components/RequireAuth/RequireAuth'
-import ActivityDetailsPage from './pages/ActivityDetailsPage/ActivityDetailsPage'
-import CreateActivityPage from './pages/CreateActivityPage/CreateActivityPage'
-import EditActivityPage from './pages/EditActivityPage/EditActivityPage'
-import HomePage from './pages/HomePage/HomePage'
-import LoginPage from './pages/LoginPage/LoginPage'
-import MyActivitiesPage from './pages/MyActivitiesPage/MyActivitiesPage'
-import NotFoundPage from './pages/NotFoundPage/NotFoundPage'
-import ProfilePage from './pages/ProfilePage/ProfilePage'
-import RegisterPage from './pages/RegisterPage/RegisterPage'
-import RegisterSuccessPage from './pages/RegisterSuccessPage/RegisterSuccessPage'
+import LoadingSkeleton, {
+  type LoadingSkeletonVariant,
+} from './components/system/LoadingSkeleton/LoadingSkeleton'
+import ServiceUnavailable from './components/system/ServiceUnavailable/ServiceUnavailable'
+import { useAuth } from './context/auth'
 import {
   applyThemeMode,
   getInitialThemeMode,
@@ -20,11 +15,58 @@ import {
 } from './utils/themeMode'
 import './App.css'
 
+const ActivityDetailsPage = lazy(
+  () => import('./pages/ActivityDetailsPage/ActivityDetailsPage'),
+)
+const CreateActivityPage = lazy(
+  () => import('./pages/CreateActivityPage/CreateActivityPage'),
+)
+const EditActivityPage = lazy(
+  () => import('./pages/EditActivityPage/EditActivityPage'),
+)
+const HomePage = lazy(() => import('./pages/HomePage/HomePage'))
+const LoginPage = lazy(() => import('./pages/LoginPage/LoginPage'))
+const MyActivitiesPage = lazy(
+  () => import('./pages/MyActivitiesPage/MyActivitiesPage'),
+)
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage/NotFoundPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage/ProfilePage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage/RegisterPage'))
+const RegisterSuccessPage = lazy(
+  () => import('./pages/RegisterSuccessPage/RegisterSuccessPage'),
+)
+
+function getRouteLoadingVariant(pathname: string): LoadingSkeletonVariant {
+  if (pathname === '/' || pathname === '/profile/activities') {
+    return 'activity-list'
+  }
+
+  if (
+    pathname === '/activities/new' ||
+    /^\/activities\/[^/]+\/edit$/.test(pathname)
+  ) {
+    return 'activity-form'
+  }
+
+  if (/^\/activities\/[^/]+$/.test(pathname)) {
+    return 'activity-details'
+  }
+
+  if (pathname === '/profile') {
+    return 'profile-section'
+  }
+
+  return 'route'
+}
+
 function App() {
   const location = useLocation()
+  const { isSessionRestoreRetrying, retrySessionRestore, sessionRestoreError } =
+    useAuth()
   const [mode, setMode] = useState<ThemeMode>(getInitialThemeMode)
   const [searchQuery, setSearchQuery] = useState('')
   const isHomePage = location.pathname === '/'
+  const routeLoadingVariant = getRouteLoadingVariant(location.pathname)
 
   const theme = createTheme({
     cssVariables: {
@@ -113,6 +155,18 @@ function App() {
     applyThemeMode(mode)
   }, [mode])
 
+  if (sessionRestoreError) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <ServiceUnavailable
+          isRetrying={isSessionRestoreRetrying}
+          onRetry={retrySessionRestore}
+        />
+      </ThemeProvider>
+    )
+  }
+
   function toggleTheme() {
     setMode((currentMode) => (currentMode === 'light' ? 'dark' : 'light'))
   }
@@ -128,35 +182,40 @@ function App() {
           onSearchChange={setSearchQuery}
         />
 
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <HomePage
-                mode={mode}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-              />
-            }
-          />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/register/success" element={<RegisterSuccessPage />} />
-          <Route element={<RequireAuth />}>
-            <Route path="/activities/new" element={<CreateActivityPage />} />
+        <Suspense fallback={<LoadingSkeleton variant={routeLoadingVariant} />}>
+          <Routes>
             <Route
-              path="/activities/:activityId/edit"
-              element={<EditActivityPage />}
+              path="/"
+              element={
+                <HomePage
+                  mode={mode}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                />
+              }
             />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/profile/activities" element={<MyActivitiesPage />} />
-          </Route>
-          <Route
-            path="/activities/:activityId"
-            element={<ActivityDetailsPage />}
-          />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/register/success" element={<RegisterSuccessPage />} />
+            <Route element={<RequireAuth />}>
+              <Route path="/activities/new" element={<CreateActivityPage />} />
+              <Route
+                path="/activities/:activityId/edit"
+                element={<EditActivityPage />}
+              />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route
+                path="/profile/activities"
+                element={<MyActivitiesPage />}
+              />
+            </Route>
+            <Route
+              path="/activities/:activityId"
+              element={<ActivityDetailsPage />}
+            />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </div>
     </ThemeProvider>
   )

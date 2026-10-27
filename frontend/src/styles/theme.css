@@ -9,6 +9,8 @@
   --brand-purple-600: #7544de;
   --brand-purple-700: #5f32bd;
 
+  --activity-music-accent: #f50057;
+
   --font-family-base:
     'Poppins', 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', sans-serif;
@@ -103,12 +105,38 @@
   --category-study-bg: #e3f7f1;
   --category-technology-color: #147fb5;
   --category-technology-bg: #e4f4fb;
-  --category-music-color: #cf4747;
-  --category-music-bg: #ffebeb;
+  --category-music-color: var(--activity-music-accent);
+  --category-music-bg: color-mix(
+    in srgb,
+    var(--activity-music-accent) 11%,
+    var(--color-surface)
+  );
   --category-creative-color: #a142a8;
   --category-creative-bg: #f8eafa;
   --category-fallback-color: #65736b;
   --category-fallback-bg: #e9efeb;
+
+  --category-team-sport-gradient-end: color-mix(
+    in srgb,
+    var(--category-team-sport-color) 45%,
+    var(--color-error)
+  );
+  --category-board-games-gradient-end: color-mix(
+    in srgb,
+    var(--category-board-games-color) 22%,
+    var(--color-success)
+  );
+  --category-rpg-gradient-end: color-mix(
+    in srgb,
+    var(--category-rpg-color) 28%,
+    var(--color-warning)
+  );
+  --category-gaming-gradient-end: var(--color-accent);
+  --category-study-gradient-end: var(--category-technology-color);
+  --category-technology-gradient-end: var(--color-accent);
+  --category-music-gradient-end: var(--color-accent);
+  --category-creative-gradient-end: var(--activity-music-accent);
+  --category-fallback-gradient-end: var(--color-text-muted);
 
   --header-gradient-start: #35493b;
   --header-gradient-middle: #3b3c42;
@@ -175,8 +203,16 @@
   --category-study-bg: #1f4038;
   --category-technology-color: #65c7f2;
   --category-technology-bg: #203c49;
-  --category-music-color: #ff8383;
-  --category-music-bg: #48292a;
+  --category-music-color: color-mix(
+    in srgb,
+    var(--activity-music-accent) 72%,
+    var(--color-text-primary)
+  );
+  --category-music-bg: color-mix(
+    in srgb,
+    var(--activity-music-accent) 22%,
+    var(--color-surface)
+  );
   --category-creative-color: #dd86e3;
   --category-creative-bg: #442c48;
   --category-fallback-color: #a8b8af;

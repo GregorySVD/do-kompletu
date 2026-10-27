@@ -1,5 +1,13 @@
-import { useTheme } from '@mui/material'
-import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet'
+import { useEffect } from 'react'
+import { Button, useTheme } from '@mui/material'
+import {
+  MapContainer,
+  Marker,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet'
+import { useCurrentPosition } from '../../../../hooks/useCurrentPosition'
 import {
   getMapTileConfig,
   mapMarkerIcon,
@@ -33,6 +41,23 @@ function MapClickHandler({ disabled, onLocationChange }: MapClickHandlerProps) {
   return null
 }
 
+function SelectedLocationSync({
+  latitude,
+  longitude,
+}: Pick<ActivityLocationPickerProps, 'latitude' | 'longitude'>) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (latitude !== null && longitude !== null) {
+      map.setView([latitude, longitude], Math.max(map.getZoom(), 14), {
+        animate: false,
+      })
+    }
+  }, [latitude, longitude, map])
+
+  return null
+}
+
 function ActivityLocationPicker({
   disabled = false,
   error,
@@ -41,6 +66,11 @@ function ActivityLocationPicker({
   onLocationChange,
 }: ActivityLocationPickerProps) {
   const theme = useTheme()
+  const {
+    errorMessage: geolocationError,
+    getCurrentPosition,
+    isLocating,
+  } = useCurrentPosition()
   const mode = theme.palette.mode === 'dark' ? 'dark' : 'light'
   const tileConfig = getMapTileConfig(mode)
   const hasLocation = latitude !== null && longitude !== null
@@ -48,15 +78,45 @@ function ActivityLocationPicker({
     ? [latitude, longitude]
     : poznanMapCenter
 
+  async function handleUseDeviceLocation() {
+    const position = await getCurrentPosition()
+
+    if (position) {
+      onLocationChange(position.coords.latitude, position.coords.longitude)
+    }
+  }
+
   return (
     <div className="activity-location-picker">
-      <div>
-        <h3 className="activity-location-picker__title">
-          Wskaż dokładne miejsce na mapie
-        </h3>
-        <p className="activity-location-picker__hint">
-          Kliknij na mapie, aby ustawić lokalizację aktywności.
-        </p>
+      <div className="activity-location-picker__heading">
+        <div>
+          <h3 className="activity-location-picker__title">
+            Zaznacz punkt spotkania
+          </h3>
+          <p className="activity-location-picker__hint">
+            Kliknij mapę albo użyj bieżącej lokalizacji urządzenia.
+          </p>
+        </div>
+
+        <Button
+          className="activity-location-picker__locate-button"
+          disabled={disabled || isLocating}
+          type="button"
+          onClick={() => {
+            void handleUseDeviceLocation()
+          }}
+          startIcon={
+            <img
+              src="/icons/icons8-navigation-64.png"
+              alt=""
+              width="64"
+              height="64"
+              aria-hidden="true"
+            />
+          }
+        >
+          {isLocating ? 'Ustalanie lokalizacji...' : 'Użyj mojej lokalizacji'}
+        </Button>
       </div>
 
       <div
@@ -72,6 +132,7 @@ function ActivityLocationPicker({
             disabled={disabled}
             onLocationChange={onLocationChange}
           />
+          <SelectedLocationSync latitude={latitude} longitude={longitude} />
           <TileLayer
             key={mode}
             attribution={tileConfig.attribution}
@@ -87,6 +148,12 @@ function ActivityLocationPicker({
       {error && (
         <p className="activity-location-picker__error" role="alert">
           {error}
+        </p>
+      )}
+
+      {geolocationError && (
+        <p className="activity-location-picker__error" role="alert">
+          {geolocationError}
         </p>
       )}
 

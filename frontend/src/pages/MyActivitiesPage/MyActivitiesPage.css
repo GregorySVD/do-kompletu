@@ -1,37 +1,275 @@
 .my-activities-page {
-  width: min(100%, 60rem);
+  position: relative;
+  isolation: isolate;
+  width: min(100%, var(--page-max-width));
+  min-height: 100dvh;
   margin-inline: auto;
-  padding: var(--section-gap) var(--page-gutter);
+  padding: clamp(var(--space-6), 4vw, var(--space-10)) var(--page-gutter)
+    var(--space-16);
+}
+
+.my-activities-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: '';
+  opacity: 0.28;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 7px,
+      color-mix(in srgb, var(--color-primary) 3%, transparent) 7px 8px
+    ),
+    linear-gradient(
+      118deg,
+      transparent 0 22%,
+      color-mix(in srgb, var(--brand-green-400) 5%, transparent) 22% 42%,
+      transparent 42% 61%,
+      color-mix(in srgb, var(--brand-purple-400) 6%, transparent) 61% 80%,
+      transparent 80% 100%
+    );
+  background-size:
+    100% 100%,
+    150% 100%;
+  pointer-events: none;
+  animation: my-activities-grid-drift 14s steps(18, end) infinite;
 }
 
 .my-activities-page__heading {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--component-gap);
-  margin-bottom: var(--space-8);
+  justify-content: space-between;
+  position: relative;
+  padding: clamp(var(--space-5), 4vw, var(--space-8));
+  gap: var(--space-5);
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-primary) 3%, transparent) 5px 6px
+    ),
+    linear-gradient(
+      125deg,
+      var(--color-surface) 0 48%,
+      color-mix(in srgb, var(--brand-purple-400) 7%, var(--color-surface)) 48%
+        74%,
+      color-mix(in srgb, var(--brand-green-400) 9%, var(--color-surface)) 74%
+        100%
+    );
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow:
+    6px 6px 0 color-mix(in srgb, var(--color-primary) 14%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
-.my-activities-section + .my-activities-section {
-  margin-top: var(--space-8);
+.my-activities-page__heading::after {
+  position: absolute;
+  right: -2rem;
+  bottom: -3.5rem;
+  width: 14rem;
+  height: 10rem;
+  content: '';
+  background: linear-gradient(
+    135deg,
+    transparent 0 36%,
+    color-mix(in srgb, var(--brand-purple-400) 16%, transparent) 36% 48%,
+    transparent 48% 62%,
+    color-mix(in srgb, var(--brand-green-400) 18%, transparent) 62% 75%,
+    transparent 75%
+  );
+  pointer-events: none;
 }
 
-.my-activities-section__list {
+.my-activities-page__heading > * {
+  position: relative;
+  z-index: 1;
+}
+
+.my-activities-page__heading > div {
+  min-width: 0;
+}
+
+.my-activities-page__eyebrow {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.1em;
+}
+
+.my-activities-page__heading .MuiTypography-h3 {
+  width: fit-content;
+  max-width: 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.1;
+  letter-spacing: -0.055em;
+  background: linear-gradient(
+    180deg,
+    transparent 0 75%,
+    color-mix(in srgb, var(--color-accent) 24%, transparent) 75% 100%
+  );
+  text-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.my-activities-page__heading .MuiTypography-body1 {
+  max-width: 54rem;
+  margin-top: var(--space-2);
+}
+
+.my-activities-page__index {
   display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  margin-top: var(--space-5);
+  gap: var(--space-2);
 }
 
-.my-activities-section__empty {
-  margin-top: var(--space-3);
-  padding: clamp(var(--space-4), 4vw, var(--space-6));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+.my-activities-page__index a {
+  --my-activities-index-accent: var(--brand-green-400);
+  --my-activities-index-secondary: var(--category-technology-color);
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: var(--touch-target-min);
+  align-items: center;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  background: linear-gradient(
+    110deg,
+    color-mix(
+        in srgb,
+        var(--my-activities-index-accent) 8%,
+        var(--color-surface)
+      )
+      0 64%,
+    color-mix(
+        in srgb,
+        var(--my-activities-index-secondary) 12%,
+        var(--color-surface)
+      )
+      64% 100%
+  );
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--my-activities-index-accent) 38%,
+      var(--color-border)
+    );
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--my-activities-index-accent) 12%, transparent);
+  transition:
+    border-color 120ms steps(2, end),
+    box-shadow 120ms steps(2, end),
+    transform 120ms steps(2, end);
+}
+
+.my-activities-page__index a:nth-child(2) {
+  --my-activities-index-accent: var(--brand-purple-400);
+  --my-activities-index-secondary: var(--activity-music-accent);
+}
+
+.my-activities-page__index a:nth-child(3) {
+  --my-activities-index-accent: var(--activity-music-accent);
+  --my-activities-index-secondary: var(--brand-green-400);
+}
+
+.my-activities-page__index a:nth-child(4) {
+  --my-activities-index-accent: var(--category-technology-color);
+  --my-activities-index-secondary: var(--brand-purple-400);
+}
+
+.my-activities-page__index a:hover {
+  border-color: var(--my-activities-index-accent);
+  box-shadow: 4px 4px 0
+    color-mix(in srgb, var(--my-activities-index-accent) 20%, transparent);
+  transform: translate(-1px, -1px);
+}
+
+.my-activities-page__index a:focus-visible {
+  outline: 3px solid var(--my-activities-index-accent);
+  outline-offset: 3px;
+}
+
+.my-activities-page__index span,
+.my-activities-page__index small {
+  color: var(--my-activities-index-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+.my-activities-page__index strong {
+  min-width: 0;
+  overflow: hidden;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-activities-page__index small {
+  display: grid;
+  min-width: 1.8rem;
+  min-height: 1.8rem;
+  place-items: center;
+  background: color-mix(
+    in srgb,
+    var(--my-activities-index-accent) 10%,
+    var(--color-surface)
+  );
+  border: 1px solid var(--my-activities-index-accent);
+  border-radius: 0.25rem;
+}
+
+.my-activities-page__sections {
+  display: grid;
+  margin-top: clamp(var(--space-8), 5vw, var(--space-12));
+  gap: clamp(var(--space-10), 7vw, var(--space-16));
+}
+
+.my-activities-page__sections .profile-activity-section {
+  scroll-margin-top: var(--space-6);
+}
+
+@keyframes my-activities-grid-drift {
+  0%,
+  100% {
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  50% {
+    background-position:
+      0 0,
+      100% 0;
+  }
 }
 
 @media (min-width: 37.5rem) {
   .my-activities-page__heading {
     flex-direction: row;
+    align-items: center;
     justify-content: space-between;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .my-activities-page::before {
+    animation: none;
+  }
+
+  .my-activities-page__index a {
+    transition-duration: 0.01ms;
   }
 }

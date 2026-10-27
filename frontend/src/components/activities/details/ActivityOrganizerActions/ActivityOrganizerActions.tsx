@@ -97,11 +97,18 @@ function ActivityOrganizerActions({ activity }: ActivityOrganizerActionsProps) {
         className="activity-organizer-actions"
       >
         <CardContent className="activity-organizer-actions__content">
-          <div>
-            <Typography component="h2" variant="h6">
+          <div className="activity-organizer-actions__heading">
+            <Typography
+              className="activity-organizer-actions__title"
+              component="h2"
+              variant="h6"
+            >
               Zarządzanie aktywnością
             </Typography>
-            <Typography color="text.secondary">
+            <Typography
+              className="activity-organizer-actions__subtitle"
+              color="text.secondary"
+            >
               Akcje dostępne dla organizatora.
             </Typography>
           </div>
@@ -111,10 +118,21 @@ function ActivityOrganizerActions({ activity }: ActivityOrganizerActionsProps) {
           <div className="activity-organizer-actions__buttons">
             {activity.permissions.can_edit && (
               <Button
+                className="activity-organizer-actions__button activity-organizer-actions__button--edit"
                 component={Link}
                 to={`/activities/${activity.id}/edit`}
                 variant="outlined"
                 disabled={isPending}
+                startIcon={
+                  <img
+                    className="activity-organizer-actions__button-icon"
+                    src="/icons/icons8-edit-64.png"
+                    alt=""
+                    width="64"
+                    height="64"
+                    aria-hidden="true"
+                  />
+                }
               >
                 Edytuj aktywność
               </Button>
@@ -122,6 +140,7 @@ function ActivityOrganizerActions({ activity }: ActivityOrganizerActionsProps) {
 
             {activity.permissions.can_finalize && (
               <Button
+                className="activity-organizer-actions__button activity-organizer-actions__button--finalize"
                 variant="contained"
                 disabled={isPending}
                 onClick={() => openDialog('finalize')}
@@ -132,10 +151,21 @@ function ActivityOrganizerActions({ activity }: ActivityOrganizerActionsProps) {
 
             {activity.permissions.can_cancel && (
               <Button
+                className="activity-organizer-actions__button activity-organizer-actions__button--cancel"
                 color="error"
                 variant="outlined"
                 disabled={isPending}
                 onClick={() => openDialog('cancel')}
+                startIcon={
+                  <img
+                    className="activity-organizer-actions__button-icon"
+                    src="/icons/icons8-trash-64.png"
+                    alt=""
+                    width="64"
+                    height="64"
+                    aria-hidden="true"
+                  />
+                }
               >
                 Anuluj aktywność
               </Button>

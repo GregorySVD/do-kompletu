@@ -1,11 +1,22 @@
-import { useEffect, useState, type ReactNode } from 'react'
 import {
-  getCurrentUser,
-  loginUser,
-  refreshAccessToken,
-  registerUser,
-} from '../api/authApi'
-import { accessTokenStorageKey, refreshTokenStorageKey } from '../api/apiClient'
+  useQueryClient,
+  type QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query'
+import { useEffect, useState, type ReactNode } from 'react'
+import { getCurrentUser, loginUser, registerUser } from '../api/authApi'
+import {
+  clearStoredTokens,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  storeTokenPair,
+  subscribeToSessionExpiration,
+} from '../auth/authSession'
+import {
+  getStoredSessionIdentity,
+  restoreSession,
+  type SessionRestoreResult,
+} from '../auth/restoreSession'
 import type {
   LoginFormValues,
   RegisterFormValues,
@@ -17,58 +28,91 @@ interface AuthProviderProps {
   children: ReactNode
 }
 
-function clearStoredTokens() {
-  sessionStorage.removeItem(accessTokenStorageKey)
-  sessionStorage.removeItem(refreshTokenStorageKey)
+function isPrivateQueryKey(queryKey: QueryKey) {
+  return (
+    queryKey[0] === 'my-activities' ||
+    (queryKey[0] === 'activity-details' && queryKey[1] !== 'anonymous')
+  )
 }
 
-async function restoreSession(): Promise<UserProfile | null> {
-  const accessToken = sessionStorage.getItem(accessTokenStorageKey)
-
-  if (!accessToken) {
-    clearStoredTokens()
-    return null
-  }
-
-  try {
-    return await getCurrentUser()
-  } catch {
-    const refreshToken = sessionStorage.getItem(refreshTokenStorageKey)
-
-    if (!refreshToken) {
-      clearStoredTokens()
-      return null
-    }
-
-    try {
-      const refreshedToken = await refreshAccessToken(refreshToken)
-      sessionStorage.setItem(accessTokenStorageKey, refreshedToken.access_token)
-      return await getCurrentUser()
-    } catch {
-      clearStoredTokens()
-      return null
-    }
-  }
+function clearPrivateClientState(queryClient: QueryClient) {
+  queryClient.removeQueries({
+    predicate: (query) => isPrivateQueryKey(query.queryKey),
+  })
+  queryClient.getMutationCache().clear()
 }
 
-let pendingSessionRestore: Promise<UserProfile | null> | null = null
+interface PendingSessionRestore {
+  sessionIdentity: string | null
+  promise: Promise<SessionRestoreResult>
+}
+
+let pendingSessionRestore: PendingSessionRestore | null = null
 
 function getRestoredSession() {
-  pendingSessionRestore ??= restoreSession()
-  return pendingSessionRestore
+  const sessionIdentity = getStoredSessionIdentity()
+
+  if (pendingSessionRestore?.sessionIdentity === sessionIdentity) {
+    return pendingSessionRestore.promise
+  }
+
+  const scopedPromise: Promise<SessionRestoreResult> = restoreSession().finally(
+    () => {
+      if (pendingSessionRestore?.promise === scopedPromise) {
+        pendingSessionRestore = null
+      }
+    },
+  )
+
+  pendingSessionRestore = { sessionIdentity, promise: scopedPromise }
+  return scopedPromise
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [sessionRestoreError, setSessionRestoreError] = useState(false)
+  const [isSessionRestoreRetrying, setIsSessionRestoreRetrying] =
+    useState(false)
+
+  function applySessionRestoreResult(result: SessionRestoreResult) {
+    setIsSessionRestoreRetrying(false)
+
+    if (result.status === 'stale') {
+      return
+    }
+
+    if (result.status === 'error') {
+      setUser(null)
+      setSessionRestoreError(true)
+      setIsLoading(true)
+      return
+    }
+
+    setUser(result.user)
+    setSessionRestoreError(false)
+    setIsLoading(false)
+  }
+
+  useEffect(
+    () =>
+      subscribeToSessionExpiration(() => {
+        clearPrivateClientState(queryClient)
+        setUser(null)
+        setSessionRestoreError(false)
+        setIsSessionRestoreRetrying(false)
+        setIsLoading(false)
+      }),
+    [queryClient],
+  )
 
   useEffect(() => {
     let isActive = true
 
-    void getRestoredSession().then((restoredUser) => {
+    void getRestoredSession().then((result) => {
       if (isActive) {
-        setUser(restoredUser)
-        setIsLoading(false)
+        applySessionRestoreResult(result)
       }
     })
 
@@ -79,14 +123,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   async function login(values: LoginFormValues) {
     const tokens = await loginUser(values)
-    sessionStorage.setItem(accessTokenStorageKey, tokens.access_token)
-    sessionStorage.setItem(refreshTokenStorageKey, tokens.refresh_token)
+    clearPrivateClientState(queryClient)
+    storeTokenPair(tokens.access_token, tokens.refresh_token)
+    setUser(null)
+    setSessionRestoreError(false)
+    setIsSessionRestoreRetrying(false)
+    setIsLoading(true)
 
     try {
-      setUser(await getCurrentUser())
+      const loggedInUser = await getCurrentUser()
+      setUser(loggedInUser)
+      setIsLoading(false)
     } catch (error) {
-      clearStoredTokens()
+      clearPrivateClientState(queryClient)
       setUser(null)
+
+      if (getStoredAccessToken() || getStoredRefreshToken()) {
+        setSessionRestoreError(true)
+        setIsLoading(true)
+      } else {
+        setSessionRestoreError(false)
+        setIsLoading(false)
+      }
+
       throw error
     }
   }
@@ -101,7 +160,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   function logout() {
     clearStoredTokens()
+    clearPrivateClientState(queryClient)
     setUser(null)
+    setSessionRestoreError(false)
+    setIsSessionRestoreRetrying(false)
+    setIsLoading(false)
+  }
+
+  function retrySessionRestore() {
+    if (isSessionRestoreRetrying) {
+      return
+    }
+
+    setIsSessionRestoreRetrying(true)
+    void getRestoredSession().then(applySessionRestoreResult)
   }
 
   async function refreshUser() {
@@ -116,9 +188,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     isAuthenticated: user !== null,
     isLoading,
+    isSessionRestoreRetrying,
+    sessionRestoreError,
     login,
     register,
     logout,
+    retrySessionRestore,
     refreshUser,
     syncUserProfile,
   }

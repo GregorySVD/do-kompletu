@@ -1,4 +1,4 @@
-import { DarkMode, LightMode, Search } from '@mui/icons-material'
+import { Search } from '@mui/icons-material'
 import {
   AppBar,
   Button,
@@ -9,6 +9,7 @@ import {
 } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/auth'
+import UserAvatar from '../UserAvatar/UserAvatar'
 import './Header.css'
 
 interface HeaderProps {
@@ -56,7 +57,13 @@ function Header({
           to="/"
           variant="h5"
         >
-          <span className="header__logo-text">DoKompletu</span>
+          <img
+            className={`header__logo-image header__logo-image--${mode}`}
+            src="/dokompletu_logo_horizontal.png"
+            alt="DoKompletu"
+            width="2172"
+            height="724"
+          />
         </Typography>
 
         <div className="header__search">
@@ -71,19 +78,45 @@ function Header({
         </div>
 
         <IconButton
-          className="header__theme-toggle"
+          className={`header__theme-toggle header__theme-toggle--${mode}`}
           aria-label={
             mode === 'light' ? 'Włącz ciemny motyw' : 'Włącz jasny motyw'
           }
+          aria-pressed={mode === 'dark'}
           onClick={onToggleTheme}
         >
-          {mode === 'light' ? <DarkMode /> : <LightMode />}
+          <span className="header__theme-switch" aria-hidden="true">
+            <img
+              className="header__theme-switch-icon header__theme-switch-icon--moon"
+              src="/icons/icons8-new-moon-64.png"
+              alt=""
+              width="64"
+              height="64"
+            />
+            <img
+              className="header__theme-switch-icon header__theme-switch-icon--sun"
+              src="/icons/icons8-sun-64.png"
+              alt=""
+              width="64"
+              height="64"
+            />
+            <span className="header__theme-switch-knob" />
+          </span>
         </IconButton>
 
         <Button
           className="header__button header__add-button"
           component={Link}
           to="/activities/new"
+          startIcon={
+            <img
+              className="header__button-icon"
+              src="/icons/icons8-add-64.png"
+              alt=""
+              width="64"
+              height="64"
+            />
+          }
         >
           Dodaj aktywność
         </Button>
@@ -95,6 +128,13 @@ function Header({
                 className="header__button header__profile-button"
                 component={Link}
                 to="/profile"
+                startIcon={
+                  <UserAvatar
+                    className="header__button-icon"
+                    avatarUrl={user.avatar_url}
+                    displayName={user.display_name}
+                  />
+                }
               >
                 <span className="header__profile-name">
                   {user.display_name || 'Profil'}
@@ -112,6 +152,7 @@ function Header({
               className="header__button header__auth-button"
               component={Link}
               to="/login"
+              state={{ from: location }}
             >
               Zaloguj się
             </Button>

@@ -3,6 +3,14 @@
   gap: var(--space-3);
 }
 
+.activity-location-picker__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .activity-location-picker__title {
   margin: 0;
   color: var(--color-text-primary);
@@ -16,14 +24,50 @@
   font-size: var(--font-size-sm);
 }
 
+.activity-location-picker__locate-button.MuiButton-root {
+  flex: 0 0 auto;
+  min-height: var(--touch-target-min);
+  padding-inline: var(--space-3);
+  color: var(--color-text-primary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: none;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--color-primary) 16%, var(--color-surface)) 0 44%,
+    color-mix(in srgb, var(--color-accent) 11%, var(--color-surface)) 44% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--color-primary) 52%, var(--color-border));
+  border-radius: 0.3rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.activity-location-picker__locate-button.MuiButton-root:hover {
+  border-color: var(--color-primary);
+  filter: brightness(1.06);
+}
+
+.activity-location-picker__locate-button img {
+  width: 1.45rem;
+  height: 1.45rem;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
 .activity-location-picker__frame {
   width: 100%;
-  height: clamp(20rem, 45vw, 25rem);
+  height: clamp(17rem, 36vw, 22rem);
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: 3px solid
+    color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
+  border-radius: 0.45rem;
   background: var(--color-surface-soft);
+  box-shadow: 4px 4px 0
+    color-mix(in srgb, var(--color-primary) 16%, transparent);
 }
 
 .activity-location-picker__frame--error {
@@ -51,9 +95,14 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   color: var(--color-success);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+  border: 1px solid
+    color-mix(in srgb, var(--color-success) 36%, var(--color-border));
+  border-radius: 0.3rem;
 }
 
 .activity-location-picker__coordinates {
@@ -65,6 +114,10 @@
 
 @media (max-width: 30rem) {
   .activity-location-picker__frame {
-    height: 20rem;
+    height: 18rem;
+  }
+
+  .activity-location-picker__locate-button.MuiButton-root {
+    width: 100%;
   }
 }

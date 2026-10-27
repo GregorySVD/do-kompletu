@@ -2,6 +2,7 @@ import type {
   Activity,
   ActivityCategory,
   ActivityDetails,
+  CheckInActivityPayload,
   CreateActivityPayload,
   UpdateActivityPayload,
 } from '../types/activity'
@@ -70,6 +71,48 @@ export async function finalizeActivity(
 ): Promise<ActivityDetails> {
   const response = await apiClient.post<ActivityDetails>(
     `/api/v1/activities/${activityId}/finalize`,
+  )
+
+  return response.data
+}
+
+export async function joinActivity(
+  activityId: string,
+): Promise<ActivityDetails> {
+  const response = await apiClient.post<ActivityDetails>(
+    `/api/v1/activities/${activityId}/join`,
+  )
+
+  return response.data
+}
+
+export async function leaveActivity(
+  activityId: string,
+): Promise<ActivityDetails> {
+  const response = await apiClient.delete<ActivityDetails>(
+    `/api/v1/activities/${activityId}/join`,
+  )
+
+  return response.data
+}
+
+export async function confirmActivity(
+  activityId: string,
+): Promise<ActivityDetails> {
+  const response = await apiClient.post<ActivityDetails>(
+    `/api/v1/activities/${activityId}/confirm`,
+  )
+
+  return response.data
+}
+
+export async function checkInActivity(
+  activityId: string,
+  payload: CheckInActivityPayload,
+): Promise<ActivityDetails> {
+  const response = await apiClient.post<ActivityDetails>(
+    `/api/v1/activities/${activityId}/check-in`,
+    payload,
   )
 
   return response.data
