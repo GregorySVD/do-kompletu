@@ -2,6 +2,7 @@ import axios from 'axios'
 import { useLocation, useParams } from 'react-router-dom'
 import ActivityDetailsContent from '../../components/activities/details/ActivityDetailsContent/ActivityDetailsContent'
 import BackButton from '../../components/navigation/BackButton/BackButton'
+import LoadingSkeleton from '../../components/system/LoadingSkeleton/LoadingSkeleton'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import { useActivityDetailsQuery } from '../../hooks/queries/useActivityDetailsQuery'
 import {
@@ -72,7 +73,11 @@ function ActivityDetailsPage() {
     return (
       <main className="activity-details-page">
         <ActivityBackButton {...backNavigation} />
-        <QueryStateMessage message="Ładowanie aktywności..." isLoading />
+        <LoadingSkeleton
+          embedded
+          message="Ładowanie szczegółów aktywności..."
+          variant="activity-details"
+        />
       </main>
     )
   }

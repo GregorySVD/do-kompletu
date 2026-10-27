@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { CircularProgress, Typography } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { checkBackendHealth } from '../../../api/healthApi'
+import LoadingSkeleton from '../LoadingSkeleton/LoadingSkeleton'
 import ServiceUnavailable from '../ServiceUnavailable/ServiceUnavailable'
 import './BackendStatusGate.css'
 
@@ -21,12 +21,8 @@ function BackendStatusGate({ children }: BackendStatusGateProps) {
 
   if (isPending) {
     return (
-      <main className="backend-status-gate__checking" aria-live="polite">
-        <CircularProgress
-          className="backend-status-gate__spinner"
-          aria-hidden="true"
-        />
-        <Typography>Łączenie z DoKompletu...</Typography>
+      <main className="backend-status-gate__checking">
+        <LoadingSkeleton message="Łączenie z DoKompletu..." variant="route" />
       </main>
     )
   }

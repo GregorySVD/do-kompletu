@@ -9,6 +9,7 @@ import MobileHomeControls, {
   type ViewMode,
 } from '../../components/home/MobileHomeControls/MobileHomeControls'
 import BouncingLogo from '../../components/system/BouncingLogo/BouncingLogo'
+import LoadingSkeleton from '../../components/system/LoadingSkeleton/LoadingSkeleton'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import { useActivitiesQuery } from '../../hooks/queries/useActivitiesQuery'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
@@ -116,7 +117,10 @@ function HomePage({ mode, searchQuery, onSearchChange }: HomePageProps) {
   if (isInitialLoading) {
     return (
       <main className="home-page home-page--query-state">
-        <QueryStateMessage message="Ładowanie aktywności..." isLoading />
+        <LoadingSkeleton
+          message="Ładowanie aktywności i kategorii..."
+          variant="activity-list"
+        />
       </main>
     )
   }

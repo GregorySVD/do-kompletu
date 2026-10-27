@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import ActivityForm from '../../components/activities/create/ActivityForm/ActivityForm'
 import BackButton from '../../components/navigation/BackButton/BackButton'
+import LoadingSkeleton from '../../components/system/LoadingSkeleton/LoadingSkeleton'
 import { useCreateActivityMutation } from '../../hooks/mutations/useCreateActivityMutation'
 import { activitiesQueryKey } from '../../hooks/queries/useActivitiesQuery'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
@@ -84,10 +85,6 @@ function CreateActivityPage() {
       </header>
 
       <div className="create-activity-page__feedback">
-        {categoriesQuery.isPending && (
-          <Alert severity="info">Ładowanie kategorii...</Alert>
-        )}
-
         {categoriesQuery.isError && (
           <Alert
             action={
@@ -116,6 +113,14 @@ function CreateActivityPage() {
           </Alert>
         )}
       </div>
+
+      {categoriesQuery.isPending && (
+        <LoadingSkeleton
+          embedded
+          message="Ładowanie kategorii i formularza aktywności..."
+          variant="activity-form"
+        />
+      )}
 
       {categoriesQuery.isSuccess && (
         <ActivityForm

@@ -4,6 +4,7 @@ import { Alert, Button, Typography } from '@mui/material'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ActivityForm from '../../components/activities/create/ActivityForm/ActivityForm'
 import BackButton from '../../components/navigation/BackButton/BackButton'
+import LoadingSkeleton from '../../components/system/LoadingSkeleton/LoadingSkeleton'
 import UserAvatar from '../../components/UserAvatar/UserAvatar'
 import { useUpdateActivityMutation } from '../../hooks/mutations/useUpdateActivityMutation'
 import { useActivityCategoriesQuery } from '../../hooks/queries/useActivityCategoriesQuery'
@@ -145,25 +146,48 @@ function EditActivityPage() {
 
   return (
     <main className="edit-activity-page">
-      <div className="edit-activity-page__heading">
-        <div>
-          <Typography component="h1" variant="h4">
+      <header className="edit-activity-page__heading">
+        <div className="edit-activity-page__heading-icon" aria-hidden="true">
+          <img src="/icons/icons8-edit-64.png" alt="" width="64" height="64" />
+        </div>
+
+        <div className="edit-activity-page__heading-copy">
+          <span className="edit-activity-page__eyebrow">
+            Tryb organizatora // edycja
+          </span>
+          <Typography
+            className="edit-activity-page__title"
+            component="h1"
+            variant="h4"
+          >
             Edytuj aktywność
           </Typography>
-          <Typography color="text.secondary">
+          <Typography
+            className="edit-activity-page__subtitle"
+            color="text.secondary"
+          >
             Zaktualizuj informacje o swojej aktywności.
           </Typography>
         </div>
 
-        <BackButton to={activityPath} />
-      </div>
+        <BackButton
+          className="edit-activity-page__heading-back"
+          to={activityPath}
+        >
+          Wróć do szczegółów
+        </BackButton>
+      </header>
 
       {activityId === '' && (
         <Alert severity="error">Ta aktywność nie istnieje.</Alert>
       )}
 
       {isLoading && (
-        <Alert severity="info">Ładowanie danych aktywności...</Alert>
+        <LoadingSkeleton
+          embedded
+          message="Ładowanie danych aktywności i formularza..."
+          variant="activity-form"
+        />
       )}
 
       {hasLoadError && (

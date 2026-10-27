@@ -9,6 +9,7 @@ import ProfileActivitySection, {
   type ProfileActivityStatusPresentation,
 } from '../../components/profile/ProfileActivitySection/ProfileActivitySection'
 import EditProfileDialog from '../../components/profile/EditProfileDialog/EditProfileDialog'
+import LoadingSkeleton from '../../components/system/LoadingSkeleton/LoadingSkeleton'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import UserAvatar from '../../components/UserAvatar/UserAvatar'
 import { useAuth } from '../../context/auth'
@@ -135,7 +136,13 @@ function getQueryFallback(
   query: UseQueryResult<ActivityDetails[], Error>,
 ): ReactNode | undefined {
   if (query.isPending || (query.isError && axios.isCancel(query.error))) {
-    return <QueryStateMessage message="Ładowanie aktywności..." isLoading />
+    return (
+      <LoadingSkeleton
+        embedded
+        message="Ładowanie sekcji aktywności..."
+        variant="profile-section"
+      />
+    )
   }
 
   if (query.isError) {

@@ -7,6 +7,7 @@ import ProfileActivitySection, {
   type ProfileActivityStatusPresentation,
 } from '../../components/profile/ProfileActivitySection/ProfileActivitySection'
 import BackButton from '../../components/navigation/BackButton/BackButton'
+import LoadingSkeleton from '../../components/system/LoadingSkeleton/LoadingSkeleton'
 import QueryStateMessage from '../../components/system/QueryStateMessage/QueryStateMessage'
 import { useAuth } from '../../context/auth'
 import { useMyActivitiesQuery } from '../../hooks/queries/useMyActivitiesQuery'
@@ -149,14 +150,26 @@ function getQueryFallback(
   query: UseQueryResult<ActivityDetails[], Error>,
 ): ReactNode | undefined {
   if (query.isPending) {
-    return <QueryStateMessage message="Ładowanie aktywności..." isLoading />
+    return (
+      <LoadingSkeleton
+        embedded
+        message="Ładowanie sekcji aktywności..."
+        variant="profile-section"
+      />
+    )
   }
 
   if (query.isError) {
     const errorMessage = getActivitiesErrorMessage(query.error)
 
     if (errorMessage === null) {
-      return <QueryStateMessage message="Ładowanie aktywności..." isLoading />
+      return (
+        <LoadingSkeleton
+          embedded
+          message="Ładowanie sekcji aktywności..."
+          variant="profile-section"
+        />
+      )
     }
 
     return (
