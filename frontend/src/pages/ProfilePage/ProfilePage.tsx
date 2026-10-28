@@ -114,7 +114,7 @@ function getHistoryActivityStatus(
         color: 'success',
         secondaryStatusText:
           activity.current_user_participation.checked_in_at !== null
-            ? 'Obecność potwierdzona'
+            ? 'Check-in zweryfikowany lokalizacyjnie'
             : undefined,
       }
     case 'NO_SHOW':
@@ -213,7 +213,7 @@ function ProfilePage() {
             Twoje centrum aktywności
           </Typography>
           <Typography color="text.secondary">
-            Zapisy, wydarzenia i historia w jednym miejscu.
+            Zapisy, aktywności i historia w jednym miejscu.
           </Typography>
         </div>
 
@@ -329,7 +329,7 @@ function ProfilePage() {
           id="profile-participating-title"
           kicker="TWÓJ PLAN // NAJBLIŻSZE"
           title="Aktywności, w których bierzesz udział"
-          description="Posortowane od najbliższego terminu - pierwsza pozycja jest Twoim następnym wydarzeniem."
+          description="Posortowane od najbliższego terminu - pierwsza pozycja jest Twoją następną aktywnością."
           query={participatingActivitiesQuery}
           sortActivities={sortUpcomingActivities}
           emptyMessage="Nie bierzesz jeszcze udziału w żadnej nadchodzącej aktywności."
@@ -343,9 +343,9 @@ function ProfilePage() {
 
         <ProfileActivityQuerySection
           id="profile-organized-title"
-          kicker="TWOJE WYDARZENIA // HOST"
+          kicker="TWOJE AKTYWNOŚCI // HOST"
           title="Organizowane przeze mnie"
-          description="Najpierw pokazujemy wydarzenia, które wymagają Twojej uwagi w najbliższym terminie."
+          description="Najpierw pokazujemy aktywności, które wymagają Twojej uwagi w najbliższym terminie."
           query={organizedActivitiesQuery}
           sortActivities={sortOrganizedActivities}
           emptyMessage="Nie organizujesz jeszcze żadnej aktywności."
@@ -360,7 +360,7 @@ function ProfilePage() {
           id="profile-history-title"
           kicker="ARCHIWUM // OSTATNIO"
           title="Historia"
-          description="Ostatnio zakończone aktywności — najświeższe wydarzenia są na początku."
+          description="Ostatnio zakończone aktywności — najnowsze są na początku."
           query={historyActivitiesQuery}
           sortActivities={sortActivityHistory}
           emptyMessage="Twoja historia aktywności jest jeszcze pusta."

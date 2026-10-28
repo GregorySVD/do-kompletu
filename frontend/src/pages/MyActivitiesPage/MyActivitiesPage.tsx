@@ -278,7 +278,7 @@ function MyActivitiesPage() {
           id="waitlisted-activities-title"
           kicker="02 // OCZEKIWANIE"
           title="Lista rezerwowa"
-          description="Wydarzenia, w których czekasz na zwolnienie miejsca."
+          description="Aktywności, w których czekasz na zwolnienie miejsca."
           query={waitlistedActivitiesQuery}
           sortActivities={sortByStartTime}
           emptyMessage="Nie oczekujesz obecnie na miejsce w żadnej aktywności."

@@ -162,7 +162,7 @@ function ParticipationStatus({
     case 'CHECKED_IN':
       return (
         <ParticipationStatusPanel
-          eyebrow="Obecność"
+          eyebrow="Status check-inu"
           iconSrc="/icons/icons8-navigation-64.png"
           title="Check-in wykonany"
           tone="confirmed"
