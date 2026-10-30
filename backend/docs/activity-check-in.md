@@ -203,9 +203,13 @@ identity. Retain the existing checkin_* field names. No frontend files were chan
 
 COMPLETED/NO_SHOW are now implemented by explicit finalization, with caller-only
 history/detail outcomes and no automatic scheduling. Automatic completion,
-manual attendance overrides, undo outcomes, rewards, reviews, QR/NFC,
+manual attendance overrides, undo outcomes, additional rewards, reviews, QR/NFC,
 notifications, media, payment/refund, exact participant-location history, and a
 full participation event log remain unimplemented.
+
+Check-in itself awards zero points. Only the later new CHECKED_IN -> COMPLETED
+transition during valid organizer [finalization](activity-finalization.md#completion-points)
+awards +10; NO_SHOW and cancelled activities award zero.
 
 ## Complete successful response
 

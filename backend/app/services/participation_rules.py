@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta
 from app.core.config import get_settings
 from app.models.activity_participation import ActivityParticipation, ParticipationStatus
 
+COMPLETED_ACTIVITY_POINTS = 10
+
 FINALIZATION_TRANSITIONS = {
     ParticipationStatus.JOINED: ParticipationStatus.NO_SHOW,
     ParticipationStatus.CONFIRMED: ParticipationStatus.NO_SHOW,

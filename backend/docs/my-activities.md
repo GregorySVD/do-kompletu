@@ -312,6 +312,10 @@ No edit/cancel/delete controls currently exist in the frontend. The new
 hard deletion remains unimplemented. Timed attendance confirmation is implemented
 by the participation contract, with PostGIS check-in described separately.
 Explicit finalization implements final attendance; it does not run automatically.
-Reviews, XP, rewards, ranks, achievements, chat and notifications remain outside
-this milestone. The subsequent [Gallery milestone](activity-gallery.md) now
+The subsequent Real Points milestone awards +10 only during new CHECKED_IN ->
+COMPLETED finalization. My Activities does not include a point summary; refetch
+/users/me to update the profile's aggregate balance. NO_SHOW, cancelled activities
+and organizing alone earn zero. There is no award-history ledger, level or rank.
+Reviews, achievements, chat and notifications remain outside this milestone.
+The subsequent [Gallery milestone](activity-gallery.md) now
 implements private backend photo access independently of these personal lists.

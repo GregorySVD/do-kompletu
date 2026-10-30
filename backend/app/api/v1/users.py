@@ -87,7 +87,9 @@ organizer finalization maps CHECKED_IN to COMPLETED and JOINED/CONFIRMED to NO_S
 cancelled activities cannot be finalized. waitlist_count counts WAITLISTED only,
 which never consumes capacity and cannot confirm/check in. can_join permits a
 JOINED or WAITLISTED result strictly before start, even when full. Confirmation and
-PostGIS check-in use their published windows. Deletion and rewards are not implemented. Responses are private and must not
+PostGIS check-in use their published windows. Finalization awards +10 points only
+for new CHECKED_IN -> COMPLETED transitions; read your balance via /users/me.
+Activity deletion is not implemented. Responses are private and must not
 be cached by shared intermediaries. Scope client query caches to the current user.
 """,
     response_description="A page of your activity details with your own state and permissions.",

@@ -20,6 +20,7 @@ from app.schemas.activity import (
 )
 from app.services import activity_management_service as management
 from app.services import participation_service as participation
+from app.services.participation_rules import COMPLETED_ACTIVITY_POINTS
 
 START = datetime(2030, 8, 8, 16, tzinfo=UTC)
 END = START + timedelta(hours=2)
@@ -138,7 +139,11 @@ def test_finalize_all_outcomes_preserves_evidence_and_repeated_request_is_409(
     }
     assert snapshot(db_session, context) == after
     assert db_session.get(Activity, context[0]).cancelled_at is None
-    assert all(user.points_total == 0 for user in context[1])
+    balances = dict(db_session.execute(select(User.id, User.points_total)).all())
+    assert balances == {
+        user.id: COMPLETED_ACTIVITY_POINTS if index == 3 else 0
+        for index, user in enumerate(context[1])
+    }
 
 
 @pytest.mark.parametrize(
@@ -449,8 +454,9 @@ def test_final_states_accept_realistic_nullable_confirmation_evidence(
 
 
 @pytest.mark.parametrize("size", [1, 80])
+@pytest.mark.parametrize("status", ["JOINED", "CHECKED_IN"])
 def test_finalization_bulk_update_and_read_query_counts_are_constant(
-    client, db_session, context, monkeypatch, size
+    client, db_session, context, monkeypatch, size, status
 ):
     db_session.execute(delete(ActivityParticipation))
     db_session.get(Activity, context[0]).max_participants = None
@@ -467,7 +473,11 @@ def test_finalization_bulk_update_and_read_query_counts_are_constant(
     db_session.flush()
     db_session.add_all(
         [
-            ActivityParticipation(activity_id=context[0], user_id=user.id)
+            ActivityParticipation(
+                activity_id=context[0], user_id=user.id, status=status,
+                confirmed_at=START if status == "CHECKED_IN" else None,
+                checked_in_at=START if status == "CHECKED_IN" else None,
+            )
             for user in extra
         ]
     )
@@ -485,6 +495,9 @@ def test_finalization_bulk_update_and_read_query_counts_are_constant(
         assert sum(s.startswith("SELECT") for s in statements) == 3
         assert (
             sum(s.startswith("UPDATE ACTIVITY_PARTICIPATIONS") for s in statements) == 1
+        )
+        assert sum(s.startswith("UPDATE USERS") for s in statements) == (
+            1 if status == "CHECKED_IN" else 0
         )
         statements.clear()
         assert (

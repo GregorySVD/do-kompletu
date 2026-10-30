@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.activity import Activity
 from app.models.activity_participation import ActivityParticipation, ParticipationStatus
+from app.models.user import User
 from app.schemas.activity import (
     ACTIVITY_CATEGORIES,
     ACTIVITY_CATEGORIES_BY_SLUG,
@@ -21,7 +22,10 @@ from app.services.activity_service import (
     get_activity_by_id,
     get_activity_for_update,
 )
-from app.services.participation_rules import FINALIZATION_TRANSITIONS
+from app.services.participation_rules import (
+    COMPLETED_ACTIVITY_POINTS,
+    FINALIZATION_TRANSITIONS,
+)
 from app.services.waitlist_service import promote_waitlisted_participants
 
 
@@ -160,7 +164,7 @@ def finalize_activity(
             )
         status = ActivityParticipation.status
         checked_in = status == ParticipationStatus.CHECKED_IN
-        result = session.execute(
+        transitions = session.execute(
             update(ActivityParticipation)
             .where(
                 ActivityParticipation.activity_id == activity_id,
@@ -176,11 +180,28 @@ def finalize_activity(
                 completed_at=case((checked_in, now), else_=None),
                 no_show_at=case((checked_in, None), else_=now),
             )
+            .returning(ActivityParticipation.user_id, ActivityParticipation.status)
             .execution_options(synchronize_session=False)
-        )
-        if result.rowcount == 0:
+        ).all()
+        if not transitions:
             raise ActivityManagementError("No unresolved attendance to finalize")
-        # One bulk UPDATE; response SQL reads database state rather than cached rows.
+        # RETURNING contains only rows changed by this transaction, never prior
+        # COMPLETED outcomes. The parent lock serializes retries for this activity.
+        completed_users = [
+            row.user_id
+            for row in transitions
+            if row.status == ParticipationStatus.COMPLETED
+        ]
+        if completed_users:
+            # SQL arithmetic preserves balances, including concurrent completion
+            # of another activity. Account deactivation does not erase attendance.
+            session.execute(
+                update(User)
+                .where(User.id.in_(completed_users))
+                .values(points_total=User.points_total + COMPLETED_ACTIVITY_POINTS)
+                .execution_options(synchronize_session=False)
+            )
+        # Attendance and points commit together. Response SQL reads database state.
         snapshot = _snapshot(session, activity_id, user_id, now)
         session.commit()
         return snapshot

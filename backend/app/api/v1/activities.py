@@ -344,23 +344,29 @@ Use **Authorize** or Authorization: Bearer <access_token>. No request body is ne
 Only the organizer may finalize, at current UTC time >= end_at. Cancelled activities
 return 409 and retain their evidence. Activity status stays ENDED, never COMPLETED.
 
-Under the same activity-first FOR UPDATE lock as every other writer, one atomic
-bulk UPDATE maps CHECKED_IN -> COMPLETED and JOINED/CONFIRMED -> NO_SHOW. System-expired
+Finalization maps CHECKED_IN -> COMPLETED and JOINED/CONFIRMED -> NO_SHOW. Each
+CHECKED_IN -> COMPLETED transition awards exactly +10 points to that participant
+as part of the same transaction. Existing COMPLETED rows are never rewarded again.
+NO_SHOW and all other states receive 0; organizers receive no points merely for
+organizing/finalizing. Cancelled activities award 0. Participants who became
+inactive after check-in still earn completion points. System-expired
 states, WAITLISTED, LEFT and
 existing final outcomes remain unchanged. completed_at/no_show_at record one UTC
 finalization time, preserving joined_at/confirmed_at/checked_in_at. Final outcomes
 are terminal. There is no automatic scheduler, manual attendance override, undo,
-XP, reward, or review implementation.
+points ledger, levels, ranks, achievements, or review implementation.
 
 Returns the normal ActivityRead for the organizer. participant_count remains the
 active capacity count and becomes zero once all unresolved rows are finalized;
 checked_in_count includes CHECKED_IN + COMPLETED, preserving successful check-ins.
 There is no public no-show analytics field or new wrapper. The organizer's own
 current_user_participation is normally null; can_finalize becomes false.
+The response shape is unchanged. Participants see the updated points_total on
+their next GET /api/v1/users/me; clients cannot choose the award amount.
 
 A repeated request, or an ended activity containing only WAITLISTED/LEFT/no rows/final outcomes,
 returns 409 No unresolved attendance to finalize, without changing timestamps.
-Thus repeated calls are idempotent at the data level. Joined My Activities history
+Thus repeated calls are idempotent at the data level, including points. Joined My Activities history
 retains the caller's COMPLETED/NO_SHOW state/timestamps; future final states are
 excluded from upcoming results. Direct detail exposes only the caller's outcome.
 """,

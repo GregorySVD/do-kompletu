@@ -29,6 +29,13 @@ Images live in private S3-compatible storage; PostgreSQL stores metadata only.
 See the [gallery contract](backend/docs/activity-gallery.md) and
 [gallery milestone report](backend/docs/gallery-milestone-report.md).
 
+Finalization now awards exactly **+10 points** for each new CHECKED_IN -> COMPLETED
+transition. Attendance and the atomic `points_total` increment commit together;
+retries do not award again. NO_SHOW, cancelled activities and organizing alone
+award zero. There is no points ledger, level or rank system. See the
+[points contract](backend/docs/activity-finalization.md#completion-points) and
+[Real Points report](backend/docs/real-points-milestone-report.md).
+
 Frontend authentication, profile display, discovery, details, categories, and
 creation use real APIs. My Activities still uses fixtures, and join/leave/confirm/check-in and
 organizer edit/cancel/finalize actions still need integration. See
@@ -124,8 +131,10 @@ refresh lifetimes. Protected endpoints accept
 Swagger uses the separate OAuth2 form endpoint described below.
 
 `GET /api/v1/users/me` returns the authenticated profile; PATCH updates
-`display_name` and/or `avatar_url` (null clears the avatar). Points are stored and
-returned but no points-awarding/progression system exists.
+`display_name` and/or `avatar_url` (null clears the avatar). `points_total` is a
+server-controlled aggregate balance: a newly finalized checked-in attendance adds
+10 to the existing balance. Refetch `/users/me` to see awards made by an organizer;
+profile requests cannot choose the balance or award amount.
 
 ### Activities and discovery
 
@@ -286,8 +295,11 @@ The Activity remains ENDED; COMPLETED is a participation state. The existing
 finalization; finite available_slots therefore returns the full maximum, without
 making an ended activity joinable. `checked_in_count` counts CHECKED_IN + COMPLETED
 so verified check-ins survive finalization. No public completed/no-show analytics
-or participant roster is added. Future XP/review authorization can use COMPLETED;
-no XP, rewards, or reviews are implemented. See the
+or participant roster is added. Only rows that actually transition CHECKED_IN ->
+COMPLETED earn +10 points, including participants deactivated after check-in.
+Already-COMPLETED rows never earn again; cancelled activities cannot finalize or
+award points. The organizer earns nothing merely for organizing. There is no
+award-history ledger, backfill of historical COMPLETED rows, levels or reviews. See the
 [finalization contract](backend/docs/activity-finalization.md).
 
 ### My Activities
@@ -620,16 +632,17 @@ The lifecycle, check-in, and finalization migration tests exercise
 `0007 → 0008 → 0007 → 0008`; none downgrades the normal database. Isolated
 check-in tests stub proximity explicitly; only real PostGIS tests validate geography.
 
-Verified on 2026-10-30 for Gallery (baseline: 613 default and 153 PostgreSQL/PostGIS
-tests passed before changes):
+Verified on 2026-10-30 for Real Points (actual baseline: 681 default and 159
+PostgreSQL/PostGIS tests passed before these changes):
 
 | Check | Current result |
 | --- | --- |
-| Default `uv run pytest -v` without integration URLs | 681 passed, 160 skipped (159 PostgreSQL, 1 optional MinIO) |
-| Separate PostgreSQL/PostGIS run in an isolated test database | 159 passed |
-| Optional real MinIO upload/signed GET/private access/delete test | 1 passed |
+| Default `uv run pytest -v` without integration URLs | 701 passed, 167 skipped (166 PostgreSQL, 1 optional MinIO) |
+| Separate PostgreSQL/PostGIS run in an isolated test database | 166 passed |
+| Separate new PostgreSQL points module | 5 passed: concurrent HTTP finalizations, multiple winners/existing balance, rollback and shared-user cross-activity increments |
+| Optional real MinIO upload/signed GET/private access/delete test | 1 passed in Gallery; not rerun for points-only changes |
 | Ruff, compileall, `uv lock --check` | Passed |
-| Migration files / isolated test database | `20261030_0011` is head; development database verified at `20261019_0010`, left unmigrated |
+| Migration files / development and isolated test databases | `20261030_0011` remains head; no points migration required |
 | Gallery migration cycle in a generated temporary database | `0010 → 0011 → 0010 → 0011` passed; existing users, activities and participation preserved |
 | Waitlist migration cycle in a generated temporary database | `0008 → 0009 → 0008 → 0009` passed, preserving rows and enforcing timestamp constraints |
 | Lifecycle migration cycle | `0009 → 0010 → 0009 → 0010` passed in a generated temporary database |
@@ -687,6 +700,7 @@ Historical upgrade/downgrade probes are recorded in the contracts; normal onboar
 
 ## Backend documentation
 
+- [Real Points milestone report](backend/docs/real-points-milestone-report.md): 35 requested review points, actual validation and precise frontend follow-up.
 - [Private activity gallery](backend/docs/activity-gallery.md): eligibility, expiry,
   image validation, object storage, MinIO, transactional quota, compensation and frontend contract.
 - [Gallery milestone report](backend/docs/gallery-milestone-report.md): all 50 requested review points and actual validation results.
@@ -748,7 +762,7 @@ the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled 
 
 - Scheduled/automatic finalization, organizer manual attendance overrides,
   undo completion/no-show, and separate cancelled-event attendance/refund policy.
-- Reviews, ratings, XP/points progression, ranks, and achievements.
+- Reviews, ratings, a points ledger/history, levels, ranks, and achievements.
 - Notifications, chat, frontend gallery integration, and automated media cleanup.
 - Cancellation reasons, uncancel, activity edit history/audit trail, hard deletion,
   and DRAFT publishing workflows. Concurrent writes to the same field use the
@@ -770,7 +784,7 @@ log, or schedule-edit notification. Confirmation is a self-declared intent to at
 | --- | --- |
 | Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization; FIFO waitlists/promotion; autonomous confirmation/waitlist expiry with grace; discovery/accuracy/readiness/auth/production-secret hardening |
 | Next frontend integration | Real My Activities and final history outcomes; join/leave/rejoin/confirm/check-in; geolocation; organizer edit/cancel/finalize; state/window/error UI; identity-aware caching and invalidation |
-| Potential later sequence | Reviews/ratings → XP/points → ranks/achievements, after eligibility and cancelled-event policies are defined |
+| Potential later sequence | Reviews/ratings, optional points history/levels, ranks/achievements after those product rules are defined |
 | Later product work | Notifications/chat, gallery frontend and cleanup, nearby search; payment handling if required |
 
 Future sequencing is a proposal, not an implemented contract or fixed architecture.
