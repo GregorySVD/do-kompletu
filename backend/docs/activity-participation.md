@@ -168,7 +168,9 @@ the application reloads settings; no database timing columns are introduced.
 | can_finalize | Organizer, uncancelled, at/after end, at least one unresolved JOINED/CONFIRMED/CHECKED_IN row |
 
 Confirmed users cannot confirm again but may leave until the existing end boundary.
-All cancelled permissions are false. Organizer edit/cancel permissions retain their
+Cancelled activities disable attendance/upload mutations, while eligible participants
+and the organizer retain [gallery viewing](activity-gallery.md) until end_at + 72h.
+Organizer edit/cancel permissions retain their
 lifecycle rules; can_edit does not promise every proposed field change is valid.
 
 ## Errors and privacy

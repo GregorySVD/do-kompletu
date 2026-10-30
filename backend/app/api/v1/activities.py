@@ -302,8 +302,9 @@ is CANCELLED. Counts and available slots continue to describe persisted membersh
 They do not mean cancelled places are bookable.
 
 New joins and leaving are blocked with 409 after cancellation, preserving membership
-history. All cancelled activity permissions are false, including can_edit,
-can_cancel, can_join, can_leave, and can_confirm. Confirmation is also blocked.
+history. Cancellation disables can_edit, can_cancel, can_join, can_leave,
+can_confirm and can_upload_photo. Eligible participants and the organizer retain
+can_view_gallery strictly before end_at + 72h. Confirmation is also blocked.
 WAITLISTED, JOINED, CONFIRMED, CHECKED_IN, and LEFT retain their statuses/timestamps. Only active
 states count; CHECKED_IN and checked_in_at survive cancellation. Check-in is blocked
 after cancellation too. There is no hard deletion, uncancel, cancellation

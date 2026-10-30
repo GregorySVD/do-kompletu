@@ -81,7 +81,7 @@ MY_ACTIVITIES_RESPONSE_EXAMPLES = {
                 **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
                 "current_user_participation": None,
                 "permissions": ActivityPermissionsRead(
-                    can_edit=True, can_cancel=True
+                    can_edit=True, can_cancel=True, can_view_gallery=True
                 ).model_dump(),
             }
         ],

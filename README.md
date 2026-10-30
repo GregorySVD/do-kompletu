@@ -22,6 +22,13 @@ client-reported GPS accuracy, `/ready` checks database connectivity, and product
 startup validates the JWT secret. Refresh authentication errors remain 401 while
 infrastructure failures follow the normal server-error path.
 
+The backend also provides a private activity photo gallery: CHECKED_IN/COMPLETED
+participants can upload up to three verified JPEG/PNG/WebP photos (10 MB each).
+They and the organizer can view until strictly before `end_at + 72h`.
+Images live in private S3-compatible storage; PostgreSQL stores metadata only.
+See the [gallery contract](backend/docs/activity-gallery.md) and
+[gallery milestone report](backend/docs/gallery-milestone-report.md).
+
 Frontend authentication, profile display, discovery, details, categories, and
 creation use real APIs. My Activities still uses fixtures, and join/leave/confirm/check-in and
 organizer edit/cancel/finalize actions still need integration. See
@@ -45,14 +52,14 @@ backend/
     api/           HTTP routes and authentication dependencies
     core/          Settings, password hashing, JWT handling
     db/            SQLAlchemy sessions and base
-    models/        User, Activity, ActivityParticipation
+    models/        User, Activity, ActivityParticipation, ActivityPhoto
     schemas/       Pydantic request/response and reference-data contracts
     services/      Authentication, profiles, activity and membership rules
     scripts/       Explicit development bootstrap-user command
   alembic/         Versioned database migrations
   docs/            Detailed backend contracts
   tests/           Isolated tests and gated PostgreSQL integration tests
-  compose.yaml     Database service
+  compose.yaml     PostgreSQL/PostGIS and local private MinIO
 frontend/
   src/
     api/           Axios client and API functions
@@ -361,8 +368,9 @@ Only `cancelled_at` is persisted as cancellation metadata. There is no arbitrary
 mutable status column or DRAFT workflow. Cancellation is soft cancellation.
 For uncancelled activities, organizers can edit before start and cancel before
 end, and finalize unresolved attendance at/after end. Other users can join/leave
-with join/rejoin restricted to before start and leave to before end; final outcomes allow no participant action.
-`can_delete` and unsupported future-action permissions remain false.
+with join/rejoin restricted to before start and leave to before end; final outcomes
+allow no attendance mutation. COMPLETED retains gallery access during its window.
+`can_delete` (activity deletion) remains false; gallery view/upload permissions are real.
 
 ## API overview
 
@@ -399,6 +407,9 @@ unexpected programming failures follow normal server-error handling.
 | DELETE | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Leave membership |
 | POST | `/api/v1/activities/{activity_id}/confirm` | Access JWT; JOINED non-organizer | Confirm attendance inside the window |
 | POST | `/api/v1/activities/{activity_id}/check-in` | Access JWT; CONFIRMED non-organizer | Time- and PostGIS-validated check-in |
+| GET | `/api/v1/activities/{activity_id}/photos` | Eligible participant or organizer access JWT | Private gallery, ordered by created_at/id; presigned URLs |
+| POST | `/api/v1/activities/{activity_id}/photos` | CHECKED_IN/COMPLETED access JWT | Multipart `file`, verified JPEG/PNG/WebP, max 10 MB, max 3/user/activity |
+| DELETE | `/api/v1/activities/{activity_id}/photos/{photo_id}` | Uploader access JWT and gallery access | Remove own photo; 204, storage first |
 
 ## Local development
 
@@ -446,18 +457,33 @@ local-secret conventions; this production rule adds no setup requirement there.
 Run from `backend/`:
 
 ```powershell
-docker compose up -d
+docker compose up -d --build
 docker compose ps
 uv run alembic upgrade head
 uv run alembic current
 ```
 
-Compose starts only the `database` service, using `postgis/postgis:17-3.5`.
+Compose starts `database` (`postgis/postgis:17-3.5`) and development MinIO.
 **Host port 5433 maps to container port 5432.** The development database is
 `do_kompletu`; the example user/password are `postgres`/`postgres`. Data lives in
 the named `do_kompletu_postgres_data` volume. Wait for its `pg_isready` healthcheck
 to report healthy before migrating. Run the API separately; Compose does not
 start it or apply migrations.
+
+MinIO is built from the pinned community security release because maintained
+community binary images are no longer published. The first build downloads Go
+dependencies. S3 listens at `http://127.0.0.1:9000` and the local console at
+`http://127.0.0.1:9001`; both bind only to loopback. Keep the six `S3_*` settings
+and development-only `MINIO_ROOT_*` values from `.env.example` in local `.env`
+(add them if your `.env` predates galleries). Once MinIO is healthy, run:
+
+```powershell
+uv run python -m app.scripts.init_photo_storage
+```
+
+This repeatable explicit command creates a private bucket if missing. API and
+worker startup do not depend on object storage. Do not reuse local root credentials
+for production; provision a private bucket and scoped credentials there.
 
 The PostGIS image initializes the default database with PostGIS. Additional
 manually created databases need `CREATE EXTENSION IF NOT EXISTS postgis;` before
@@ -594,15 +620,17 @@ The lifecycle, check-in, and finalization migration tests exercise
 `0007 → 0008 → 0007 → 0008`; none downgrades the normal database. Isolated
 check-in tests stub proximity explicitly; only real PostGIS tests validate geography.
 
-Verified on 2026-10-19 after backend hardening (baseline rerun: 518 default and
-146 PostgreSQL/PostGIS tests passed):
+Verified on 2026-10-30 for Gallery (baseline: 613 default and 153 PostgreSQL/PostGIS
+tests passed before changes):
 
 | Check | Current result |
 | --- | --- |
-| Default `uv run pytest -v` without integration URL | 613 passed, 153 PostgreSQL tests skipped |
-| Separate fifteen-module PostgreSQL/PostGIS run in an isolated test database | 153 passed |
+| Default `uv run pytest -v` without integration URLs | 681 passed, 160 skipped (159 PostgreSQL, 1 optional MinIO) |
+| Separate PostgreSQL/PostGIS run in an isolated test database | 159 passed |
+| Optional real MinIO upload/signed GET/private access/delete test | 1 passed |
 | Ruff, compileall, `uv lock --check` | Passed |
-| Migration files and development database | `20261019_0010` is head |
+| Migration files / isolated test database | `20261030_0011` is head; development database verified at `20261019_0010`, left unmigrated |
+| Gallery migration cycle in a generated temporary database | `0010 → 0011 → 0010 → 0011` passed; existing users, activities and participation preserved |
 | Waitlist migration cycle in a generated temporary database | `0008 → 0009 → 0008 → 0009` passed, preserving rows and enforcing timestamp constraints |
 | Lifecycle migration cycle | `0009 → 0010 → 0009 → 0010` passed in a generated temporary database |
 | `git diff --check` | Passed |
@@ -634,7 +662,8 @@ The verified linear chain and current head are:
 | `20261018_0007` | `20261018_0007_add_participation_check_in.py` | Nullable checked_in_at, CHECKED_IN status and updated timestamp CHECKs |
 | `20261018_0008` | `20261018_0008_add_final_attendance_outcomes.py` | Nullable completed_at/no_show_at, terminal COMPLETED/NO_SHOW and consistent timestamp CHECKs |
 | `20261018_0009` | `20261018_0009_add_activity_waitlist.py` | WAITLISTED, waitlisted_at, nullable joined_at with state CHECKs, FIFO index |
-| `20261019_0010` | `20261019_0010_add_participation_expiry.py` | System expiry states/timestamps, status VARCHAR(24), strict CHECKs; **current head** |
+| `20261019_0010` | `20261019_0010_add_participation_expiry.py` | System expiry states/timestamps, status VARCHAR(24), strict CHECKs |
+| `20261030_0011` | `20261030_0011_create_activity_photos.py` | Private photo metadata, FK/size/MIME constraints and indexes; **current head** |
 
 Check file history with `uv run alembic history` and file heads with
 `uv run alembic heads`. `uv run alembic current` checks the configured database.
@@ -658,6 +687,9 @@ Historical upgrade/downgrade probes are recorded in the contracts; normal onboar
 
 ## Backend documentation
 
+- [Private activity gallery](backend/docs/activity-gallery.md): eligibility, expiry,
+  image validation, object storage, MinIO, transactional quota, compensation and frontend contract.
+- [Gallery milestone report](backend/docs/gallery-milestone-report.md): all 50 requested review points and actual validation results.
 - [Activity participation contract](backend/docs/activity-participation.md):
   retained lifecycle, join/leave/rejoin/confirm, timing, full responses, privacy, and concurrency.
 - [Automated lifecycle worker](backend/docs/participation-lifecycle-worker.md): confirmation/grace, expiry, worker startup/shutdown, locking and frontend polling.
@@ -717,7 +749,7 @@ the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled 
 - Scheduled/automatic finalization, organizer manual attendance overrides,
   undo completion/no-show, and separate cancelled-event attendance/refund policy.
 - Reviews, ratings, XP/points progression, ranks, and achievements.
-- Notifications, chat, photo galleries/uploads, and media workflows.
+- Notifications, chat, frontend gallery integration, and automated media cleanup.
 - Cancellation reasons, uncancel, activity edit history/audit trail, hard deletion,
   and DRAFT publishing workflows. Concurrent writes to the same field use the
   last successful writer; there is no version/conflict token.
@@ -726,8 +758,8 @@ the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled 
   not implement these features. Administrator role-based authorization is absent.
 
 Placeholder fields do not imply implemented features: `tags` is empty,
-`distance_m` is null, and unsupported gallery/photo/delete
-permissions remain false. Check-in timing/radius and checked_in_count are now real.
+`distance_m` is null, and activity-deletion permission remains false.
+Gallery view/upload permissions, check-in timing/radius and checked_in_count are real.
 My Activities has no total-count wrapper or cross-page snapshot guarantee.
 There is no unconfirm, undo check-in, immutable participation event
 log, or schedule-edit notification. Confirmation is a self-declared intent to attend.
@@ -739,7 +771,7 @@ log, or schedule-edit notification. Confirmation is a self-declared intent to at
 | Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization; FIFO waitlists/promotion; autonomous confirmation/waitlist expiry with grace; discovery/accuracy/readiness/auth/production-secret hardening |
 | Next frontend integration | Real My Activities and final history outcomes; join/leave/rejoin/confirm/check-in; geolocation; organizer edit/cancel/finalize; state/window/error UI; identity-aware caching and invalidation |
 | Potential later sequence | Reviews/ratings → XP/points → ranks/achievements, after eligibility and cancelled-event policies are defined |
-| Later product work | Notifications/chat, galleries, nearby search; payment handling if required |
+| Later product work | Notifications/chat, gallery frontend and cleanup, nearby search; payment handling if required |
 
 Future sequencing is a proposal, not an implemented contract or fixed architecture.
 

@@ -195,7 +195,9 @@ same schema with normally null membership and organizer can_edit/can_cancel/can_
 based on lifecycle; history keeps unresolved JOINED/CONFIRMED/CHECKED_IN plus final
 COMPLETED/NO_SHOW, with all participant actions disabled. Final outcomes never
 appear in upcoming. Cancelled
-activities retain membership with all permissions false. Unlimited capacity returns null for both
+activities retain membership and disable attendance/upload mutations. Eligible callers
+retain [gallery viewing](activity-gallery.md) until end_at + 72h; COMPLETED callers may
+also upload in uncancelled galleries within that window. Unlimited capacity returns null for both
 `max_participants` and `available_slots`. Participant counts exclude the organizer;
 participant_count remains the active capacity count and becomes zero after finalization.
 checked_in_count counts CHECKED_IN + COMPLETED and waitlist_count counts WAITLISTED only.
@@ -310,5 +312,6 @@ No edit/cancel/delete controls currently exist in the frontend. The new
 hard deletion remains unimplemented. Timed attendance confirmation is implemented
 by the participation contract, with PostGIS check-in described separately.
 Explicit finalization implements final attendance; it does not run automatically.
-Reviews, XP, rewards, ranks, achievements, chat,
-notifications, and gallery features remain outside this milestone.
+Reviews, XP, rewards, ranks, achievements, chat and notifications remain outside
+this milestone. The subsequent [Gallery milestone](activity-gallery.md) now
+implements private backend photo access independently of these personal lists.

@@ -20,6 +20,10 @@ from app.workers.participation_lifecycle import lifecycle_lifespan
 
 OPENAPI_TAGS = [
     {
+        "name": "Activity Photos",
+        "description": "Private activity galleries for checked-in/completed participants; organizers have view-only access. Closes at end_at + 72h.",
+    },
+    {
         "name": "Authentication",
         "description": (
             "Register accounts and obtain JWTs. Frontend clients normally use the "

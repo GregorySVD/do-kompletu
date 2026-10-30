@@ -110,7 +110,8 @@ anti-spoofing/device attestation or fraud-proof attendance claim is introduced.
   changes also return 409. Equivalent unchanged values and other safe edits remain
   possible while normal management lifecycle rules allow editing.
 - Cancellation before end can preserve CHECKED_IN/checked_in_at, with CANCELLED
-  activity status and all action permissions false. No participation state is
+  activity status and attendance/upload permissions false. Eligible gallery viewing
+  remains available until end_at + 72h; see [gallery rules](activity-gallery.md). No participation state is
   rewritten. Cancelled activities cannot use ordinary attendance finalization,
   even after planned end; any future reward/refund policy must interpret them separately.
 
@@ -268,8 +269,8 @@ Illustrative IDs/date and default settings; Swagger provides the same full examp
     "can_leave": false,
     "can_confirm": false,
     "can_check_in": false,
-    "can_view_gallery": false,
-    "can_upload_photo": false
+    "can_view_gallery": true,
+    "can_upload_photo": true
   }
 }
 ```

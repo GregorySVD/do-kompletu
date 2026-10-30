@@ -206,7 +206,7 @@ another user, because the organizer is separate from membership.
     "can_leave": false,
     "can_confirm": false,
     "can_check_in": false,
-    "can_view_gallery": false,
+    "can_view_gallery": true,
     "can_upload_photo": false
   }
 }

@@ -155,12 +155,14 @@ ACTIVITY_PATCH_RESPONSE_EXAMPLE = {
     "title": "Evening volleyball",
     "description": "A friendly volleyball match for all skill levels.",
     "current_user_participation": None,
-    "permissions": ActivityPermissionsRead(can_edit=True, can_cancel=True).model_dump(),
+    "permissions": ActivityPermissionsRead(
+        can_edit=True, can_cancel=True, can_view_gallery=True
+    ).model_dump(),
 }
 ACTIVITY_CANCEL_RESPONSE_EXAMPLE = {
     **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     "status": "CANCELLED",
     "cancelled_at": "2030-08-01T12:00:00Z",
     "current_user_participation": None,
-    "permissions": ActivityPermissionsRead().model_dump(),
+    "permissions": ActivityPermissionsRead(can_view_gallery=True).model_dump(),
 }

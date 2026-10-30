@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from gallery_data import assert_only_gallery_permissions
 from sqlalchemy import delete, event, select
 from sqlalchemy.exc import IntegrityError
 from test_participation_lifecycle import freeze
@@ -114,7 +115,7 @@ def test_finalize_all_outcomes_preserves_evidence_and_repeated_request_is_409(
     assert body["status"] == "ENDED" and body["current_user_participation"] is None
     assert body["participant_count"] == 0 and body["available_slots"] == 6
     assert body["checked_in_count"] == 1 and body["waitlist_count"] == 0
-    assert not any(body["permissions"].values())
+    assert_only_gallery_permissions(body["permissions"])
     assert response.headers["cache-control"] == "private, no-store"
     current = rows(db_session, context)
     for i, state in [(1, "NO_SHOW"), (2, "NO_SHOW"), (3, "COMPLETED"), (4, "LEFT")]:
@@ -279,7 +280,11 @@ def test_final_detail_and_history_are_private_and_left_stays_excluded(
         detail = client.get(path(context), headers=context[2][i]).json()
         member = detail["current_user_participation"]
         assert (member["status"] if member else None) == status
-        assert not any(detail["permissions"].values())
+        assert_only_gallery_permissions(
+            detail["permissions"],
+            view=status == "COMPLETED",
+            upload=status == "COMPLETED",
+        )
         history = client.get(
             "/api/v1/users/me/activities",
             headers=context[2][i],
@@ -342,10 +347,10 @@ def test_final_outcomes_cannot_be_mutated_even_with_inconsistent_future_activity
         "detail": "Attendance outcome is final"
     }
     assert snapshot(db_session, context) == before
-    assert not any(
-        client.get(path(context), headers=context[2][user])
-        .json()["permissions"]
-        .values()
+    assert_only_gallery_permissions(
+        client.get(path(context), headers=context[2][user]).json()["permissions"],
+        view=user == 3,
+        upload=user == 3,
     )
     assert (
         client.get(

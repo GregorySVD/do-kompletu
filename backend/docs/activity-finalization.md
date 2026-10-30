@@ -197,7 +197,9 @@ COMPLETED as the authoritative successful outcome.
 ### Organizer finalization response (200)
 
 An ended activity with one checked-in participant finalized to COMPLETED. The
-organizer receives no other user's membership.
+organizer receives no other user's membership. These examples are inside the
+72-hour [gallery window](activity-gallery.md): organizer view-only, COMPLETED
+view/upload, NO_SHOW neither.
 
 ```json
 {
@@ -248,7 +250,7 @@ organizer receives no other user's membership.
     "can_leave": false,
     "can_confirm": false,
     "can_check_in": false,
-    "can_view_gallery": false,
+    "can_view_gallery": true,
     "can_upload_photo": false
   }
 }
@@ -314,8 +316,8 @@ The participant's own subsequent GET detail (or item in joined history):
     "can_leave": false,
     "can_confirm": false,
     "can_check_in": false,
-    "can_view_gallery": false,
-    "can_upload_photo": false
+    "can_view_gallery": true,
+    "can_upload_photo": true
   }
 }
 ```
