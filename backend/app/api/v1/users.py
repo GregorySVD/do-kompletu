@@ -155,8 +155,8 @@ def read_current_user_activities(
     "/me",
     response_model=UserRead,
     summary="Get the current user",
-    description="Return the public profile associated with the access bearer token.",
-    response_description="The authenticated user's public profile.",
+    description="Return the caller's own profile and account state, including is_active and is_admin, using the access bearer token.",
+    response_description="The authenticated user's own profile and account state.",
     responses={
         401: {
             "description": "The access token is missing, invalid, or expired.",

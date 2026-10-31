@@ -27,14 +27,15 @@ and object keys are never returned by this API. Responses contain short-lived
 presigned GET URLs (default 300 seconds, bounded by remaining gallery time).
 CHECKED_IN/COMPLETED participants may view and upload strictly before end_at + 72h.
 The organizer may view without participation, but organizer identity alone never
-allows upload. At exactly end_at + 72h all gallery access closes.
+allows upload. At exactly end_at + 72h normal gallery access closes.
+Admin status does not grant gallery browsing or upload access.
 Cancellation preserves existing photos and viewing, but blocks new uploads.
 No automatic object/metadata cleanup is performed after expiry.
 """
 ERRORS = {
     401: {"description": "Missing, expired or invalid access JWT."},
     403: {
-        "description": "Caller is ineligible, gallery is closed, or caller is not the uploader for deletion."
+        "description": "Caller is ineligible, gallery is closed, or caller is neither uploader nor admin for deletion."
     },
     404: {
         "description": "Activity/photo not found, including a photo belonging to another activity."
@@ -123,13 +124,15 @@ def upload(
 @router.delete(
     "/{photo_id}",
     status_code=204,
-    summary="Delete your activity photo",
+    summary="Delete an activity photo as uploader or administrator",
     description=GALLERY_DESCRIPTION
     + """
-Only the uploader may delete, while they retain normal gallery view access.
+The uploader may delete while they retain normal gallery view access.
+An active admin may delete any existing photo by activity/photo UUID, including
+after end_at + 72h, without participation or normal gallery view permission.
 Organizer identity grants no deletion of others' photos. Storage deletion happens
 first; transient failure preserves DB metadata. A missing object is recoverable.
-Cancellation allows own-photo deletion; closure blocks it. No moderation API.
+Cancellation allows own-photo deletion; closure blocks ordinary own-photo deletion.
 """,
     responses=ERRORS,
 )
@@ -143,6 +146,8 @@ def delete(
 ) -> None:
     _private(response)
     try:
-        gallery_service.delete_photo(session, activity_id, photo_id, user.id, storage)
+        gallery_service.delete_photo(
+            session, activity_id, photo_id, user.id, storage, is_admin=user.is_admin
+        )
     except (gallery_service.GalleryError, PhotoStorageError) as exc:
         raise _http_error(exc) from exc

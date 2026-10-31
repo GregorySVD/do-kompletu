@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 from alembic.config import Config
 from geoalchemy2 import WKTElement
+from migration_data import insert_legacy_users
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
@@ -63,7 +64,7 @@ def test_0010_upgrade_downgrade_upgrade_preserves_rows_and_expiry_origin(monkeyp
                 )
                 for i in range(9)
             ]
-            session.add_all(users)
+            insert_legacy_users(session, users)
             session.flush()
             activity = Activity(
                 organizer_id=users[0].id,

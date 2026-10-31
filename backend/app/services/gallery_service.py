@@ -184,6 +184,7 @@ def delete_photo(
     user_id: UUID,
     storage: PhotoStorage,
     *,
+    is_admin: bool = False,
     clock: Callable[[], datetime] | None = None,
 ) -> None:
     storage_deleted = False
@@ -198,9 +199,10 @@ def delete_photo(
         )
         if photo is None:
             raise GalleryError("Photo not found", 404)
-        if photo.uploader_id != user_id:
+        if photo.uploader_id != user_id and not is_admin:
             raise GalleryError("Only the uploader can delete this photo")
-        _authorize(session, activity, user_id, (clock or utc_now)())
+        if not is_admin:
+            _authorize(session, activity, user_id, (clock or utc_now)())
         storage.delete(photo.object_key)
         storage_deleted = True
         session.delete(photo)

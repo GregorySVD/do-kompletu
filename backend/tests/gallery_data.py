@@ -58,7 +58,7 @@ class FakeStorage:
         return f"https://storage.invalid/{key}?signed={len(self.signs)}"
 
 
-def seed(session):
+def seed(session, *, legacy_users=False):
     suffix = uuid4().hex
     users = [
         User(
@@ -68,7 +68,12 @@ def seed(session):
         )
         for i in range(4)
     ]
-    session.add_all(users)
+    if legacy_users:
+        from migration_data import insert_legacy_users
+
+        insert_legacy_users(session, users)
+    else:
+        session.add_all(users)
     session.flush()
     activity = Activity(
         organizer_id=users[0].id,

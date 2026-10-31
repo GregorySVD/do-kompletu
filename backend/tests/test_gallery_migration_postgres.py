@@ -40,7 +40,7 @@ def test_gallery_migration_cycle_constraints_and_preservation(monkeypatch):
         config.set_main_option("script_location", str(backend / "alembic"))
         command.upgrade(config, "20261019_0010")
         with Session(engine, expire_on_commit=False) as session:
-            activity, users = seed(session)
+            activity, users = seed(session, legacy_users=True)
             activity_id, user_id = activity.id, users[1].id
         with engine.connect() as connection:
             before = {

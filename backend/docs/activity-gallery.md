@@ -1,8 +1,8 @@
 # Private activity gallery
 
 The Gallery milestone implements backend photo metadata and private S3-compatible
-storage. Frontend files are unchanged. Points, moderation and automatic cleanup
-are outside this milestone.
+storage. Frontend files are unchanged. Minimal admin deletion was added by the
+[administration milestone](administration.md); automatic cleanup remains absent.
 
 ## Access and lifecycle
 
@@ -14,13 +14,16 @@ The same helpers generate ActivityRead permissions and authorize photo operation
 | --- | --- | --- | --- |
 | CHECKED_IN / COMPLETED | Until closure | Until closure, unless cancelled | Own photos while gallery view access remains |
 | Organizer without eligible participation | Until closure | No | No deletion of other users' photos |
+| Active admin | Normal eligibility only | Normal eligibility only | Any existing photo by activity/photo UUID, even after closure |
 | All other participation states / unrelated user | No | No | No |
 | Anonymous | 401 | 401 | 401 |
 
 Cancellation preserves photos, metadata, check-in evidence and eligible viewing;
 it blocks new uploads. The uploader can still delete within normal gallery access.
-Closure denies GET, POST and DELETE and makes both ActivityRead gallery permissions
-false. Closure and cancellation never remove stored content automatically.
+Closure denies normal GET, POST and DELETE and makes both ActivityRead gallery
+permissions false. Admin moderation DELETE remains allowed without gallery view
+permission; it grants no browsing access. Closure and cancellation never remove
+stored content automatically.
 `can_upload_photo` expresses eligibility; the POST additionally checks the current
 quota. A caller with three existing photos receives 409 until they delete one.
 Existing join/confirmation/waitlist/check-in/finalization rules are unchanged.
@@ -124,15 +127,16 @@ object delete, including ambiguous PUT failures. Failed compensation logs the ex
 object key for operational cleanup without SDK exception text or credentials, and
 preserves the original error. Success requires storage and metadata to succeed.
 
-Deletion verifies activity/photo association, uploader ownership and gallery view
-access under the activity lock. It deletes the object first, then metadata and
+Deletion verifies activity/photo association, then either active admin privilege
+or uploader ownership with normal gallery view access under the activity lock.
+It deletes the object first, then metadata and
 commits. A storage failure leaves the metadata intact. S3 deletion of a missing
 key is successful, so a retry can repair metadata left by a DB failure after object
 deletion. Such DB failures are logged with the photo UUID.
 
 Process death between systems, ambiguous DB commit acknowledgements, failed
 compensation and failed metadata deletion still need operational reconciliation.
-There is no durable outbox, reconciliation worker, moderation or retention job.
+There is no durable outbox, reconciliation worker or retention job.
 Migration downgrade drops gallery metadata but cannot delete external objects;
 export/reconcile objects before a real rollback. Existing activity/user/membership
 rows survive both directions. Test migration cycles use generated temporary DBs.
@@ -238,8 +242,10 @@ Remaining frontend work:
 4. Add an upload control gated by `can_upload_photo`; send FormData with key `file`
    and let the browser set the multipart boundary. Client hints: JPEG/PNG/WebP,
    inclusive 10,485,760 bytes, three own photos. Server validation is authoritative.
-5. Show deletion only for `photo.uploader.id === currentUser.id`; organizer status
-   alone is insufficient. Handle 204 without trying to parse a JSON body.
+5. Show ordinary deletion for `photo.uploader.id === currentUser.id` while gallery
+   access remains. Active admins may also delete by known activity/photo IDs,
+   including after closure; admin state alone does not enable gallery GET.
+   Organizer status alone is insufficient. Handle 204 without parsing JSON.
 6. Invalidate the gallery after successful upload/delete, and refresh personalized
    activity/detail/My Activities state after relevant lifecycle changes. Clear
    photo caches on logout/account change using existing auth cache conventions.

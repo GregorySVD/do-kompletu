@@ -35,11 +35,13 @@ class ActivityManagementError(Exception):
         self.status_code = status_code
 
 
-def _owned_activity(session: Session, activity_id: UUID, user_id: UUID) -> Activity:
+def _owned_activity(
+    session: Session, activity_id: UUID, user_id: UUID, *, is_admin: bool = False
+) -> Activity:
     activity = get_activity_for_update(session, activity_id)
     if activity is None:
         raise ActivityManagementError("Activity not found", 404)
-    if activity.organizer_id != user_id:
+    if activity.organizer_id != user_id and not is_admin:
         raise ActivityManagementError(
             "Only the organizer can manage this activity", 403
         )
@@ -135,10 +137,12 @@ def update_activity(
 
 
 def cancel_activity(
-    session: Session, activity_id: UUID, user_id: UUID
+    session: Session, activity_id: UUID, user_id: UUID, *, is_admin: bool = False
 ) -> ActivityResult:
     try:
-        activity = _owned_activity(session, activity_id, user_id)
+        # Only the trusted admin route supplies this privilege. Domain rules and
+        # the activity-first lock are shared with ordinary organizer cancellation.
+        activity = _owned_activity(session, activity_id, user_id, is_admin=is_admin)
         now = datetime.now(UTC)
         if _as_aware_utc(activity.end_at) <= now:
             raise ActivityManagementError("Activity has ended")
