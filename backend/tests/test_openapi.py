@@ -138,6 +138,8 @@ def test_openapi_has_documented_tags_and_endpoint_summaries(client):
     tags = {tag["name"]: tag["description"] for tag in schema["tags"]}
 
     assert set(tags) == {
+        "Administration",
+        "Activity Photos",
         "Authentication",
         "Users",
         "Activities",

@@ -23,9 +23,48 @@ remain in force.
 The participation lifecycle worker automates expiry/promotion only. Explicit finalization fits
 the existing organizer management API, is deterministic, and makes the write and
 its transaction visible. Reaching end_at alone does not mutate participation.
-An organizer who never finalizes leaves unresolved states in history. COMPLETED
-is suitable for future attendance XP/review authorization; this milestone awards
-no points and implements no reviews, rewards, ranks, or achievements.
+An organizer who never finalizes leaves unresolved states in history and does not
+trigger completion points. The Real Points milestone now awards +10 for each new
+CHECKED_IN -> COMPLETED transition, as detailed below. No reviews, levels, ranks
+or achievements are implemented.
+
+## Completion points
+
+`COMPLETED_ACTIVITY_POINTS = 10` in `participation_rules.py` is the sole award
+amount/source. Newly finalized CHECKED_IN attendance earns +10; JOINED/CONFIRMED
+become NO_SHOW with +0. LEFT, WAITLISTED, both expiry states and existing
+COMPLETED/NO_SHOW rows earn +0. Organizing/finalizing alone earns +0. Cancellation
+awards nothing and preserves check-in evidence without finalizing it.
+
+The finalization UPDATE returns only rows changed by the current transaction.
+Only returned rows whose new status is COMPLETED enter one bulk SQL increment
+`users.points_total = users.points_total + COMPLETED_ACTIVITY_POINTS`. Existing
+balances are preserved (30 -> 40); no participant profiles are individually loaded.
+Attendance, points and the response snapshot share the existing transaction and
+single commit. Failures roll back both attendance and points. The activity-first
+lock serializes same-activity finalizations, and SQL arithmetic also preserves
+increments from concurrent completion of different activities by the same user.
+
+Retries, including a retry after a committed response was lost, return the existing
+409 when nothing remains to finalize and never award twice. Existing COMPLETED
+rows are excluded even if other unresolved rows are finalized. Historical
+COMPLETED rows are not backfilled. A participant deactivated after legitimate
+check-in still earns attendance points; is_active controls authentication, not
+retroactive reward eligibility.
+
+`points_total` is an integer aggregate balance without a full award-history/XP
+ledger. There is no new endpoint, request field, environment setting or migration.
+The model supplies default 0 on user insertion; the existing database column is
+INTEGER NOT NULL without a separate server default, which needs no schema change
+for atomic increments. Registration/profile inputs cannot choose points. The
+finalization route retains its no-body ActivityRead response contract; unsolicited
+JSON has no influence on the award. Read the updated balance on the next
+authenticated `GET /api/v1/users/me`.
+
+Exactly-once behavior relies on terminal state transitions through the normal
+service. Direct SQL resets or restoring old migrations that turn COMPLETED back
+into CHECKED_IN require operator reconciliation of balances; there is no ledger
+to repair or reverse awards automatically. No attendance undo/refund is introduced.
 
 ## Endpoint and failures
 
@@ -58,7 +97,7 @@ exact end and later succeed when unresolved rows exist.
 
 Repeat requests return 409 when no JOINED/CONFIRMED/CHECKED_IN rows remain.
 Empty or LEFT-only attendance has the same response. The operation is idempotent
-at the data level: repeats never change final timestamps. Existing final rows
+at the data level: repeats never change final timestamps or point balances. Existing final rows
 are excluded even when other unresolved rows still need finalization. There is no
 Activity.finalized_at marker; eligibility derives from participation states.
 
@@ -67,12 +106,13 @@ Activity.finalized_at marker; eligibility derives from participation states.
 Cancelled activities cannot use this endpoint, even after their planned end.
 CONFIRMED, CHECKED_IN, LEFT, and all previous timestamps remain evidence of state
 at cancellation. No CANCELLED_PARTICIPATION state or automatic NO_SHOW conversion
-is invented. Future refund/reward policy must interpret cancelled events separately.
+is invented. Cancelled activities award zero points; refund handling remains absent.
 
 Every attendance/management writer first refreshes and locks the same activity
 row with SELECT FOR UPDATE under PostgreSQL READ COMMITTED. Finalization holds
-that lock through validation, one bulk CASE UPDATE, response projection, and
-commit. Failure rolls back the entire update. Existing writers refresh cached
+that lock through validation, one bulk CASE UPDATE with RETURNING, at most one
+bulk user-points increment, response projection, and commit. Failure rolls back
+both updates. Existing writers refresh cached
 membership state after acquiring the parent lock.
 
 Check-in closes exclusively at min(start + configured duration, end_at), so it
@@ -168,36 +208,41 @@ Thread-local controlled UTC clocks and observed lock waiters avoid wall-clock sl
 Positive/negative database time zones and real PostGIS check-in are covered.
 
 Finalization uses two service SELECTs (lock and response), three including HTTP
-authentication, plus one UPDATE for 1 or 120 participants in PostgreSQL tests.
-The isolated bulk test also covers 1 and 80 participants. Public discovery remains
+authentication, plus one attendance UPDATE and at most one points UPDATE for 1 or
+120 participants in PostgreSQL tests. The points UPDATE runs only for actual
+CHECKED_IN -> COMPLETED winners. The isolated bulk test also covers 1 and 80
+participants in both JOINED-only and CHECKED_IN cases. Public discovery remains
 one SELECT and authenticated detail/My Activities two; no participant collections
 or N+1 queries are introduced. Database work grows with matching rows; constant
 round trips do not imply constant CPU time. Current combined validation is in the
 [README](../../README.md#testing).
 
-Frontend source was inspected and unchanged. The Activity type still fixes
-current_user_participation to null, My Activities uses static fixtures, and detail
-has a passive check-in panel with no mutation integration. No COMPLETED/NO_SHOW or
-finalization UI exists. Add the five-state membership/null union and final timestamps,
-can_finalize/can_cancel/cancelled_at, real user-scoped history queries, caller outcome
-badges, organizer finalize API/hook/action, pending/result/error states, and
-discovery/detail/personal query invalidation after finalization. Keep Activity ENDED
-separate from participation COMPLETED and avoid displaying participant_count as
-historical attendance. Future review/XP UI must wait for actual product/API support;
-the existing profile only displays points_total.
+Frontend source was re-inspected for Real Points and remains unchanged. It already
+has points_total in UserProfile, renders it in ProfilePage, and implements organizer
+finalization through useFinalizeActivityMutation. That hook refreshes activity
+detail/discovery/My Activities but not the AuthContext user snapshot. ProfilePage
+also does not refetch the profile on entry/focus. AuthContext already provides
+refreshUser() via GET /users/me. Reuse that operation to refresh the current
+profile on entry/focus or after observing final attendance; merely invalidating
+activity queries cannot refresh the displayed points. The participant usually
+receives points in a different session from the organizer who finalizes, so
+refreshing only the organizer after their mutation is insufficient. No new DTO or
+reward wrapper is required. Keep identity guards on asynchronous profile updates.
 
-Limits remain: no automatic attendance finalization, manual override, undo, immutable attendance audit log,
-rewards/reviews, cancelled-event refund policy, or GPS anti-spoofing. The next
-practical milestone is frontend integration of the implemented lifecycle; a later
-backend milestone can define review/XP eligibility and duplicate protection using
-COMPLETED as the authoritative successful outcome.
+Limits remain: no automatic attendance finalization, manual override, undo,
+immutable attendance audit log, points ledger/history, levels/ranks/achievements,
+reviews, cancelled-event refund policy or GPS anti-spoofing. Exactly-once point
+awards now follow the transactional completion transition; see the
+[Real Points report](real-points-milestone-report.md) for current validation.
 
 ## Complete response examples
 
 ### Organizer finalization response (200)
 
 An ended activity with one checked-in participant finalized to COMPLETED. The
-organizer receives no other user's membership.
+organizer receives no other user's membership. These examples are inside the
+72-hour [gallery window](activity-gallery.md): organizer view-only, COMPLETED
+view/upload, NO_SHOW neither.
 
 ```json
 {
@@ -248,7 +293,7 @@ organizer receives no other user's membership.
     "can_leave": false,
     "can_confirm": false,
     "can_check_in": false,
-    "can_view_gallery": false,
+    "can_view_gallery": true,
     "can_upload_photo": false
   }
 }
@@ -314,8 +359,8 @@ The participant's own subsequent GET detail (or item in joined history):
     "can_leave": false,
     "can_confirm": false,
     "can_check_in": false,
-    "can_view_gallery": false,
-    "can_upload_photo": false
+    "can_view_gallery": true,
+    "can_upload_photo": true
   }
 }
 ```

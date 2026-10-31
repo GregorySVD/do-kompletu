@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from gallery_data import assert_only_gallery_permissions
 from sqlalchemy import delete, event, select
 from sqlalchemy.exc import IntegrityError
 from test_participation_lifecycle import freeze
@@ -19,6 +20,7 @@ from app.schemas.activity import (
 )
 from app.services import activity_management_service as management
 from app.services import participation_service as participation
+from app.services.participation_rules import COMPLETED_ACTIVITY_POINTS
 
 START = datetime(2030, 8, 8, 16, tzinfo=UTC)
 END = START + timedelta(hours=2)
@@ -114,7 +116,7 @@ def test_finalize_all_outcomes_preserves_evidence_and_repeated_request_is_409(
     assert body["status"] == "ENDED" and body["current_user_participation"] is None
     assert body["participant_count"] == 0 and body["available_slots"] == 6
     assert body["checked_in_count"] == 1 and body["waitlist_count"] == 0
-    assert not any(body["permissions"].values())
+    assert_only_gallery_permissions(body["permissions"])
     assert response.headers["cache-control"] == "private, no-store"
     current = rows(db_session, context)
     for i, state in [(1, "NO_SHOW"), (2, "NO_SHOW"), (3, "COMPLETED"), (4, "LEFT")]:
@@ -137,7 +139,11 @@ def test_finalize_all_outcomes_preserves_evidence_and_repeated_request_is_409(
     }
     assert snapshot(db_session, context) == after
     assert db_session.get(Activity, context[0]).cancelled_at is None
-    assert all(user.points_total == 0 for user in context[1])
+    balances = dict(db_session.execute(select(User.id, User.points_total)).all())
+    assert balances == {
+        user.id: COMPLETED_ACTIVITY_POINTS if index == 3 else 0
+        for index, user in enumerate(context[1])
+    }
 
 
 @pytest.mark.parametrize(
@@ -279,7 +285,11 @@ def test_final_detail_and_history_are_private_and_left_stays_excluded(
         detail = client.get(path(context), headers=context[2][i]).json()
         member = detail["current_user_participation"]
         assert (member["status"] if member else None) == status
-        assert not any(detail["permissions"].values())
+        assert_only_gallery_permissions(
+            detail["permissions"],
+            view=status == "COMPLETED",
+            upload=status == "COMPLETED",
+        )
         history = client.get(
             "/api/v1/users/me/activities",
             headers=context[2][i],
@@ -342,10 +352,10 @@ def test_final_outcomes_cannot_be_mutated_even_with_inconsistent_future_activity
         "detail": "Attendance outcome is final"
     }
     assert snapshot(db_session, context) == before
-    assert not any(
-        client.get(path(context), headers=context[2][user])
-        .json()["permissions"]
-        .values()
+    assert_only_gallery_permissions(
+        client.get(path(context), headers=context[2][user]).json()["permissions"],
+        view=user == 3,
+        upload=user == 3,
     )
     assert (
         client.get(
@@ -444,8 +454,9 @@ def test_final_states_accept_realistic_nullable_confirmation_evidence(
 
 
 @pytest.mark.parametrize("size", [1, 80])
+@pytest.mark.parametrize("status", ["JOINED", "CHECKED_IN"])
 def test_finalization_bulk_update_and_read_query_counts_are_constant(
-    client, db_session, context, monkeypatch, size
+    client, db_session, context, monkeypatch, size, status
 ):
     db_session.execute(delete(ActivityParticipation))
     db_session.get(Activity, context[0]).max_participants = None
@@ -462,7 +473,11 @@ def test_finalization_bulk_update_and_read_query_counts_are_constant(
     db_session.flush()
     db_session.add_all(
         [
-            ActivityParticipation(activity_id=context[0], user_id=user.id)
+            ActivityParticipation(
+                activity_id=context[0], user_id=user.id, status=status,
+                confirmed_at=START if status == "CHECKED_IN" else None,
+                checked_in_at=START if status == "CHECKED_IN" else None,
+            )
             for user in extra
         ]
     )
@@ -480,6 +495,9 @@ def test_finalization_bulk_update_and_read_query_counts_are_constant(
         assert sum(s.startswith("SELECT") for s in statements) == 3
         assert (
             sum(s.startswith("UPDATE ACTIVITY_PARTICIPATIONS") for s in statements) == 1
+        )
+        assert sum(s.startswith("UPDATE USERS") for s in statements) == (
+            1 if status == "CHECKED_IN" else 0
         )
         statements.clear()
         assert (

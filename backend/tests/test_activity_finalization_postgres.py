@@ -21,6 +21,7 @@ from app.schemas.my_activities import ActivityRelation, ActivityScope
 from app.services import activity_management_service as management
 from app.services import activity_service as activities
 from app.services import participation_service as participation
+from app.services.participation_rules import COMPLETED_ACTIVITY_POINTS
 
 POSTGRES_TEST_DATABASE_URL = os.getenv("POSTGRES_TEST_DATABASE_URL")
 pytestmark = pytest.mark.skipif(
@@ -260,8 +261,9 @@ def test_finalization_races_respect_both_lock_orders_at_end(
 
 
 @pytest.mark.parametrize("size", [1, 120])
+@pytest.mark.parametrize("status", ["JOINED", "CHECKED_IN"])
 def test_postgres_finalization_uses_one_atomic_update_and_constant_http_selects(
-    pg_engine, context, size
+    pg_engine, context, size, status
 ):
     activity_id, users, _ = context
     extras = []
@@ -287,7 +289,11 @@ def test_postgres_finalization_uses_one_atomic_update_and_constant_http_selects(
             extras = [user.id for user in people]
             session.add_all(
                 [
-                    ActivityParticipation(activity_id=activity_id, user_id=user)
+                    ActivityParticipation(
+                        activity_id=activity_id, user_id=user, status=status,
+                        confirmed_at=START if status == "CHECKED_IN" else None,
+                        checked_in_at=START if status == "CHECKED_IN" else None,
+                    )
                     for user in extras
                 ]
             )
@@ -317,17 +323,25 @@ def test_postgres_finalization_uses_one_atomic_update_and_constant_http_selects(
                 )
                 assert response.json()["participant_count"] == 0
                 assert response.json()["available_slots"] is None
+                assert sum(s.startswith("UPDATE USERS") for s in statements) == (
+                    1 if status == "CHECKED_IN" else 0
+                )
             finally:
                 event.remove(pg_engine, "before_cursor_execute", record)
         with Session(pg_engine) as session:
             assert all(
-                row.status == "NO_SHOW" and row.no_show_at == END
+                (row.status == "NO_SHOW" and row.no_show_at == END)
+                if status == "JOINED" else
+                (row.status == "COMPLETED" and row.completed_at == END)
                 for row in session.scalars(
                     select(ActivityParticipation).where(
                         ActivityParticipation.activity_id == activity_id
                     )
                 )
             )
+            assert set(session.scalars(select(User.points_total).where(User.id.in_(extras)))) == {
+                COMPLETED_ACTIVITY_POINTS if status == "CHECKED_IN" else 0
+            }
     finally:
         if extras:
             with pg_engine.begin() as connection:

@@ -18,8 +18,11 @@ class UserRead(BaseModel):
         )
     )
     avatar_url: str | None = Field(description="Optional public avatar URL.")
-    points_total: int = Field(description="Current accumulated points.")
+    points_total: int = Field(
+        description="Server-controlled accumulated points. Each new CHECKED_IN -> COMPLETED transition during finalization adds 10; existing final outcomes are not awarded again."
+    )
     is_active: bool = Field(description="Whether the account may authenticate.")
+    is_admin: bool = Field(description="Whether this account may use administration endpoints.")
     created_at: datetime = Field(description="Timezone-aware account creation time.")
 
 

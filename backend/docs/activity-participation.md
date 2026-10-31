@@ -129,10 +129,14 @@ change participation statuses; its preserved active rows still count.
 
 Finalization maps CHECKED_IN to COMPLETED and JOINED/CONFIRMED to NO_SHOW at/after
 end through the organizer-only POST finalize endpoint, preserving WAITLISTED/LEFT/final rows.
+Each newly transitioned CHECKED_IN -> COMPLETED row awards exactly +10 points in
+that same transaction; other outcomes and cancelled activities award zero.
+Existing COMPLETED rows are not rewarded again. See [completion points](activity-finalization.md#completion-points).
 Only check-in requires a coordinate body; join/leave/confirm/finalize take no body.
 CHECKED_IN cannot leave, rejoin, confirm, or check in again. Leaving/rejoining is not an immutable event
 log: one row describes the latest cycle and loses earlier-cycle evidence on rejoin.
-There is no unconfirm, undo check-in/finalization, or rewards. A lifespan worker
+There is no unconfirm or undo check-in/finalization. Completion points are the
+only implemented reward source. A lifespan worker
 automatically expires overdue JOINED, promotes FIFO waiters before start, and
 expires remaining waitlists at start. Confirmation is self-declared intent;
 attendance finalization remains explicit and is never run by this worker.
@@ -168,7 +172,9 @@ the application reloads settings; no database timing columns are introduced.
 | can_finalize | Organizer, uncancelled, at/after end, at least one unresolved JOINED/CONFIRMED/CHECKED_IN row |
 
 Confirmed users cannot confirm again but may leave until the existing end boundary.
-All cancelled permissions are false. Organizer edit/cancel permissions retain their
+Cancelled activities disable attendance/upload mutations, while eligible participants
+and the organizer retain [gallery viewing](activity-gallery.md) until end_at + 72h.
+Organizer edit/cancel permissions retain their
 lifecycle rules; can_edit does not promise every proposed field change is valid.
 
 ## Errors and privacy
@@ -252,7 +258,7 @@ writers before releasing it. Temporary-database migration coverage exercises
 Frontend work remains as listed above: live membership/status/timestamps, API
 functions/mutations, window/button/error UI, real My Activities, cancellation
 rendering, geolocation/check-in/finalize actions, final history outcomes,
-identity-aware caches, and invalidation. Reviews, rewards, media, messaging,
+identity-aware caches, and invalidation. Reviews, additional reward sources, messaging,
 payments, and a full participation audit log
 remain future work. Current combined results are in the README.
 
