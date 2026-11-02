@@ -6,7 +6,7 @@ import LoginForm from '../../components/auth/LoginForm/LoginForm'
 const loginBenefits: readonly AuthPageBenefit[] = [
   { code: '01', text: 'Odkrywaj aktywności w swojej okolicy' },
   { code: '02', text: 'Kontroluj zapisy i ważne terminy' },
-  { code: '03', text: 'Twórz własne wydarzenia dla innych' },
+  { code: '03', text: 'Twórz własne aktywności dla innych' },
 ]
 
 function LoginPage() {
