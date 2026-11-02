@@ -86,6 +86,16 @@ export interface ActivityOrganizer {
   avatar_url: string | null
 }
 
+export interface ActivityPhoto {
+  id: string
+  activity_id: string
+  uploader: ActivityOrganizer
+  created_at: string
+  content_type: 'image/jpeg' | 'image/png' | 'image/webp'
+  size_bytes: number
+  url: string
+}
+
 export interface ActivityTag {
   id: string
   name: string

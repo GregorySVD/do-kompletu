@@ -31,6 +31,7 @@ interface AuthProviderProps {
 function isPrivateQueryKey(queryKey: QueryKey) {
   return (
     queryKey[0] === 'my-activities' ||
+    queryKey[0] === 'activity-photos' ||
     (queryKey[0] === 'activity-details' && queryKey[1] !== 'anonymous')
   )
 }

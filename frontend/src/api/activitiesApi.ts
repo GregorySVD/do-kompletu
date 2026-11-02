@@ -2,6 +2,7 @@ import type {
   Activity,
   ActivityCategory,
   ActivityDetails,
+  ActivityPhoto,
   CheckInActivityPayload,
   CreateActivityPayload,
   UpdateActivityPayload,
@@ -31,6 +32,40 @@ export async function getActivityById(
   )
 
   return response.data
+}
+
+export async function getActivityPhotos(
+  activityId: string,
+): Promise<ActivityPhoto[]> {
+  const response = await apiClient.get<ActivityPhoto[]>(
+    `/api/v1/activities/${activityId}/photos`,
+  )
+
+  return response.data
+}
+
+export async function uploadActivityPhoto(
+  activityId: string,
+  file: File,
+): Promise<ActivityPhoto> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await apiClient.post<ActivityPhoto>(
+    `/api/v1/activities/${activityId}/photos`,
+    formData,
+  )
+
+  return response.data
+}
+
+export async function deleteActivityPhoto(
+  activityId: string,
+  photoId: string,
+): Promise<void> {
+  await apiClient.delete<void>(
+    `/api/v1/activities/${activityId}/photos/${photoId}`,
+  )
 }
 
 export async function createActivity(
