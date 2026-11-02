@@ -97,7 +97,7 @@ function ActivityParticipationWindowsCard({
             className="activity-participation-windows__subtitle"
             color="text.secondary"
           >
-            Potwierdzenie obecności i check-in
+            Potwierdzenie udziału i check-in
           </Typography>
         </div>
         <div className="activity-participation-windows__list">
