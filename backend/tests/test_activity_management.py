@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from gallery_data import assert_only_gallery_permissions
 from sqlalchemy import event, func, select
 
 from app.core.security import create_access_token, create_refresh_token
@@ -357,7 +358,7 @@ def test_lifecycle_boundaries_permissions_and_cancellation(
     assert cancelled.status_code == (200 if cancellable else 409)
     if cancellable:
         assert cancelled.json()["status"] == "CANCELLED"
-        assert not any(cancelled.json()["permissions"].values())
+        assert_only_gallery_permissions(cancelled.json()["permissions"])
 
 
 def test_cannot_move_start_to_now_or_past_or_reactivate_started_activity(
@@ -389,7 +390,7 @@ def test_cancellation_persists_and_preserves_counts_details_and_personal_lists(
     assert body["cancelled_at"] == "2030-08-01T12:00:00Z"
     assert body["participant_count"] == 1
     assert body["available_slots"] == 3
-    assert not any(body["permissions"].values())
+    assert_only_gallery_permissions(body["permissions"])
     db_session.expire_all()
     stored = db_session.get(Activity, UUID(body["id"]))
     assert stored.cancelled_at.replace(tzinfo=UTC) == NOW

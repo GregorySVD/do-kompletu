@@ -80,10 +80,13 @@ def test_organized_list_is_scoped_to_caller_and_includes_all_times(client, data)
         assert item["current_user_participation"] is None
         assert item["permissions"]["can_edit"] is (item["status"] == "PUBLISHED")
         assert item["permissions"]["can_cancel"] is (item["status"] != "ENDED")
+        assert item["permissions"]["can_view_gallery"] is (
+            AS_OF < datetime.fromisoformat(item["end_at"]) + timedelta(hours=72)
+        )
         assert not any(
             value
             for key, value in item["permissions"].items()
-            if key not in {"can_edit", "can_cancel"}
+            if key not in {"can_edit", "can_cancel", "can_view_gallery"}
         )
         assert "email" not in item["organizer"]
         assert "password_hash" not in str(item)

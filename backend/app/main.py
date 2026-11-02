@@ -20,6 +20,14 @@ from app.workers.participation_lifecycle import lifecycle_lifespan
 
 OPENAPI_TAGS = [
     {
+        "name": "Administration",
+        "description": "Minimal moderation. Active administrator authentication required; uses a simple is_admin boolean, not a general role system.",
+    },
+    {
+        "name": "Activity Photos",
+        "description": "Private activity galleries for checked-in/completed participants; organizers have view-only access. Normal access closes at end_at + 72h. Active admins can delete by photo/activity UUID even after closure; admin status does not grant browsing.",
+    },
+    {
         "name": "Authentication",
         "description": (
             "Register accounts and obtain JWTs. Frontend clients normally use the "

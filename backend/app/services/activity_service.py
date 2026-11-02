@@ -51,6 +51,10 @@ from app.schemas.activity import (
     PriceType,
 )
 from app.schemas.my_activities import ActivityRelation, ActivityScope
+from app.services.gallery_rules import (
+    can_upload_activity_photo,
+    can_view_activity_gallery,
+)
 from app.services.participation_rules import (
     check_in_window,
     confirmation_window,
@@ -402,6 +406,18 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
             else None
         ),
         permissions=ActivityPermissionsRead(
+            can_view_gallery=can_view_activity_gallery(
+                activity,
+                result.current_user_id,
+                result.current_user_participation_status,
+                now,
+            ),
+            can_upload_photo=can_upload_activity_photo(
+                activity,
+                result.current_user_id,
+                result.current_user_participation_status,
+                now,
+            ),
             can_edit=is_organizer and list_item.status == ActivityStatus.PUBLISHED,
             can_cancel=is_organizer and is_open,
             can_finalize=is_organizer

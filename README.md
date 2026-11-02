@@ -22,9 +22,29 @@ client-reported GPS accuracy, `/ready` checks database connectivity, and product
 startup validates the JWT secret. Refresh authentication errors remain 401 while
 infrastructure failures follow the normal server-error path.
 
-Frontend authentication, profile display, discovery, details, categories, and
-creation use real APIs. My Activities still uses fixtures, and join/leave/confirm/check-in and
-organizer edit/cancel/finalize actions still need integration. See
+The backend also provides a private activity photo gallery: CHECKED_IN/COMPLETED
+participants can upload up to three verified JPEG/PNG/WebP photos (10 MB each).
+They and the organizer can view until strictly before `end_at + 72h`.
+Images live in private S3-compatible storage; PostgreSQL stores metadata only.
+See the [gallery contract](backend/docs/activity-gallery.md) and
+[gallery milestone report](backend/docs/gallery-milestone-report.md).
+
+Finalization now awards exactly **+10 points** for each new CHECKED_IN -> COMPLETED
+transition. Attendance and the atomic `points_total` increment commit together;
+retries do not award again. NO_SHOW, cancelled activities and organizing alone
+award zero. There is no points ledger, level or rank system. See the
+[points contract](backend/docs/activity-finalization.md#completion-points) and
+[Real Points report](backend/docs/real-points-milestone-report.md).
+
+Minimal administration now uses `User.is_admin`: protected user/activity lists,
+account activation/deactivation, shared-service activity cancellation, and photo
+moderation even after normal gallery closure. No general role system exists.
+See the [administration contract](backend/docs/administration.md).
+The backend MVP now enters **FEATURE FREEZE**.
+
+Frontend authentication, profiles, discovery/details, creation, My Activities,
+participant actions and organizer management already use real APIs. Admin UI and
+gallery UI remain unimplemented. See
 [Frontend integration status](#frontend-integration-status) for the verified gaps.
 
 ## Technology stack
@@ -45,14 +65,14 @@ backend/
     api/           HTTP routes and authentication dependencies
     core/          Settings, password hashing, JWT handling
     db/            SQLAlchemy sessions and base
-    models/        User, Activity, ActivityParticipation
+    models/        User, Activity, ActivityParticipation, ActivityPhoto
     schemas/       Pydantic request/response and reference-data contracts
     services/      Authentication, profiles, activity and membership rules
     scripts/       Explicit development bootstrap-user command
   alembic/         Versioned database migrations
   docs/            Detailed backend contracts
   tests/           Isolated tests and gated PostgreSQL integration tests
-  compose.yaml     Database service
+  compose.yaml     PostgreSQL/PostGIS and local private MinIO
 frontend/
   src/
     api/           Axios client and API functions
@@ -116,9 +136,12 @@ refresh lifetimes. Protected endpoints accept
 `Authorization: Bearer <access_token>`; refresh tokens cannot authorize them.
 Swagger uses the separate OAuth2 form endpoint described below.
 
-`GET /api/v1/users/me` returns the authenticated profile; PATCH updates
-`display_name` and/or `avatar_url` (null clears the avatar). Points are stored and
-returned but no points-awarding/progression system exists.
+`GET /api/v1/users/me` returns the authenticated profile, including own-account
+`is_active` and `is_admin`; PATCH updates
+`display_name` and/or `avatar_url` (null clears the avatar). `points_total` is a
+server-controlled aggregate balance: a newly finalized checked-in attendance adds
+10 to the existing balance. Refetch `/users/me` to see awards made by an organizer;
+profile requests cannot choose the balance or award amount.
 
 ### Activities and discovery
 
@@ -279,8 +302,11 @@ The Activity remains ENDED; COMPLETED is a participation state. The existing
 finalization; finite available_slots therefore returns the full maximum, without
 making an ended activity joinable. `checked_in_count` counts CHECKED_IN + COMPLETED
 so verified check-ins survive finalization. No public completed/no-show analytics
-or participant roster is added. Future XP/review authorization can use COMPLETED;
-no XP, rewards, or reviews are implemented. See the
+or participant roster is added. Only rows that actually transition CHECKED_IN ->
+COMPLETED earn +10 points, including participants deactivated after check-in.
+Already-COMPLETED rows never earn again; cancelled activities cannot finalize or
+award points. The organizer earns nothing merely for organizing. There is no
+award-history ledger, backfill of historical COMPLETED rows, levels or reviews. See the
 [finalization contract](backend/docs/activity-finalization.md).
 
 ### My Activities
@@ -361,8 +387,9 @@ Only `cancelled_at` is persisted as cancellation metadata. There is no arbitrary
 mutable status column or DRAFT workflow. Cancellation is soft cancellation.
 For uncancelled activities, organizers can edit before start and cancel before
 end, and finalize unresolved attendance at/after end. Other users can join/leave
-with join/rejoin restricted to before start and leave to before end; final outcomes allow no participant action.
-`can_delete` and unsupported future-action permissions remain false.
+with join/rejoin restricted to before start and leave to before end; final outcomes
+allow no attendance mutation. COMPLETED retains gallery access during its window.
+`can_delete` (activity deletion) remains false; gallery view/upload permissions are real.
 
 ## API overview
 
@@ -399,6 +426,13 @@ unexpected programming failures follow normal server-error handling.
 | DELETE | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Leave membership |
 | POST | `/api/v1/activities/{activity_id}/confirm` | Access JWT; JOINED non-organizer | Confirm attendance inside the window |
 | POST | `/api/v1/activities/{activity_id}/check-in` | Access JWT; CONFIRMED non-organizer | Time- and PostGIS-validated check-in |
+| GET | `/api/v1/activities/{activity_id}/photos` | Eligible participant or organizer access JWT | Private gallery, ordered by created_at/id; presigned URLs |
+| POST | `/api/v1/activities/{activity_id}/photos` | CHECKED_IN/COMPLETED access JWT | Multipart `file`, verified JPEG/PNG/WebP, max 10 MB, max 3/user/activity |
+| DELETE | `/api/v1/activities/{activity_id}/photos/{photo_id}` | Eligible uploader or active admin access JWT | 204, storage first; admin may moderate after gallery closure |
+| GET | `/api/v1/admin/users` | Active admin access JWT | Safe user list with email/account flags/points; limit/offset |
+| PATCH | `/api/v1/admin/users/{user_id}/active` | Active admin access JWT | Activate/deactivate; self-deactivation returns 409 |
+| GET | `/api/v1/admin/activities` | Active admin access JWT | Moderation projection including ended/cancelled activities; limit/offset |
+| POST | `/api/v1/admin/activities/{activity_id}/cancel` | Active admin access JWT | Shared cancellation rules and lock without organizer ownership |
 
 ## Local development
 
@@ -446,18 +480,33 @@ local-secret conventions; this production rule adds no setup requirement there.
 Run from `backend/`:
 
 ```powershell
-docker compose up -d
+docker compose up -d --build
 docker compose ps
 uv run alembic upgrade head
 uv run alembic current
 ```
 
-Compose starts only the `database` service, using `postgis/postgis:17-3.5`.
+Compose starts `database` (`postgis/postgis:17-3.5`) and development MinIO.
 **Host port 5433 maps to container port 5432.** The development database is
 `do_kompletu`; the example user/password are `postgres`/`postgres`. Data lives in
 the named `do_kompletu_postgres_data` volume. Wait for its `pg_isready` healthcheck
 to report healthy before migrating. Run the API separately; Compose does not
 start it or apply migrations.
+
+MinIO is built from the pinned community security release because maintained
+community binary images are no longer published. The first build downloads Go
+dependencies. S3 listens at `http://127.0.0.1:9000` and the local console at
+`http://127.0.0.1:9001`; both bind only to loopback. Keep the six `S3_*` settings
+and development-only `MINIO_ROOT_*` values from `.env.example` in local `.env`
+(add them if your `.env` predates galleries). Once MinIO is healthy, run:
+
+```powershell
+uv run python -m app.scripts.init_photo_storage
+```
+
+This repeatable explicit command creates a private bucket if missing. API and
+worker startup do not depend on object storage. Do not reuse local root credentials
+for production; provision a private bucket and scoped credentials there.
 
 The PostGIS image initializes the default database with PostGIS. Additional
 manually created databases need `CREATE EXTENSION IF NOT EXISTS postgis;` before
@@ -556,6 +605,10 @@ identifiers fail rather than overwrite another account. It creates an ordinary
 user, not an administrator, and never runs automatically on startup. Keep actual
 credentials in the ignored `.env`; never commit them.
 
+Admin provisioning is a separate explicit local SQL step using an exact account
+UUID; see [Local admin provisioning](backend/docs/administration.md#local-admin-provisioning-and-migration).
+There is no auto-promoted first user, hardcoded admin email or public privilege API.
+
 ## Testing
 
 Run from `backend/`:
@@ -594,24 +647,28 @@ The lifecycle, check-in, and finalization migration tests exercise
 `0007 → 0008 → 0007 → 0008`; none downgrades the normal database. Isolated
 check-in tests stub proximity explicitly; only real PostGIS tests validate geography.
 
-Verified on 2026-10-19 after backend hardening (baseline rerun: 518 default and
-146 PostgreSQL/PostGIS tests passed):
+Verified on 2026-10-31 for Minimal Admin. Actual pre-change baseline:
+701 default tests passed (167 skipped) and 166 PostgreSQL/PostGIS tests passed.
 
 | Check | Current result |
 | --- | --- |
-| Default `uv run pytest -v` without integration URL | 613 passed, 153 PostgreSQL tests skipped |
-| Separate fifteen-module PostgreSQL/PostGIS run in an isolated test database | 153 passed |
+| Default `uv run pytest -v` without integration URLs | 760 passed, 177 skipped (176 PostgreSQL, 1 optional MinIO) |
+| Separate full PostgreSQL/PostGIS suite in an isolated test database | 176 passed |
+| Dedicated isolated admin module | 59 passed |
+| Dedicated PostgreSQL admin and migration modules | 10 passed |
+| Gallery/storage regression modules | 68 passed, 1 optional MinIO test skipped |
+| Real MinIO smoke test | Not rerun for Minimal Admin; fake-storage and SDK tests passed |
 | Ruff, compileall, `uv lock --check` | Passed |
-| Migration files and development database | `20261019_0010` is head |
-| Waitlist migration cycle in a generated temporary database | `0008 → 0009 → 0008 → 0009` passed, preserving rows and enforcing timestamp constraints |
-| Lifecycle migration cycle | `0009 → 0010 → 0009 → 0010` passed in a generated temporary database |
+| Source/test database head | `20261031_0012` |
+| Development database | Remains at `20261030_0011`; data unchanged; run `uv run alembic upgrade head` before running the updated API |
+| Admin migration cycle on a generated temporary database | `0011 -> 0012 -> 0011 -> 0012` passed, preserving existing users/activities/participations/photos |
+| Historical gallery/waitlist/lifecycle/check-in/finalization migration cycles | Passed on generated temporary databases |
 | `git diff --check` | Passed |
 | `git diff -- frontend` | Empty |
 
-The [35-point hardening report](backend/docs/backend-hardening-milestone-report.md)
-records the current implementation, exact files/status, validation, and frontend
-follow-up. The [previous lifecycle report](backend/docs/participation-lifecycle-milestone-report.md)
-retains the earlier worker/deployment decisions.
+The [42-point Minimal Admin report](backend/docs/minimal-admin-milestone-report.md)
+records the final implementation, files, validation and frontend work. Earlier
+milestone reports retain their historical verification results.
 
 The tests report an existing Starlette TestClient/httpx deprecation warning and
 local pytest-cache permission warnings. Git may also report an unreadable root
@@ -634,7 +691,9 @@ The verified linear chain and current head are:
 | `20261018_0007` | `20261018_0007_add_participation_check_in.py` | Nullable checked_in_at, CHECKED_IN status and updated timestamp CHECKs |
 | `20261018_0008` | `20261018_0008_add_final_attendance_outcomes.py` | Nullable completed_at/no_show_at, terminal COMPLETED/NO_SHOW and consistent timestamp CHECKs |
 | `20261018_0009` | `20261018_0009_add_activity_waitlist.py` | WAITLISTED, waitlisted_at, nullable joined_at with state CHECKs, FIFO index |
-| `20261019_0010` | `20261019_0010_add_participation_expiry.py` | System expiry states/timestamps, status VARCHAR(24), strict CHECKs; **current head** |
+| `20261019_0010` | `20261019_0010_add_participation_expiry.py` | System expiry states/timestamps, status VARCHAR(24), strict CHECKs |
+| `20261030_0011` | `20261030_0011_create_activity_photos.py` | Private photo metadata, FK/size/MIME constraints and indexes |
+| `20261031_0012` | `20261031_0012_add_user_is_admin.py` | NOT NULL admin boolean with retained false server default; **current head** |
 
 Check file history with `uv run alembic history` and file heads with
 `uv run alembic heads`. `uv run alembic current` checks the configured database.
@@ -658,6 +717,12 @@ Historical upgrade/downgrade probes are recorded in the contracts; normal onboar
 
 ## Backend documentation
 
+- [Administration contract](backend/docs/administration.md): simple boolean admin model, four endpoints, deactivation, shared cancellation, gallery moderation, provisioning and exact frontend work.
+- [Minimal Admin milestone report](backend/docs/minimal-admin-milestone-report.md): all 42 requested review points and actual validation.
+- [Real Points milestone report](backend/docs/real-points-milestone-report.md): 35 requested review points, actual validation and precise frontend follow-up.
+- [Private activity gallery](backend/docs/activity-gallery.md): eligibility, expiry,
+  image validation, object storage, MinIO, transactional quota, compensation and frontend contract.
+- [Gallery milestone report](backend/docs/gallery-milestone-report.md): all 50 requested review points and actual validation results.
 - [Activity participation contract](backend/docs/activity-participation.md):
   retained lifecycle, join/leave/rejoin/confirm, timing, full responses, privacy, and concurrency.
 - [Automated lifecycle worker](backend/docs/participation-lifecycle-worker.md): confirmation/grace, expiry, worker startup/shutdown, locking and frontend polling.
@@ -676,72 +741,60 @@ are explicitly historical; the current combined verification is listed above.
 
 ## Frontend integration status
 
-Verified against the current frontend source; frontend files were not changed by
-this milestone.
+Verified against the current source during Minimal Admin; no frontend files changed.
+Older milestone reports describe their historical frontend state.
 
-| Area | Works now | Remaining integration |
+| Area | Current implementation | Remaining integration |
 | --- | --- | --- |
-| Authentication | Registration, JSON login with correct `identifier` key, access/refresh storage in sessionStorage, session restoration, route protection; refresh JSON contract unchanged | Refresh/retry on API 401 beyond session restoration; distinguish temporary network/5xx failures from authentication rejection during session restoration |
-| Profile | Real `/users/me` profile displayed through auth context | Profile editing UI for the existing PATCH endpoint |
-| Discovery/map/cards | Real activity/category APIs, coordinates, membership counts; backend now excludes ENDED/CANCELLED without client filtering changes | Server filtering and pagination beyond the first `limit=100, offset=0` page; lifecycle-aware availability |
-| Details | Real optional-auth detail, organizer display, can_join-based button, passive checkin window/radius display; timing/can_confirm/can_check_in types exist | Wire join/leave/confirm/check-in and organizer actions; geolocation permission/coordinates/accuracy, mutation pending/error/success states, live window eligibility |
-| Creation | Real form, category/location/time/price/capacity validation, POST, activity-query invalidation, navigation to new detail | Extend mutation/cache coverage for the actions below |
-| My Activities | Protected page and three sections exist | Replace mock activities/static membership IDs with authenticated relation/scope queries, loading/errors, and pagination |
-| Organizer management | Backend edit/cancel/finalize API ready | Edit form/actions, API functions/hooks, cancellation/finalization pending/result/error handling, status/cancelled_at rendering, can_finalize-driven action |
-| Types and caching | Activity status union includes CANCELLED; check-in counts/timing/radius/can_check_in already declared | Membership WAITLISTED/JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW object/null union with nullable joined_at, waitlisted_at, waitlist_position and attendance timestamps, `can_cancel`, `can_finalize`, `cancelled_at`; user-scoped query keys and invalidation/removal on auth changes and mutations |
+| Authentication | JSON login, session restore, single-flight access refresh on 401, handling stale sessions/transient restore failures | Add `is_admin` to UserProfile and read it from the existing current-user response |
+| Profile | Real profile read/edit and points display | Refetch the server balance when another user finalizes attendance |
+| Discovery/details | Real categories, list/detail APIs and identity-scoped detail keys | Server filtering/pagination beyond the first 100 discovery results |
+| Participation | Real join/leave/confirm/check-in API functions, mutation hooks and controls; GPS position/accuracy handling | No admin-specific change needed |
+| My Activities | Real organized/joined/waitlisted/history queries and lifecycle rendering | No admin-specific change needed |
+| Organizer management | Real editing/cancellation/finalization, confirmation dialogs and mutation invalidation | Admin cancellation must use its separate admin endpoint |
+| Administration | No admin type, routes, guard, API module, tables or controls | Typed paginated lists, admin guard/navigation, user active toggle, activity cancel and photo deletion by known IDs |
+| Gallery | Permission booleans and eligible participation types exist; no photo client/UI | Ordinary gallery UI and admin photo-moderation control; admin state grants no GET permission |
+| Private caching | AuthContext clears My Activities and authenticated detail queries on account changes | Include future admin/gallery query keys in private-cache cleanup |
 
-Current detail queries use activity ID without user identity and stay fresh for
-60 seconds; auth changes do not clear query caches. Account changes therefore
-need explicit cache handling before exposing personalized membership/actions.
-Add a confirm API function, mutation hook, and permission-aware button with pending,
-error, and already-confirmed states. LEFT is null current participation and may
-rejoin; it must not appear in joined lists. Add check-in API/mutation and browser
-geolocation permission/error handling. CHECKED_IN cannot leave and no longer offers
-confirm/check-in actions. Submit `position.coords.latitude`,
-`position.coords.longitude`, and `accuracy_m: position.coords.accuracy`; handle poor
-accuracy, outside-radius, and expired-window errors. No check-in API/geolocation
-utility currently exists in the frontend. Discovery has no manual ENDED exclusion
-to remove. The existing backend status gate calls `/health` and remains a liveness
-check; `/ready` requires no user-facing frontend integration. The current session
-restore clears tokens on any refresh failure, including network/5xx errors; the
-backend fix preserves that distinction for future client resilience work.
-After join/leave/confirm/check-in/edit/cancel/finalize, refresh discovery, detail,
-and relevant personal lists. Render caller attendance outcomes in history/detail,
-separately from activity ENDED, and keep every participant action disabled for
-COMPLETED/NO_SHOW. Do not render active participant_count as historical attendance.
-My Activities currently splits fixtures using browser time; integration should use
-the API's exact `end_at > cutoff` / `<= cutoff` boundaries and retain cancelled rows.
+The exact admin frontend work is listed in
+[administration](backend/docs/administration.md#frontend-integration-remaining).
+Use the existing Axios client and query/mutation patterns. Handle 401, 403, 404,
+409, 422 and storage 503 responses, disable self-deactivation, and invalidate
+admin lists/detail/discovery/personal data after mutations. The normal app works
+without an admin UI. No new backend endpoints are needed for this UI milestone.
 
 ## Current limitations / not implemented yet
 
 - Scheduled/automatic finalization, organizer manual attendance overrides,
   undo completion/no-show, and separate cancelled-event attendance/refund policy.
-- Reviews, ratings, XP/points progression, ranks, and achievements.
-- Notifications, chat, photo galleries/uploads, and media workflows.
+- Reviews, ratings, a points ledger/history, levels, ranks, and achievements.
+- Notifications, chat, frontend gallery integration, and automated media cleanup.
 - Cancellation reasons, uncancel, activity edit history/audit trail, hard deletion,
   and DRAFT publishing workflows. Concurrent writes to the same field use the
   last successful writer; there is no version/conflict token.
 - Payment/refund processing; PAID is descriptive pricing metadata only.
 - Nearby radius/distance search and distance calculation; storing coordinates does
-  not implement these features. Administrator role-based authorization is absent.
+  not implement these features. Admin authorization uses a simple boolean;
+  general RBAC, audit logs and richer moderation are outside the frozen MVP.
 
 Placeholder fields do not imply implemented features: `tags` is empty,
-`distance_m` is null, and unsupported gallery/photo/delete
-permissions remain false. Check-in timing/radius and checked_in_count are now real.
+`distance_m` is null, and activity-deletion permission remains false.
+Gallery view/upload permissions, check-in timing/radius and checked_in_count are real.
 My Activities has no total-count wrapper or cross-page snapshot guarantee.
 There is no unconfirm, undo check-in, immutable participation event
 log, or schedule-edit notification. Confirmation is a self-declared intent to attend.
 
-## Roadmap
+## Feature freeze
 
-| State | Milestone |
-| --- | --- |
-| Completed backend | Authentication; PostgreSQL/PostGIS setup; profiles; case-insensitive usernames; activity APIs/categories; My Activities; organizer editing/cancellation; retained participation/confirmation; timed PostGIS check-in; explicit COMPLETED/NO_SHOW finalization; FIFO waitlists/promotion; autonomous confirmation/waitlist expiry with grace; discovery/accuracy/readiness/auth/production-secret hardening |
-| Next frontend integration | Real My Activities and final history outcomes; join/leave/rejoin/confirm/check-in; geolocation; organizer edit/cancel/finalize; state/window/error UI; identity-aware caching and invalidation |
-| Potential later sequence | Reviews/ratings → XP/points → ranks/achievements, after eligibility and cancelled-event policies are defined |
-| Later product work | Notifications/chat, galleries, nearby search; payment handling if required |
+The backend MVP is in **FEATURE FREEZE** after Minimal Admin. Completed scope
+includes authentication/profiles, activities/discovery, participation/FIFO waitlists,
+confirmation/expiry worker, PostGIS check-in, attendance finalization/completion
+points, My Activities, private gallery, hardening and minimal administration.
 
-Future sequencing is a proposal, not an implemented contract or fixed architecture.
+Frontend admin/gallery integration and fixes can proceed against these contracts.
+Reviews, rankings, achievements, notifications, chat, friends, payments, richer
+moderation, audit logs and RBAC remain deferred and outside this MVP. No new MVP
+backend features are proposed.
 
 ## Security / development notes
 

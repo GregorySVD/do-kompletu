@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from gallery_data import assert_only_gallery_permissions
 from geoalchemy2 import Geometry
 from sqlalchemy import cast, create_engine, delete, event, func, select, text
 from sqlalchemy.orm import Session
@@ -371,9 +372,8 @@ def test_check_in_races_serialize_both_lock_orders(
                 if reverse
                 else [(200, None), (200, None)]
             )
-            assert body.status == "CANCELLED" and not any(
-                body.permissions.model_dump().values()
-            )
+            assert body.status == "CANCELLED"
+            assert_only_gallery_permissions(body.permissions.model_dump(), view=not reverse)
             assert member.status == ("CONFIRMED" if reverse else "CHECKED_IN")
         elif scenario == "location":
             assert outcomes == (
