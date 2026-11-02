@@ -227,10 +227,11 @@ def test_organizer_is_separate_from_membership(client, activity_context):
     assert body["available_slots"] == 2
     assert body["permissions"]["can_edit"] is True
     assert body["permissions"]["can_cancel"] is True
+    assert body["permissions"]["can_view_gallery"] is True
     assert not any(
         value
         for key, value in body["permissions"].items()
-        if key not in {"can_edit", "can_cancel"}
+        if key not in {"can_edit", "can_cancel", "can_view_gallery"}
     )
 
 

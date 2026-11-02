@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -88,10 +88,13 @@ def test_postgres_scoped_membership_counts_state_and_postgis_coordinates(
         for item in items:
             assert item["permissions"]["can_edit"] is (item["status"] == "PUBLISHED")
             assert item["permissions"]["can_cancel"] is (item["status"] != "ENDED")
+            assert item["permissions"]["can_view_gallery"] is (
+                AS_OF < datetime.fromisoformat(item["end_at"]) + timedelta(hours=72)
+            )
             assert not any(
                 value
                 for key, value in item["permissions"].items()
-                if key not in {"can_edit", "can_cancel"}
+                if key not in {"can_edit", "can_cancel", "can_view_gallery"}
             )
         assert items[0]["participant_count"] == 1
         assert items[0]["available_slots"] == 3

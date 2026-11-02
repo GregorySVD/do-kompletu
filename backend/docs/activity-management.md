@@ -146,6 +146,14 @@ is removed when changing limits.
 
 ## Cancellation contract and exact response
 
+Active admins can use the separate
+`POST /api/v1/admin/activities/{activity_id}/cancel` endpoint. It calls this same
+cancellation service and parent-row lock with only the ownership check relaxed;
+all repeated-cancel, end-time, rollback and evidence rules below still apply.
+Its response is the small `AdminActivityRead` moderation projection, without
+caller permissions or membership. The ordinary endpoint remains organizer-only.
+See [administration](administration.md).
+
 ```http
 POST /api/v1/activities/d54112d9-43cf-4986-8679-b6c236ac522c/cancel
 Authorization: Bearer <organizer_access_token>
@@ -206,7 +214,7 @@ another user, because the organizer is separate from membership.
     "can_leave": false,
     "can_confirm": false,
     "can_check_in": false,
-    "can_view_gallery": false,
+    "can_view_gallery": true,
     "can_upload_photo": false
   }
 }

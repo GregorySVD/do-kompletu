@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from gallery_data import assert_only_gallery_permissions
 from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -112,7 +113,7 @@ def test_check_in_preserves_timestamps_and_disallows_duplicate_leave_confirm_joi
     checked = row.checked_in_at
     assert body["participant_count"] == body["checked_in_count"] == 1
     assert body["available_slots"] == 3
-    assert not any(body["permissions"].values())
+    assert_only_gallery_permissions(body["permissions"], upload=True)
     assert response.headers["cache-control"] == "private, no-store"
     for name, detail in [
         ("check-in", "Already checked in"),
@@ -494,7 +495,7 @@ def test_cancel_preserves_check_in_and_disables_actions(client, db_session, cont
         and body["checked_in_count"] == body["participant_count"] == 1
     )
     assert body["current_user_participation"]["status"] == "CHECKED_IN"
-    assert not any(body["permissions"].values())
+    assert_only_gallery_permissions(body["permissions"])
     for name in ("join", "leave", "confirm", "check-in"):
         response = action(client, context, name)
         assert response.status_code == 409 and response.json() == {
@@ -530,7 +531,7 @@ def test_checked_in_history_preserves_state(client, context, monkeypatch, cancel
         len(items) == 1
         and items[0]["current_user_participation"]["status"] == "CHECKED_IN"
     )
-    assert not any(items[0]["permissions"].values())
+    assert_only_gallery_permissions(items[0]["permissions"], upload=not cancelled)
 
 
 @pytest.mark.parametrize(

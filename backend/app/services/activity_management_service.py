@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.activity import Activity
 from app.models.activity_participation import ActivityParticipation, ParticipationStatus
+from app.models.user import User
 from app.schemas.activity import (
     ACTIVITY_CATEGORIES,
     ACTIVITY_CATEGORIES_BY_SLUG,
@@ -21,7 +22,10 @@ from app.services.activity_service import (
     get_activity_by_id,
     get_activity_for_update,
 )
-from app.services.participation_rules import FINALIZATION_TRANSITIONS
+from app.services.participation_rules import (
+    COMPLETED_ACTIVITY_POINTS,
+    FINALIZATION_TRANSITIONS,
+)
 from app.services.waitlist_service import promote_waitlisted_participants
 
 
@@ -31,11 +35,13 @@ class ActivityManagementError(Exception):
         self.status_code = status_code
 
 
-def _owned_activity(session: Session, activity_id: UUID, user_id: UUID) -> Activity:
+def _owned_activity(
+    session: Session, activity_id: UUID, user_id: UUID, *, is_admin: bool = False
+) -> Activity:
     activity = get_activity_for_update(session, activity_id)
     if activity is None:
         raise ActivityManagementError("Activity not found", 404)
-    if activity.organizer_id != user_id:
+    if activity.organizer_id != user_id and not is_admin:
         raise ActivityManagementError(
             "Only the organizer can manage this activity", 403
         )
@@ -131,10 +137,12 @@ def update_activity(
 
 
 def cancel_activity(
-    session: Session, activity_id: UUID, user_id: UUID
+    session: Session, activity_id: UUID, user_id: UUID, *, is_admin: bool = False
 ) -> ActivityResult:
     try:
-        activity = _owned_activity(session, activity_id, user_id)
+        # Only the trusted admin route supplies this privilege. Domain rules and
+        # the activity-first lock are shared with ordinary organizer cancellation.
+        activity = _owned_activity(session, activity_id, user_id, is_admin=is_admin)
         now = datetime.now(UTC)
         if _as_aware_utc(activity.end_at) <= now:
             raise ActivityManagementError("Activity has ended")
@@ -160,7 +168,7 @@ def finalize_activity(
             )
         status = ActivityParticipation.status
         checked_in = status == ParticipationStatus.CHECKED_IN
-        result = session.execute(
+        transitions = session.execute(
             update(ActivityParticipation)
             .where(
                 ActivityParticipation.activity_id == activity_id,
@@ -176,11 +184,28 @@ def finalize_activity(
                 completed_at=case((checked_in, now), else_=None),
                 no_show_at=case((checked_in, None), else_=now),
             )
+            .returning(ActivityParticipation.user_id, ActivityParticipation.status)
             .execution_options(synchronize_session=False)
-        )
-        if result.rowcount == 0:
+        ).all()
+        if not transitions:
             raise ActivityManagementError("No unresolved attendance to finalize")
-        # One bulk UPDATE; response SQL reads database state rather than cached rows.
+        # RETURNING contains only rows changed by this transaction, never prior
+        # COMPLETED outcomes. The parent lock serializes retries for this activity.
+        completed_users = [
+            row.user_id
+            for row in transitions
+            if row.status == ParticipationStatus.COMPLETED
+        ]
+        if completed_users:
+            # SQL arithmetic preserves balances, including concurrent completion
+            # of another activity. Account deactivation does not erase attendance.
+            session.execute(
+                update(User)
+                .where(User.id.in_(completed_users))
+                .values(points_total=User.points_total + COMPLETED_ACTIVITY_POINTS)
+                .execution_options(synchronize_session=False)
+            )
+        # Attendance and points commit together. Response SQL reads database state.
         snapshot = _snapshot(session, activity_id, user_id, now)
         session.commit()
         return snapshot

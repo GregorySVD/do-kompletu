@@ -351,11 +351,11 @@ class ActivityPermissionsRead(BaseModel):
     )
     can_view_gallery: bool = Field(
         default=False,
-        description="Whether the current user may view the gallery; currently always false.",
+        description="True for authenticated CHECKED_IN/COMPLETED participants or organizer strictly before end_at + 72h, including cancelled activities.",
     )
     can_upload_photo: bool = Field(
         default=False,
-        description="Whether the current user may upload a photo; currently always false.",
+        description="True for CHECKED_IN/COMPLETED participants strictly before end_at + 72h, unless cancelled. Organizer identity alone grants no upload. Upload also enforces max 3 photos per user/activity.",
     )
 
 
@@ -507,7 +507,7 @@ class ActivityRead(ActivityListItem):
     permissions: ActivityPermissionsRead = Field(
         default_factory=ActivityPermissionsRead,
         description=(
-            "Caller-specific edit/cancel/finalize/join/leave/confirm/check-in permissions. Final outcomes allow no participant mutations. Check-in still requires location validation; unsupported actions remain false."
+            "Caller-specific activity, participation and private gallery permissions. Final outcomes block attendance mutations; COMPLETED may still use the gallery until end_at + 72h. Check-in still requires location validation."
         ),
     )
 
@@ -622,7 +622,9 @@ ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE = {
         "status": "CHECKED_IN",
         "checked_in_at": "2030-08-08T15:45:00Z",
     },
-    "permissions": ActivityPermissionsRead().model_dump(),
+    "permissions": ActivityPermissionsRead(
+        can_view_gallery=True, can_upload_photo=True
+    ).model_dump(),
 }
 ACTIVITY_COMPLETED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
     {
@@ -655,6 +657,7 @@ ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE = ActivityRead.model_validate(
 ACTIVITY_FINALIZE_RESPONSE_EXAMPLE = {
     **ACTIVITY_COMPLETED_RESPONSE_EXAMPLE,
     "current_user_participation": None,
+    "permissions": ActivityPermissionsRead(can_view_gallery=True).model_dump(),
 }
 ACTIVITY_CONFIRMATION_EXPIRED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
     {

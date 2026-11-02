@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from gallery_data import assert_only_gallery_permissions
 from sqlalchemy import create_engine, delete, event, func, inspect, select, text
 from sqlalchemy.orm import Session
 
@@ -169,7 +170,7 @@ def test_postgres_management_http_response_and_query_count(
             else:
                 assert body["status"] == "CANCELLED"
                 assert body["cancelled_at"].endswith("Z")
-                assert not any(body["permissions"].values())
+                assert_only_gallery_permissions(body["permissions"])
         finally:
             event.remove(pg_engine, "before_cursor_execute", record)
 
