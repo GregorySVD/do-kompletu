@@ -17,6 +17,8 @@ interface ActivityBackNavigation {
   path: ActivityReturnPath
 }
 
+const lifecyclePollingOptions = { enableLifecyclePolling: true } as const
+
 function ActivityBackButton({ label, path }: ActivityBackNavigation) {
   return <BackButton to={path}>{label}</BackButton>
 }
@@ -58,7 +60,10 @@ function ActivityNotFound({ label, path }: ActivityBackNavigation) {
 function ActivityDetailsPage() {
   const { activityId } = useParams()
   const location = useLocation()
-  const activityQuery = useActivityDetailsQuery(activityId ?? '')
+  const activityQuery = useActivityDetailsQuery(
+    activityId ?? '',
+    lifecyclePollingOptions,
+  )
   const returnPath = getActivityReturnPath(location.state)
   const backNavigation: ActivityBackNavigation = {
     label: getActivityReturnLabel(returnPath),
@@ -86,7 +91,7 @@ function ActivityDetailsPage() {
     return <ActivityNotFound {...backNavigation} />
   }
 
-  if (activityQuery.isError) {
+  if (activityQuery.isError && activityQuery.data === undefined) {
     return (
       <main className="activity-details-page">
         <ActivityBackButton {...backNavigation} />
