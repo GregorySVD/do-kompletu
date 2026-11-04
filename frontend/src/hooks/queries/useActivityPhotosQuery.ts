@@ -21,7 +21,9 @@ export function useActivityPhotosQuery(
     retry: (failureCount, error) => {
       if (
         axios.isAxiosError(error) &&
-        (error.response?.status === 401 || error.response?.status === 403)
+        (error.response?.status === 401 ||
+          error.response?.status === 403 ||
+          error.response?.status === 404)
       ) {
         return false
       }

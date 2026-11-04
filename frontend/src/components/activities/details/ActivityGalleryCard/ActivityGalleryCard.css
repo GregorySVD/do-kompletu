@@ -1,0 +1,408 @@
+.activity-gallery-card.MuiCard-root {
+  --gallery-card-accent: var(--color-accent);
+
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: linear-gradient(
+    125deg,
+    var(--color-surface) 0 38%,
+    color-mix(in srgb, var(--gallery-card-accent) 5%, var(--color-surface)) 38%
+      68%,
+    color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)) 68% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--gallery-card-accent) 48%, var(--color-border));
+  border-radius: 0.55rem;
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--gallery-card-accent) 22%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--gallery-card-accent) 12%, transparent);
+}
+
+.activity-gallery-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  opacity: 0.14;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 0.3rem,
+    color-mix(in srgb, var(--gallery-card-accent) 24%, transparent) 0.3rem
+      0.35rem
+  );
+}
+
+.activity-gallery-card__content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.activity-gallery-card__heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.activity-gallery-card__heading-copy {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.activity-gallery-card__heading-icon {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--gallery-card-accent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--gallery-card-accent) 16%, var(--color-surface)) 0
+      52%,
+    color-mix(in srgb, var(--color-primary) 18%, var(--color-surface)) 52% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--gallery-card-accent) 58%, var(--color-border));
+  border-radius: 0.45rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--gallery-card-accent) 28%, transparent);
+}
+
+.activity-gallery-card__heading-icon .MuiSvgIcon-root {
+  font-size: 2rem;
+  filter: drop-shadow(
+    0 0 0.35rem color-mix(in srgb, var(--gallery-card-accent) 48%, transparent)
+  );
+}
+
+.activity-gallery-card__title {
+  width: fit-content;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    180deg,
+    transparent 0 72%,
+    color-mix(in srgb, var(--gallery-card-accent) 25%, transparent) 72% 100%
+  );
+  text-shadow: 2px 2px 0
+    color-mix(in srgb, var(--gallery-card-accent) 22%, transparent);
+}
+
+.activity-gallery-card__upload-controls {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: var(--space-1);
+}
+
+.activity-gallery-card__upload-button.activity-gallery-card__upload-button {
+  min-height: var(--touch-target-min);
+  padding-inline: var(--space-4);
+  color: var(--color-text-inverse);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-700) 0 28%,
+    var(--brand-green-600) 28% 72%,
+    var(--brand-green-500) 72% 100%
+  );
+  border: 2px solid var(--brand-green-400);
+  border-radius: 0.35rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--brand-green-700) 42%, transparent);
+}
+
+.activity-gallery-card__upload-button.activity-gallery-card__upload-button:hover {
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-600) 0 28%,
+    var(--brand-green-500) 28% 72%,
+    var(--color-primary) 72% 100%
+  );
+}
+
+.activity-gallery-card__upload-button.activity-gallery-card__upload-button.Mui-focusVisible {
+  outline: 3px solid
+    color-mix(in srgb, var(--color-accent) 78%, var(--color-surface));
+  outline-offset: 3px;
+}
+
+.activity-gallery-card__upload-button.activity-gallery-card__upload-button.Mui-disabled {
+  color: var(--color-text-muted);
+  background: var(--color-surface-strong);
+  border-color: var(--color-border);
+  box-shadow: 2px 2px 0 var(--color-border);
+}
+
+.activity-gallery-card__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.activity-gallery-card__quota {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.activity-gallery-card__empty,
+.activity-gallery-card__error {
+  display: grid;
+  min-height: 7rem;
+  place-items: center;
+  padding: var(--space-5);
+  gap: var(--space-3);
+  text-align: center;
+  background: color-mix(
+    in srgb,
+    var(--gallery-card-accent) 5%,
+    var(--color-surface-soft)
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--gallery-card-accent) 30%, var(--color-border));
+  border-radius: 0.4rem;
+}
+
+.activity-gallery-card__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.activity-gallery-card__skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-4);
+}
+
+.activity-gallery-card__skeleton-photo {
+  min-width: 0;
+  overflow: hidden;
+  background: color-mix(
+    in srgb,
+    var(--gallery-card-accent) 5%,
+    var(--color-surface)
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--gallery-card-accent) 24%, var(--color-border));
+  border-radius: 0.4rem;
+}
+
+.activity-gallery-card__skeleton-image.MuiSkeleton-root {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  background-color: var(--color-surface-strong);
+}
+
+.activity-gallery-card__skeleton-caption {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3);
+  gap: var(--space-2);
+}
+
+.activity-gallery-card__skeleton-avatar.MuiSkeleton-root {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  background-color: var(--color-surface-strong);
+}
+
+.activity-gallery-card__skeleton-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.activity-gallery-card__skeleton-copy .MuiSkeleton-root {
+  background-color: var(--color-surface-strong);
+}
+
+.activity-gallery-card__empty .MuiSvgIcon-root {
+  color: var(--gallery-card-accent);
+  font-size: 2.5rem;
+}
+
+.activity-gallery-card__error .MuiAlert-root {
+  width: 100%;
+  text-align: start;
+}
+
+.activity-gallery-card__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-4);
+}
+
+.activity-gallery-card__photo {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  background: color-mix(
+    in srgb,
+    var(--gallery-card-accent) 5%,
+    var(--color-surface)
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--gallery-card-accent) 34%, var(--color-border));
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--gallery-card-accent) 16%, transparent);
+}
+
+.activity-gallery-card__image-frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-surface-strong);
+}
+
+.activity-gallery-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.activity-gallery-card__image-unavailable {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-content: center;
+  justify-items: center;
+  padding: var(--space-4);
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+  text-align: center;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-surface-soft) 0 0.65rem,
+    var(--color-surface-strong) 0.65rem 1.3rem
+  );
+}
+
+.activity-gallery-card__image-unavailable-message {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.activity-gallery-card__image-unavailable .MuiSvgIcon-root {
+  color: var(--gallery-card-accent);
+  font-size: 2.25rem;
+}
+
+.activity-gallery-card__image-refresh.activity-gallery-card__image-refresh {
+  min-height: var(--touch-target-min);
+  margin-top: var(--space-1);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  background: color-mix(
+    in srgb,
+    var(--gallery-card-accent) 7%,
+    var(--color-surface)
+  );
+  border-width: 2px;
+}
+
+.activity-gallery-card__caption {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  gap: var(--space-3);
+}
+
+.activity-gallery-card__uploader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.activity-gallery-card__avatar.MuiAvatar-root {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  background: var(--color-surface-strong);
+  border: 1px solid
+    color-mix(in srgb, var(--gallery-card-accent) 42%, var(--color-border));
+}
+
+.activity-gallery-card__uploader-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.activity-gallery-card__uploader-copy strong {
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-gallery-card__uploader-copy time {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.activity-gallery-card__delete.activity-gallery-card__delete {
+  min-width: auto;
+  min-height: var(--touch-target-min);
+  flex: 0 0 auto;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  border-width: 2px;
+  border-radius: 0.3rem;
+}
+
+.activity-gallery-card__delete-error {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 40rem) {
+  .activity-gallery-card__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .activity-gallery-card__upload-controls {
+    justify-items: stretch;
+  }
+
+  .activity-gallery-card__dialog-actions.MuiDialogActions-root {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    padding: var(--space-4) var(--space-6) var(--space-5);
+  }
+
+  .activity-gallery-card__dialog-actions > button {
+    width: 100%;
+    min-height: var(--touch-target-min);
+    margin: 0;
+  }
+}
