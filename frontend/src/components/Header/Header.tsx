@@ -1,4 +1,4 @@
-import { Search } from '@mui/icons-material'
+import { AdminPanelSettingsOutlined, Search } from '@mui/icons-material'
 import {
   AppBar,
   Button,
@@ -124,6 +124,22 @@ function Header({
         <div className="header__auth-actions">
           {user ? (
             <>
+              {user.is_admin && (
+                <Button
+                  className="header__button header__admin-button"
+                  component={Link}
+                  to="/admin"
+                  aria-label="Panel administratora"
+                  startIcon={<AdminPanelSettingsOutlined aria-hidden="true" />}
+                >
+                  <span className="header__admin-label header__admin-label--short">
+                    Admin
+                  </span>
+                  <span className="header__admin-label header__admin-label--full">
+                    Panel administratora
+                  </span>
+                </Button>
+              )}
               <Button
                 className="header__button header__profile-button"
                 component={Link}

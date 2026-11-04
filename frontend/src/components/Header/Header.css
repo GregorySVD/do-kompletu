@@ -349,6 +349,29 @@
   margin-inline: 0 var(--space-2);
 }
 
+.header__admin-button.MuiButton-root {
+  color: var(--header-text);
+  background: color-mix(
+    in srgb,
+    var(--brand-purple-600) 34%,
+    var(--header-action-bg)
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--brand-purple-400) 72%,
+    var(--header-control-border)
+  );
+}
+
+.header__admin-button .MuiSvgIcon-root {
+  color: var(--brand-purple-400);
+  font-size: 1.25rem;
+}
+
+.header__admin-label--full {
+  display: none;
+}
+
 .header__auth-button.MuiButton-root {
   color: var(--header-text);
   background: var(--header-action-bg);
@@ -515,5 +538,15 @@
 
   .header__profile-button.MuiButton-root {
     max-width: 11rem;
+  }
+}
+
+@media (min-width: 80rem) {
+  .header__admin-label--short {
+    display: none;
+  }
+
+  .header__admin-label--full {
+    display: inline;
   }
 }

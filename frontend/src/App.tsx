@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import Header from './components/Header/Header'
+import RequireAdmin from './components/RequireAdmin/RequireAdmin'
 import RequireAuth from './components/RequireAuth/RequireAuth'
 import LoadingSkeleton, {
   type LoadingSkeletonVariant,
@@ -18,6 +19,7 @@ import './App.css'
 const ActivityDetailsPage = lazy(
   () => import('./pages/ActivityDetailsPage/ActivityDetailsPage'),
 )
+const AdminPage = lazy(() => import('./pages/AdminPage/AdminPage'))
 const CreateActivityPage = lazy(
   () => import('./pages/CreateActivityPage/CreateActivityPage'),
 )
@@ -208,6 +210,9 @@ function App() {
                 path="/profile/activities"
                 element={<MyActivitiesPage />}
               />
+              <Route element={<RequireAdmin />}>
+                <Route path="/admin" element={<AdminPage />} />
+              </Route>
             </Route>
             <Route
               path="/activities/:activityId"
