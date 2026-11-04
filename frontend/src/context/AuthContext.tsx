@@ -30,6 +30,7 @@ interface AuthProviderProps {
 
 function isPrivateQueryKey(queryKey: QueryKey) {
   return (
+    queryKey[0] === 'admin' ||
     queryKey[0] === 'my-activities' ||
     queryKey[0] === 'activity-photos' ||
     (queryKey[0] === 'activity-details' && queryKey[1] !== 'anonymous')
@@ -37,9 +38,13 @@ function isPrivateQueryKey(queryKey: QueryKey) {
 }
 
 function clearPrivateClientState(queryClient: QueryClient) {
-  queryClient.removeQueries({
-    predicate: (query) => isPrivateQueryKey(query.queryKey),
-  })
+  const privateQueryFilters = {
+    predicate: (query: { queryKey: QueryKey }) =>
+      isPrivateQueryKey(query.queryKey),
+  }
+
+  void queryClient.cancelQueries(privateQueryFilters, { silent: true })
+  queryClient.removeQueries(privateQueryFilters)
   queryClient.getMutationCache().clear()
 }
 
