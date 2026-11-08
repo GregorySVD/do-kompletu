@@ -71,7 +71,7 @@ def pg_queue(pg_engine, monkeypatch):
                     {
                         **ACTIVITY_CREATE_EXAMPLE,
                         "min_participants": 2,
-                        "max_participants": 2,
+                        "max_participants": 3,
                         "start_at": START,
                         "end_at": START + timedelta(hours=2),
                     }
@@ -182,7 +182,7 @@ def test_waitlist_writers_serialize_without_overbooking_or_post_cancel_promotion
 
     def increase(session):
         return update_activity(
-            session, activity_id, users[0], ActivityUpdate(max_participants=4)
+            session, activity_id, users[0], ActivityUpdate(max_participants=5)
         )
 
     def cancel(session):
@@ -223,8 +223,8 @@ def test_waitlist_writers_serialize_without_overbooking_or_post_cancel_promotion
                 if reverse
                 else [("JOINED", None), ("WAITLISTED", None)]
             )
-            assert body.participant_count == 2 and body.waitlist_count == 1
-            assert len(rows) == 3
+            assert body.participant_count == 3 and body.waitlist_count == 1
+            assert len(rows) == 4
         elif scenario == "already_full":
             assert outcomes == [("WAITLISTED", None)] * 3
             expected = sorted(
@@ -257,7 +257,7 @@ def test_waitlist_writers_serialize_without_overbooking_or_post_cancel_promotion
             assert remaining.current_user_participation.waitlist_position == 1
         elif scenario == "waitlist_leave":
             assert all(error is None for _, error in outcomes)
-            assert body.participant_count == 2 and body.waitlist_count == 1
+            assert body.participant_count == 3 and body.waitlist_count == 1
             own = activity_to_read(
                 get_activity_by_id(session, activity_id, current_user_id=users[4])
             )
@@ -268,7 +268,7 @@ def test_waitlist_writers_serialize_without_overbooking_or_post_cancel_promotion
             assert outcomes[1][1] == (None if reverse else "Activity is cancelled")
             assert rows[users[3]].status == ("JOINED" if reverse else "WAITLISTED")
             assert body.participant_count == (
-                2 if scenario == "cancel_leave" or not reverse else 4
+                3 if scenario == "cancel_leave" or not reverse else 5
             )
 
 

@@ -113,13 +113,20 @@ def test_finalize_all_outcomes_preserves_evidence_and_repeated_request_is_409(
     response = finalize(client, context)
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "ENDED" and body["current_user_participation"] is None
+    assert body["status"] == "ENDED"
+    assert body["current_user_participation"]["status"] == "NO_SHOW"
     assert body["participant_count"] == 0 and body["available_slots"] == 6
     assert body["checked_in_count"] == 1 and body["waitlist_count"] == 0
     assert_only_gallery_permissions(body["permissions"])
     assert response.headers["cache-control"] == "private, no-store"
     current = rows(db_session, context)
-    for i, state in [(1, "NO_SHOW"), (2, "NO_SHOW"), (3, "COMPLETED"), (4, "LEFT")]:
+    for i, state in [
+        (0, "NO_SHOW"),
+        (1, "NO_SHOW"),
+        (2, "NO_SHOW"),
+        (3, "COMPLETED"),
+        (4, "LEFT"),
+    ]:
         row = current[context[1][i].id]
         assert row.status == state
         assert (

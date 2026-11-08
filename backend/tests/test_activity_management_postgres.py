@@ -83,7 +83,7 @@ def pg_activity(pg_engine):
                     {
                         **ACTIVITY_CREATE_EXAMPLE,
                         "min_participants": 2,
-                        "max_participants": 3,
+                        "max_participants": 4,
                     }
                 ),
                 users[0],
@@ -158,7 +158,7 @@ def test_postgres_management_http_response_and_query_count(
             assert response.status_code == 200, response.text
             assert len(statements) == expected_selects
             body = response.json()
-            assert body["participant_count"] == 2
+            assert body["participant_count"] == 3
             assert body["available_slots"] == 1
             if operation == "patch":
                 assert body["latitude"] == pytest.approx(50.0664)
@@ -181,7 +181,7 @@ def test_postgres_cancellation_preserves_memberships_and_personal_visibility(
     activity_id, users = pg_activity
     with Session(pg_engine, expire_on_commit=False) as session:
         result = cancel_activity(session, activity_id, users[0])
-        assert result.participant_count == 2
+        assert result.participant_count == 3
         assert result.activity.cancelled_at.tzinfo is not None
     with pg_client(pg_engine) as client:
         assert str(activity_id) not in [
@@ -202,10 +202,11 @@ def test_postgres_cancellation_preserves_memberships_and_personal_visibility(
             item = next(
                 item for item in response.json() if item["id"] == str(activity_id)
             )
-            assert item["participant_count"] == 2
+            assert item["participant_count"] == 3
             assert item["status"] == "CANCELLED"
-            assert (item["current_user_participation"] is not None) is (
-                relation == "joined"
+            assert item["current_user_participation"] is not None
+            assert item["current_user_participation"]["status"] == (
+                "JOINED" if relation == "joined" else "CONFIRMED"
             )
 
 
@@ -255,17 +256,17 @@ def test_postgres_management_races_obey_both_lock_orders(
         return 201
 
     operations = {
-        "capacity_join": [lambda session: edit(session, {"max_participants": 2}), join],
+        "capacity_join": [lambda session: edit(session, {"max_participants": 3}), join],
         "cancel_join": [cancel, join],
         "updates": [
             lambda session: edit(
-                session, {"title": "Organizer update A", "max_participants": 2}
+                session, {"title": "Organizer update A", "max_participants": 3}
             ),
             lambda session: edit(
                 session,
                 {
                     "description": "Independent organizer update B.",
-                    "max_participants": 4,
+                    "max_participants": 5,
                 },
             ),
         ],
@@ -332,7 +333,7 @@ def test_postgres_management_races_obey_both_lock_orders(
                 if reverse
                 else [(200, None), (201, None)]
             )
-            assert (body.max_participants, count) == ((3, 3) if reverse else (2, 2))
+            assert (body.max_participants, count) == ((4, 4) if reverse else (3, 3))
         elif scenario == "cancel_join":
             assert outcomes == (
                 [(200, None), (201, None)]
@@ -340,12 +341,12 @@ def test_postgres_management_races_obey_both_lock_orders(
                 else [(200, None), (409, "Activity is cancelled")]
             )
             assert body.status == "CANCELLED"
-            assert count == (3 if reverse else 2)
+            assert count == (4 if reverse else 3)
         elif scenario == "updates":
             assert outcomes == [(200, None), (200, None)]
             assert body.title == "Organizer update A"
             assert body.description == "Independent organizer update B."
-            assert body.max_participants == (2 if reverse else 4)
+            assert body.max_participants == (3 if reverse else 5)
             assert result.activity.cancelled_at is None
         else:
             assert outcomes == (

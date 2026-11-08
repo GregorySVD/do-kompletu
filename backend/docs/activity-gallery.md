@@ -28,6 +28,16 @@ stored content automatically.
 quota. A caller with three existing photos receives 409 until they delete one.
 Existing join/confirmation/waitlist/check-in/finalization rules are unchanged.
 
+Every new organizer has automatic CONFIRMED participation with no check-in yet:
+can_view_gallery follows the existing organizer view rule, while can_upload_photo
+is false. A successful check-in through the ordinary time/accuracy/PostGIS path
+makes their state CHECKED_IN and both gallery flags true while open/uncancelled.
+Finalized COMPLETED organizers retain the same upload eligibility. Organizer
+ownership itself never grants uploads or relaxes the three-photo quota, MIME/size
+validation, storage compensation, cancellation, or strict 72-hour closure.
+Legacy backfill creates no attendance; see the
+[participation policy](activity-participation.md#legacy-backfill-and-downgrade).
+
 ## API
 
 All routes require an active user's access JWT using the existing OAuth2 bearer

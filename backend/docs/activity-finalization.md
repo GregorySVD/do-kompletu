@@ -36,6 +36,13 @@ become NO_SHOW with +0. LEFT, WAITLISTED, both expiry states and existing
 COMPLETED/NO_SHOW rows earn +0. Organizing/finalizing alone earns +0. Cancellation
 awards nothing and preserves check-in evidence without finalizing it.
 
+The organizer is automatically CONFIRMED on creation and is finalized by these
+same transitions. Their valid check-in produces CHECKED_IN -> COMPLETED and +10
+exactly once; remaining CONFIRMED becomes NO_SHOW and earns zero. There is no
+organizer reward or organizer exclusion from attendance points. Their real
+participation appears in the normal response object. Existing locking, atomic
+increments, rollback, retries, and concurrency guarantees apply unchanged.
+
 The finalization UPDATE returns only rows changed by the current transaction.
 Only returned rows whose new status is COMPLETED enter one bulk SQL increment
 `users.points_total = users.points_total + COMPLETED_ACTIVITY_POINTS`. Existing
@@ -80,7 +87,7 @@ Responses use `Cache-Control: private, no-store`.
 
 | Status | Exact detail / result |
 | --- | --- |
-| 200 | Updated ActivityRead; normally null organizer membership and can_finalize=false |
+| 200 | Updated ActivityRead; organizer's real finalized participation where present and can_finalize=false |
 | 401 | Existing missing/invalid/expired/refresh-token or unavailable-user errors |
 | 403 | Only the organizer can manage this activity |
 | 404 | Activity not found |
@@ -126,9 +133,9 @@ and existing timing restrictions.
 ## Counts, history, permissions, and privacy
 
 participant_count retains its established active capacity meaning:
-JOINED + CONFIRMED + CHECKED_IN, excluding the organizer and final/LEFT states.
+JOINED + CONFIRMED + CHECKED_IN, including the organizer's real active row and excluding final/LEFT states.
 It becomes zero after all unresolved rows are finalized. Finite available_slots
-is still max minus this count (therefore the full maximum); unlimited is null.
+is max(0, maximum minus this count), therefore the full maximum afterward; unlimited is null.
 Ended activities remain unjoinable regardless of those numbers. This field is
 not a historical attendance total.
 
@@ -149,14 +156,17 @@ sorting, UTC cutoff, cancellation visibility, and organized relation are retaine
 Direct detail and My Activities expose only the caller's state and timestamps:
 joined_at, nullable confirmed_at, checked_in_at, completed_at, and no_show_at.
 NO_SHOW retains confirmed_at only if confirmation really happened. Anonymous,
-unrelated, LEFT, and normal organizer callers have null participation. There is
+unrelated and LEFT callers have null participation. Organizers receive their own
+real CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW row, subject to lifecycle. Historical
+legacy activities excluded by the backfill may still lack that row. There is
 no way to request another user's state. Personalized reads retain private/no-store
 and Vary: Authorization.
 
 can_finalize is true only for the authenticated organizer of an uncancelled
 ENDED activity with unresolved attendance. COMPLETED/NO_SHOW have false can_join,
 can_leave, can_confirm, and can_check_in. Cancelled activity permissions are all
-false. Existing can_edit/can_cancel lifecycle rules remain. These flags guide UI;
+false for attendance/uploads; eligible gallery viewing retains its normal deadline.
+Existing can_edit/can_cancel lifecycle rules remain. These flags guide UI;
 the server still enforces every rule.
 
 ## Migration and evidence
@@ -239,10 +249,11 @@ awards now follow the transactional completion transition; see the
 
 ### Organizer finalization response (200)
 
-An ended activity with one checked-in participant finalized to COMPLETED. The
+An ended activity whose organizer checked in and finalized to COMPLETED. The
 organizer receives no other user's membership. These examples are inside the
-72-hour [gallery window](activity-gallery.md): organizer view-only, COMPLETED
-view/upload, NO_SHOW neither.
+72-hour [gallery window](activity-gallery.md): this COMPLETED organizer and
+ordinary COMPLETED callers may view/upload. Ordinary NO_SHOW callers cannot;
+an organizer with NO_SHOW still retains the organizer viewing rule.
 
 ```json
 {
@@ -283,7 +294,19 @@ view/upload, NO_SHOW neither.
   "checkin_radius_m": 150,
   "price_amount": null,
   "currency": null,
-  "current_user_participation": null,
+  "current_user_participation": {
+    "status": "COMPLETED",
+    "joined_at": "2030-08-01T12:00:00Z",
+    "waitlisted_at": null,
+    "waitlist_position": null,
+    "effective_confirmation_deadline_at": null,
+    "confirmation_expired_at": null,
+    "waitlist_expired_at": null,
+    "confirmed_at": "2030-08-01T12:00:00Z",
+    "checked_in_at": "2030-08-08T15:45:00Z",
+    "completed_at": "2030-08-08T18:00:00Z",
+    "no_show_at": null
+  },
   "permissions": {
     "can_edit": false,
     "can_cancel": false,
@@ -294,7 +317,7 @@ view/upload, NO_SHOW neither.
     "can_confirm": false,
     "can_check_in": false,
     "can_view_gallery": true,
-    "can_upload_photo": false
+    "can_upload_photo": true
   }
 }
 ```
@@ -345,6 +368,11 @@ The participant's own subsequent GET detail (or item in joined history):
   "current_user_participation": {
     "status": "COMPLETED",
     "joined_at": "2030-08-01T12:00:00Z",
+    "waitlisted_at": null,
+    "waitlist_position": null,
+    "effective_confirmation_deadline_at": null,
+    "confirmation_expired_at": null,
+    "waitlist_expired_at": null,
     "confirmed_at": "2030-08-08T15:05:00Z",
     "checked_in_at": "2030-08-08T15:45:00Z",
     "completed_at": "2030-08-08T18:00:00Z",
@@ -411,6 +439,11 @@ A separate activity with an originally JOINED participant and no check-in:
   "current_user_participation": {
     "status": "NO_SHOW",
     "joined_at": "2030-08-01T12:00:00Z",
+    "waitlisted_at": null,
+    "waitlist_position": null,
+    "effective_confirmation_deadline_at": null,
+    "confirmation_expired_at": null,
+    "waitlist_expired_at": null,
     "confirmed_at": null,
     "checked_in_at": null,
     "completed_at": null,

@@ -204,8 +204,8 @@ def test_activity_list_matches_card_and_map_contract(client):
     assert activity["latitude"] == pytest.approx(52.4232)
     assert activity["longitude"] == pytest.approx(16.9461)
     assert activity["distance_m"] is None
-    assert activity["participant_count"] == 0
-    assert activity["available_slots"] == 12
+    assert activity["participant_count"] == 1
+    assert activity["available_slots"] == 11
     assert activity["status"] == "PUBLISHED"
 
 

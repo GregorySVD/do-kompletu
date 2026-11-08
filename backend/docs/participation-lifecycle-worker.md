@@ -41,8 +41,10 @@ else:
 `joined_at` means actual place acquisition, including promotion; `waitlisted_at`
 continues to mean queue entry. This formula covers direct joins, eligible LEFT
 rejoins, and the existing centralized promotion helper. No redundant deadline
-column or event log is stored. Schedule edits recalculate timing, retain FIFO
-order, and keep the existing CONFIRMED/CHECKED_IN restrictions.
+column or event log is stored. Schedule edits recalculate timing and retain FIFO
+order. External CONFIRMED/CHECKED_IN/COMPLETED and organizer CHECKED_IN/COMPLETED
+protect the schedule; only the organizer's automatic CONFIRMED is excluded so
+normal rescheduling remains possible before attendance is recorded.
 
 Example, start 18:00, default configuration:
 
@@ -82,6 +84,15 @@ Expired states consume no capacity and count in neither queue nor attendance.
 Counts reflect persisted state: an overdue JOINED row may still count until the
 next successful sweep. Request-time permissions never grant overdue confirmation.
 
+The organizer starts as real CONFIRMED participation in the activity-creation
+transaction, with joined_at=confirmed_at at automatic commitment time. They count
+in capacity/minimum and never need normal confirmation. The worker selects and
+expires only JOINED, so automatic organizer CONFIRMED never becomes
+CONFIRMATION_EXPIRED. Ordinary participant deadline/grace/expiry and FIFO behavior
+remain unchanged. Organizer JOIN/LEAVE/rejoin/manual CONFIRM remain forbidden;
+normal validated check-in is allowed. See the
+[organizer and legacy backfill policy](activity-participation.md#automatic-organizer-participation).
+
 Direct authenticated detail exposes the caller's expired state, joined_at,
 waitlisted_at, and nullable expiry timestamps, with every participant action
 false. It exposes `effective_confirmation_deadline_at` only for JOINED, otherwise
@@ -111,7 +122,8 @@ remains eligible and obtains the deadline for its new place acquisition. Persist
 expired rows return 409 `Participation has expired` on attempted mutations.
 Existing final-attendance conflicts remain unchanged.
 
-CONFIRMED users can still leave until end unless cancelled. WAITLISTED users keep
+External CONFIRMED users can still leave until end unless cancelled; the organizer
+cannot leave. WAITLISTED users keep
 their existing uncancelled before-end leave rule until a sweep expires the queue
 at start; leaving the queue never grants a place or bypasses the start cutoff.
 CHECKED_IN and final attendance remain non-leavable. GET endpoints do not reconcile

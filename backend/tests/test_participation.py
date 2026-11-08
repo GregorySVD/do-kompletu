@@ -29,10 +29,11 @@ def activity_context(client, db_session):
     headers = [
         {"Authorization": f"Bearer {create_access_token(user.id)}"} for user in users
     ]
+    # The organizer occupies one place; preserve this fixture's external capacity.
     response = client.post(
         "/api/v1/activities",
         headers=headers[0],
-        json={**ACTIVITY_CREATE_EXAMPLE, "min_participants": 2, "max_participants": 2},
+        json={**ACTIVITY_CREATE_EXAMPLE, "min_participants": 2, "max_participants": 3},
     )
     assert response.status_code == 201
     return response.json(), users, headers
@@ -56,7 +57,7 @@ def test_join_persists_membership_and_updates_detail_and_list(
     response = join(client, activity_context)
     assert response.status_code == 201
     body = response.json()
-    assert body["participant_count"] == 1
+    assert body["participant_count"] == 2
     assert body["available_slots"] == 1
     assert body["checked_in_count"] == body["waitlist_count"] == 0
     assert body["current_user_participation"]["status"] == "JOINED"
@@ -72,7 +73,7 @@ def test_join_persists_membership_and_updates_detail_and_list(
     detail = client.get(detail_path(activity_context), headers=activity_context[2][1])
     assert detail.json() == body
     card = client.get("/api/v1/activities").json()[0]
-    assert card["participant_count"] == 1
+    assert card["participant_count"] == 2
     assert card["available_slots"] == 1
     assert "current_user_participation" not in card
     assert "private" in detail.headers["cache-control"]
@@ -87,7 +88,7 @@ def test_duplicate_join_returns_conflict_without_changing_counts(
     response = join(client, activity_context)
     assert response.status_code == 409
     assert response.json() == {"detail": "Already joined this activity"}
-    assert client.get(detail_path(activity_context)).json()["participant_count"] == 1
+    assert client.get(detail_path(activity_context)).json()["participant_count"] == 2
 
 
 @pytest.mark.parametrize("method", ["post", "delete"])
@@ -125,7 +126,7 @@ def test_full_activity_permissions_and_duplicate_precedence(client, activity_con
     outsider = client.get(
         detail_path(activity_context), headers=activity_context[2][3]
     ).json()
-    assert outsider["participant_count"] == 2
+    assert outsider["participant_count"] == 3
     assert outsider["available_slots"] == 0
     assert outsider["permissions"]["can_join"] is True
     response = join(client, activity_context, 3)
@@ -150,7 +151,7 @@ def test_unlimited_activity_has_no_capacity_ceiling(
     for user in range(1, 5):
         response = join(client, activity_context, user)
         assert response.status_code == 201
-        assert response.json()["participant_count"] == user
+        assert response.json()["participant_count"] == user + 1
         assert response.json()["available_slots"] is None
     assert client.get(detail_path(activity_context)).json()["available_slots"] is None
     assert client.get("/api/v1/activities").json()[0]["available_slots"] is None
@@ -164,7 +165,7 @@ def test_leave_retains_inactive_membership_repeat_is_conflict_and_rejoin_works(
     response = leave(client, activity_context)
     assert response.status_code == 200
     body = response.json()
-    assert body["participant_count"] == 1
+    assert body["participant_count"] == 2
     assert body["available_slots"] == 1
     assert body["current_user_participation"] is None
     assert body["permissions"]["can_join"] is True
@@ -178,7 +179,7 @@ def test_leave_retains_inactive_membership_repeat_is_conflict_and_rejoin_works(
     repeat = leave(client, activity_context)
     assert repeat.status_code == 409
     assert repeat.json() == {"detail": "Not participating in this activity"}
-    assert client.get("/api/v1/activities").json()[0]["participant_count"] == 1
+    assert client.get("/api/v1/activities").json()[0]["participant_count"] == 2
     assert join(client, activity_context).status_code == 201
 
 
@@ -186,7 +187,7 @@ def test_leave_without_membership(client, activity_context):
     response = leave(client, activity_context)
     assert response.status_code == 409
     assert response.json() == {"detail": "Not participating in this activity"}
-    assert client.get(detail_path(activity_context)).json()["participant_count"] == 0
+    assert client.get(detail_path(activity_context)).json()["participant_count"] == 1
 
 
 def test_anonymous_and_other_user_do_not_receive_participant_state(
@@ -197,7 +198,7 @@ def test_anonymous_and_other_user_do_not_receive_participant_state(
     outsider = client.get(
         detail_path(activity_context), headers=activity_context[2][2]
     ).json()
-    assert anonymous["participant_count"] == outsider["participant_count"] == 1
+    assert anonymous["participant_count"] == outsider["participant_count"] == 2
     assert anonymous["current_user_participation"] is None
     assert outsider["current_user_participation"] is None
     assert not any(anonymous["permissions"].values())
@@ -209,9 +210,9 @@ def test_anonymous_and_other_user_do_not_receive_participant_state(
     assert "member-" not in str(anonymous)
 
 
-def test_organizer_is_separate_from_membership(client, activity_context):
-    assert activity_context[0]["participant_count"] == 0
-    assert activity_context[0]["current_user_participation"] is None
+def test_organizer_is_automatic_member_but_cannot_join_or_leave(client, activity_context):
+    assert activity_context[0]["participant_count"] == 1
+    assert activity_context[0]["current_user_participation"]["status"] == "CONFIRMED"
     for response in [
         join(client, activity_context, 0),
         leave(client, activity_context, 0),
@@ -223,7 +224,7 @@ def test_organizer_is_separate_from_membership(client, activity_context):
     body = client.get(
         detail_path(activity_context), headers=activity_context[2][0]
     ).json()
-    assert body["participant_count"] == 0
+    assert body["participant_count"] == 1
     assert body["available_slots"] == 2
     assert body["permissions"]["can_edit"] is True
     assert body["permissions"]["can_cancel"] is True
@@ -277,7 +278,7 @@ def test_lifecycle_boundary(client, db_session, activity_context, monkeypatch, e
     if elapsed:
         assert joined.json() == left.json() == {"detail": "Activity has ended"}
         assert (
-            client.get(detail_path(activity_context)).json()["participant_count"] == 1
+            client.get(detail_path(activity_context)).json()["participant_count"] == 2
         )
 
 
@@ -324,7 +325,7 @@ def test_database_prevents_duplicate_membership(client, db_session, activity_con
         )
         db_session.flush()
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 1
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 2
     )
 
 
@@ -355,7 +356,8 @@ def test_database_cascades_membership_cleanup(
     db_session.execute(statement)
     db_session.commit()
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 0
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation))
+        == (0 if deleted == "activity" else 1)
     )
 
 
@@ -372,12 +374,12 @@ def test_list_counts_are_per_activity_and_survive_pagination(client, activity_co
     )
     assert created.status_code == 201
     cards = client.get("/api/v1/activities").json()
-    assert [card["participant_count"] for card in cards] == [1, 0]
+    assert [card["participant_count"] for card in cards] == [2, 1]
     assert (
         client.get("/api/v1/activities", params={"offset": 1, "limit": 1}).json()[0][
             "participant_count"
         ]
-        == 0
+        == 1
     )
 
 
@@ -402,5 +404,5 @@ def test_failed_membership_transaction_rolls_back(
     body = client.get(
         detail_path(activity_context), headers=activity_context[2][1]
     ).json()
-    assert body["participant_count"] == (1 if method == "delete" else 0)
+    assert body["participant_count"] == (2 if method == "delete" else 1)
     assert (body["current_user_participation"] is not None) is (method == "delete")

@@ -102,7 +102,7 @@ def context(pg_engine, monkeypatch):
                         "start_at": start,
                         "end_at": start + timedelta(hours=2),
                         "min_participants": 2,
-                        "max_participants": 4,
+                        "max_participants": 5,
                     }
                 ),
                 users[0],
@@ -348,7 +348,7 @@ def test_check_in_races_serialize_both_lock_orders(
             get_activity_by_id(session, activity_id, current_user_id=users[1])
         )
         member = session.get(ActivityParticipation, (activity_id, users[1]))
-        assert body.participant_count == int(
+        assert body.participant_count == 1 + int(
             member.status in ACTIVE_PARTICIPATION_STATUSES
         )
         assert body.checked_in_count == int(member.status == "CHECKED_IN")
@@ -445,12 +445,12 @@ def test_mixed_check_in_states_counts_privacy_capacity_and_query_counts(
         leave_activity(session, activity_id, users[4])
         with pytest.raises(ActivityManagementError, match="below current"):
             update_activity(
-                session, activity_id, users[0], ActivityUpdate(max_participants=2)
+                session, activity_id, users[0], ActivityUpdate(max_participants=3)
             )
         result = update_activity(
-            session, activity_id, users[0], ActivityUpdate(max_participants=3)
+            session, activity_id, users[0], ActivityUpdate(max_participants=4)
         )
-        assert result.participant_count == 3 and result.checked_in_count == 1
+        assert result.participant_count == 4 and result.checked_in_count == 1
     statements = []
 
     def record(_conn, _cursor, statement, _params, _context, _many):
@@ -475,7 +475,7 @@ def test_mixed_check_in_states_counts_privacy_capacity_and_query_counts(
                     else response.json()
                 )
                 assert (
-                    body["participant_count"] == 3
+                    body["participant_count"] == 4
                     and body["checked_in_count"] == 1
                     and body["available_slots"] == 0
                 )

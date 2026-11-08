@@ -109,15 +109,32 @@ def create_activity(
         price_type=payload.price_type.value,
         price_amount=payload.price_amount,
     )
-    session.add(activity)
-    session.commit()
-
-    created_activity = get_activity_by_id(
-        session, activity.id, current_user_id=organizer.id
-    )
-    if created_activity is None:
-        raise RuntimeError("Created activity could not be loaded")
-    return created_activity
+    try:
+        session.add(activity)
+        session.flush()
+        now = datetime.now(UTC)
+        # CONFIRMED requires placement and confirmation evidence. Both describe
+        # automatic commitment now, never check-in or historical attendance.
+        session.add(
+            ActivityParticipation(
+                activity_id=activity.id,
+                user_id=organizer.id,
+                status=ParticipationStatus.CONFIRMED,
+                joined_at=now,
+                confirmed_at=now,
+            )
+        )
+        session.flush()
+        created_activity = get_activity_by_id(
+            session, activity.id, current_user_id=organizer.id, as_of=now
+        )
+        if created_activity is None:
+            raise RuntimeError("Created activity could not be loaded")
+        session.commit()
+        return created_activity
+    except Exception:
+        session.rollback()
+        raise
 
 
 def list_activities(
@@ -221,9 +238,7 @@ def list_user_activities(
             )
             .exists()
         )
-        statement = statement.where(
-            membership, Activity.organizer_id != current_user_id
-        )
+        statement = statement.where(membership)
 
     if scope == ActivityScope.UPCOMING:
         statement = statement.where(Activity.end_at > now).order_by(
@@ -291,7 +306,7 @@ def activity_to_list_item(result: ActivityResult) -> ActivityListItem:
     available_slots = (
         None
         if activity.max_participants is None
-        else activity.max_participants - participant_count
+        else max(0, activity.max_participants - participant_count)
     )
 
     return ActivityListItem(
@@ -443,7 +458,7 @@ def activity_to_read(result: ActivityResult) -> ActivityRead:
                 )
             ),
             can_check_in=(
-                eligible_user
+                result.current_user_id is not None
                 and is_open
                 and result.current_user_participation_status
                 == ParticipationStatus.CONFIRMED
@@ -478,6 +493,12 @@ def _activity_results(
         .where(
             ActivityParticipation.activity_id == Activity.id,
             ActivityParticipation.status.in_(SCHEDULE_PROTECTED_PARTICIPATION_STATUSES),
+            # Automatic organizer confirmation must not freeze their own event
+            # immediately. Actual check-in still protects its schedule/location.
+            or_(
+                ActivityParticipation.user_id != Activity.organizer_id,
+                ActivityParticipation.status != ParticipationStatus.CONFIRMED,
+            ),
         )
         .correlate(Activity)
         .scalar_subquery()

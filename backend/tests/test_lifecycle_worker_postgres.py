@@ -76,7 +76,7 @@ def pg_lifecycle(pg_engine, monkeypatch):
                         "start_at": START,
                         "end_at": START + timedelta(hours=2),
                         "min_participants": 2,
-                        "max_participants": 2,
+                        "max_participants": 3,
                     }
                 ),
                 users[0],
@@ -276,7 +276,7 @@ def test_lifecycle_writers_follow_both_real_postgres_lock_orders(
             assert rows[users[1]].status == "CONFIRMATION_EXPIRED"
             assert rows[users[1]].left_at is None
             if scenario == "at_start":
-                assert len(active) == 1
+                assert len(active) == 2
                 for user in users[3:6]:
                     assert (
                         rows[user].status == "WAITLIST_EXPIRED"

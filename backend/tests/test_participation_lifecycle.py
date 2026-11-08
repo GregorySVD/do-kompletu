@@ -55,13 +55,14 @@ def context(client, db_session, monkeypatch):
     headers = [
         {"Authorization": f"Bearer {create_access_token(user.id)}"} for user in users
     ]
+    # The organizer occupies one place; preserve this fixture's external capacity.
     response = client.post(
         "/api/v1/activities",
         headers=headers[0],
         json={
             **ACTIVITY_CREATE_EXAMPLE,
             "min_participants": 2,
-            "max_participants": 3,
+            "max_participants": 4,
             "start_at": START.isoformat(),
             "end_at": (START + timedelta(hours=2)).isoformat(),
         },
@@ -105,7 +106,7 @@ def test_leave_retains_cycle_and_rejoin_resets_it(
     assert row.status == "LEFT" and row.left_at is not None
     assert row.joined_at == original_join and row.confirmed_at == original_confirmation
     assert response.json()["current_user_participation"] is None
-    assert response.json()["participant_count"] == 0
+    assert response.json()["participant_count"] == 1
     assert response.json()["available_slots"] == 3
     assert response.json()["permissions"]["can_join"] is True
     assert not response.json()["permissions"]["can_confirm"]
@@ -119,7 +120,7 @@ def test_leave_retains_cycle_and_rejoin_resets_it(
     assert row.status == "JOINED" and row.left_at is None and row.confirmed_at is None
     assert row.joined_at > original_join
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 1
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 2
     )
     assert request(client, context, "join").json() == {
         "detail": "Already joined this activity"
@@ -191,7 +192,7 @@ def test_confirmation_exact_window_boundaries(
         )
         assert not body["permissions"]["can_confirm"]
         assert body["permissions"]["can_leave"]
-        assert body["participant_count"] == 1 and body["available_slots"] == 2
+        assert body["participant_count"] == 2 and body["available_slots"] == 2
         assert body["checked_in_count"] == 0
         assert body["permissions"]["can_check_in"] is (offset >= timedelta(minutes=-30))
         assert request(client, context, "confirm").json() == {
@@ -272,12 +273,12 @@ def test_mixed_states_counts_privacy_and_my_activities(
     assert request(client, context, "confirm", 2).status_code == 200
     assert request(client, context, "leave", 3).status_code == 200
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 3
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 4
     )
     for user, expected in [(1, "JOINED"), (2, "CONFIRMED"), (3, None), (4, None)]:
         response = client.get(path(context), headers=context[2][user])
         body = response.json()
-        assert body["participant_count"] == 2
+        assert body["participant_count"] == 3
         assert body["available_slots"] == (None if unlimited else 1)
         membership = body["current_user_participation"]
         assert (membership["status"] if membership else None) == expected
@@ -298,7 +299,7 @@ def test_mixed_states_counts_privacy_and_my_activities(
     )
     assert "confirmed_at" not in str(anonymous)
     cards = client.get("/api/v1/activities").json()
-    assert cards[0]["participant_count"] == 2
+    assert cards[0]["participant_count"] == 3
     assert "current_user_participation" not in cards[0]
 
 
@@ -318,7 +319,7 @@ def test_cancellation_preserves_all_states_and_blocks_every_action(
         for i in (1, 2, 3)
     ]
     body = request(client, context, "cancel", 0).json()
-    assert body["participant_count"] == 2
+    assert body["participant_count"] == 3
     for user in (1, 2, 3):
         for action in ("join", "leave", "confirm"):
             response = request(client, context, action, user)
@@ -382,14 +383,14 @@ def test_capacity_edit_counts_confirmed_but_excludes_left(client, context):
         request(client, context, "join", user)
     request(client, context, "confirm", 1)
     response = client.patch(
-        path(context), headers=context[2][0], json={"max_participants": 2}
+        path(context), headers=context[2][0], json={"max_participants": 3}
     )
     assert response.status_code == 409
     request(client, context, "leave", 3)
     response = client.patch(
-        path(context), headers=context[2][0], json={"max_participants": 2}
+        path(context), headers=context[2][0], json={"max_participants": 3}
     )
-    assert response.status_code == 200 and response.json()["participant_count"] == 2
+    assert response.status_code == 200 and response.json()["participant_count"] == 3
     queued = request(client, context, "join", 3)
     assert queued.status_code == 201
     assert queued.json()["current_user_participation"]["status"] == "WAITLISTED"

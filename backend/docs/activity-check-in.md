@@ -4,7 +4,7 @@
 
 `POST /api/v1/activities/{activity_id}/check-in` extends the existing
 [participation lifecycle](activity-participation.md). It requires an access JWT and
-CONFIRMED non-organizer membership. It returns full ActivityRead on success (200),
+CONFIRMED membership, including automatic organizer participation. It returns full ActivityRead on success (200),
 transitioning CONFIRMED → CHECKED_IN. JOINED is never implicitly confirmed.
 CHECKED_IN is active and consumes the same place; LEFT remains inactive.
 
@@ -21,7 +21,10 @@ ranges: latitude −90..90 and longitude −180..180. Unknown fields are rejecte
 `accuracy_m` is also required: a finite number strictly greater than zero,
 representing the client-reported location accuracy radius in meters. There is no
 fixed schema upper bound; values above the configured business maximum return 409.
-The organizer cannot check in merely because they own the activity.
+Every new organizer starts with a real CONFIRMED row and can use this endpoint.
+Ownership alone grants no bypass: the same time, accuracy, PostGIS radius,
+status, cancellation, and duplicate rules apply. JOIN/LEAVE/rejoin/manual CONFIRM
+remain forbidden for the organizer; no separate check-in endpoint is introduced.
 
 ## Window and public metadata
 
@@ -50,10 +53,13 @@ Existing public ActivityRead fields are reused: `checkin_opens_at`,
 frontend contract; no duplicate `check_in_*` timing fields are added. Metadata is
 nominal and remains readable after cancellation/end. Discovery's shape is unchanged.
 
-`permissions.can_check_in` means authenticated CONFIRMED non-organizer state and
+`permissions.can_check_in` means authenticated CONFIRMED state, including organizer, and
 time/lifecycle allow an **attempt**. It cannot know the user's location/accuracy
 before POST. The endpoint must still validate accuracy and proximity. CHECKED_IN
 cannot join, leave, confirm, or check in again. There is no undo check-in.
+The organizer flag is false before the window, true inside it while CONFIRMED,
+and false after successful check-in. Their current_user_participation then shows
+CHECKED_IN and checked_in_count includes the real row, without a serializer offset.
 
 ## Authoritative proximity and privacy
 
@@ -78,7 +84,8 @@ Coordinate ordering and crossing the date line are tested independently.
 Only checked_in_at is persisted. Submitted coordinates, `accuracy_m`, and computed
 distance are transient validation data, neither stored nor returned. The activity's
 public venue coordinates remain public. No schema migration is needed for accuracy;
-Alembic head remains `20261019_0010`.
+The current source head is `20261108_0013`, whose organizer data-only backfill
+policy is documented in [participation](activity-participation.md#legacy-backfill-and-downgrade).
 Current-user participation adds nullable checked_in_at beside joined_at/confirmed_at;
 only the caller's current/final timestamps are exposed. Anonymous/unrelated/LEFT callers
 receive null participation. Aggregate checked_in_count and nominal timing/radius
@@ -96,7 +103,8 @@ anti-spoofing/device attestation or fraud-proof attendance claim is introduced.
 - `participant_count`/available_slots use centralized JOINED, CONFIRMED, CHECKED_IN
   active states, excluding final COMPLETED/NO_SHOW. checked_in_count counts
   CHECKED_IN + COMPLETED to retain successful check-ins; waitlist_count counts WAITLISTED only; queued users cannot confirm/check in and receive 409.
-- CONFIRMED may leave before end unless cancelled. JOINED must also precede its
+- External CONFIRMED participants may leave before end unless cancelled. The
+  organizer cannot leave. JOINED must also precede its
   effective confirmation deadline, even before the worker persists expiry. Both
   system-expired states cannot confirm/check in and never consume capacity.
   CHECKED_IN cannot leave. LEFT rejoin resets joined_at and clears all lifecycle
@@ -105,8 +113,10 @@ anti-spoofing/device attestation or fraud-proof attendance claim is introduced.
   end-time upcoming/history scopes. History includes unresolved CHECKED_IN and
   final COMPLETED/NO_SHOW; final states are excluded from upcoming. No separate
   attendance-history endpoint is introduced.
-- Schedule changes remain blocked while any participant is CONFIRMED or CHECKED_IN.
-  Once any participant is CHECKED_IN, actual latitude/longitude/location_name/address
+- Schedule changes remain blocked for external CONFIRMED/CHECKED_IN/COMPLETED and
+  organizer CHECKED_IN/COMPLETED. Only organizer CONFIRMED is excluded so automatic
+  participation does not prevent normal rescheduling. Once any participant is
+  CHECKED_IN/COMPLETED, actual latitude/longitude/location_name/address
   changes also return 409. Equivalent unchanged values and other safe edits remain
   possible while normal management lifecycle rules allow editing.
 - Cancellation before end can preserve CHECKED_IN/checked_in_at, with CANCELLED
@@ -121,6 +131,10 @@ JOINED/CONFIRMED become NO_SHOW. These terminal states cannot check in, confirm,
 leave, or rejoin. At exact end, check-in is already forbidden (exclusive deadline),
 while finalization is allowed. Activity status stays ENDED. The participation
 worker expires reservations/queues only; it never performs attendance finalization.
+The same mapping applies to the organizer: genuine CHECKED_IN -> COMPLETED earns
+the existing +10 once, while organizing or remaining CONFIRMED earns none.
+CHECKED_IN/COMPLETED organizers may upload under the normal gallery deadline,
+cancellation, quota, MIME, and storage rules; CONFIRMED organizers remain view-only.
 
 See [management](activity-management.md) and [My Activities](my-activities.md) for
 the unchanged ownership, pagination, and visibility contracts.
@@ -128,14 +142,13 @@ the unchanged ownership, pagination, and visibility contracts.
 ## Errors
 
 Domain errors use `{"detail":"message"}`. After normal payload/auth validation,
-the service checks existence, organizer, cancellation, end time, membership/status,
+the service checks existence, cancellation, end time, membership/status,
 window, accuracy, then proximity. Time/state are read after acquiring the parent lock.
 
 | Status | Exact detail / meaning |
 | --- | --- |
 | 401 | Existing missing/invalid/expired/refresh-token or unavailable-user errors |
 | 404 | Activity not found |
-| 409 | Organizer cannot check in to their own activity |
 | 409 | Not participating in this activity (no row or LEFT) |
 | 409 | Attendance must be confirmed before check-in (JOINED) |
 | 409 | Already checked in |
@@ -236,10 +249,10 @@ Illustrative IDs/date and default settings; Swagger provides the same full examp
   "price_type": "FREE",
   "min_participants": 4,
   "max_participants": 12,
-  "participant_count": 1,
+  "participant_count": 2,
   "checked_in_count": 1,
   "waitlist_count": 0,
-  "available_slots": 11,
+  "available_slots": 10,
   "status": "PUBLISHED",
   "cancelled_at": null,
   "description": "Amatorski mecz siatkówki dla każdego chętnego.",
@@ -259,7 +272,12 @@ Illustrative IDs/date and default settings; Swagger provides the same full examp
   "current_user_participation": {
     "status": "CHECKED_IN",
     "joined_at": "2030-08-01T12:00:00Z",
+    "waitlisted_at": null,
+    "waitlist_position": null,
     "confirmed_at": "2030-08-08T15:05:00Z",
+    "effective_confirmation_deadline_at": null,
+    "confirmation_expired_at": null,
+    "waitlist_expired_at": null,
     "checked_in_at": "2030-08-08T15:45:00Z",
     "completed_at": null,
     "no_show_at": null

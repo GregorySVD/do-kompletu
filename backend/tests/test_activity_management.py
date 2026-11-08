@@ -155,7 +155,7 @@ def test_title_patch_is_truly_partial_and_keeps_membership(client, db_session, c
     stored = db_session.get(Activity, UUID(context[0]["id"]))
     assert stored.title == "Renamed activity"
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 1
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 2
     )
 
 
@@ -199,7 +199,7 @@ def test_title_patch_is_truly_partial_and_keeps_membership(client, db_session, c
         ({"longitude": 19.2}, {"longitude": 19.2}),
         (
             {"min_participants": 3, "max_participants": 6},
-            {"min_participants": 3, "max_participants": 6, "available_slots": 6},
+            {"min_participants": 3, "max_participants": 6, "available_slots": 5},
         ),
         (
             {"has_participant_limit": False, "max_participants": None},
@@ -303,15 +303,15 @@ def test_capacity_changes_preserve_all_members_and_validate_unlimited_transition
     assert rejected.json() == {
         "detail": "Participant limit cannot be below current participant count"
     }
-    valid = patch(client, context, {"max_participants": 3})
+    valid = patch(client, context, {"max_participants": 4})
     assert valid.status_code == 200
-    assert valid.json()["participant_count"] == 3
+    assert valid.json()["participant_count"] == 4
     assert valid.json()["available_slots"] == 0
     unlimited = patch(
         client, context, {"has_participant_limit": False, "max_participants": None}
     )
     assert unlimited.status_code == 200
-    assert unlimited.json()["participant_count"] == 3
+    assert unlimited.json()["participant_count"] == 4
     assert unlimited.json()["available_slots"] is None
     assert (
         patch(
@@ -320,7 +320,7 @@ def test_capacity_changes_preserve_all_members_and_validate_unlimited_transition
         == 409
     )
     limited = patch(
-        client, context, {"has_participant_limit": True, "max_participants": 4}
+        client, context, {"has_participant_limit": True, "max_participants": 5}
     )
     assert limited.status_code == 200
     assert limited.json()["available_slots"] == 1
@@ -388,14 +388,14 @@ def test_cancellation_persists_and_preserves_counts_details_and_personal_lists(
     body = response.json()
     assert body["status"] == "CANCELLED"
     assert body["cancelled_at"] == "2030-08-01T12:00:00Z"
-    assert body["participant_count"] == 1
-    assert body["available_slots"] == 3
+    assert body["participant_count"] == 2
+    assert body["available_slots"] == 2
     assert_only_gallery_permissions(body["permissions"])
     db_session.expire_all()
     stored = db_session.get(Activity, UUID(body["id"]))
     assert stored.cancelled_at.replace(tzinfo=UTC) == NOW
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 1
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 2
     )
     anonymous = client.get(path(context)).json()
     member = client.get(path(context), headers=context[2][1]).json()
@@ -461,8 +461,8 @@ def test_cancelled_membership_cannot_join_or_leave_and_counts_never_change(
             assert response.status_code == 409
             assert response.json() == {"detail": "Activity is cancelled"}
     body = client.get(path(context)).json()
-    assert body["participant_count"] == 1
-    assert body["available_slots"] == 3
+    assert body["participant_count"] == 2
+    assert body["available_slots"] == 2
 
 
 def test_discovery_filters_cancelled_before_pagination(client, context):
@@ -521,7 +521,7 @@ def test_management_response_has_constant_query_count(
             else cancel(client, context)
         )
         assert response.status_code == 200
-        assert response.json()["participant_count"] == 3
+        assert response.json()["participant_count"] == 4
         assert len(statements) == expected_selects
     finally:
         event.remove(engine, "before_cursor_execute", record)

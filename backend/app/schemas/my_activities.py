@@ -10,6 +10,7 @@ from app.schemas.activity import (
     ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
     ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE,
+    ACTIVITY_ORGANIZER_RESPONSE_EXAMPLE,
     ACTIVITY_WAITLIST_RESPONSE_EXAMPLE,
     ActivityPermissionsRead,
 )
@@ -32,7 +33,7 @@ class MyActivitiesQuery(BaseModel):
     relation: ActivityRelation = Field(
         description=(
             "organized: you are the organizer; joined: current states before end, current or final COMPLETED/NO_SHOW states in history. LEFT excluded. "
-            "waitlisted: only your WAITLISTED records, separate from joined. CONFIRMATION_EXPIRED/WAITLIST_EXPIRED and LEFT are excluded from personal membership relations. Organizer identity alone never counts as membership."
+            "waitlisted: only your WAITLISTED records, separate from joined. CONFIRMATION_EXPIRED/WAITLIST_EXPIRED and LEFT are excluded from personal membership relations. Real organizer participation is included in joined, once per relation; historical activities without that row remain organized only."
         ),
     )
     scope: ActivityScope | None = Field(
@@ -71,20 +72,12 @@ MY_ACTIVITIES_RESPONSE_EXAMPLES = {
         "value": [ACTIVITY_CONFIRM_RESPONSE_EXAMPLE],
     },
     "joined_upcoming": {
-        "summary": "Joined upcoming activity with one participant",
+        "summary": "Joined upcoming activity including its organizer and the caller",
         "value": [ACTIVITY_JOIN_RESPONSE_EXAMPLE],
     },
     "organized": {
-        "summary": "Your organized activity; organizer is separate from membership",
-        "value": [
-            {
-                **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
-                "current_user_participation": None,
-                "permissions": ActivityPermissionsRead(
-                    can_edit=True, can_cancel=True, can_view_gallery=True
-                ).model_dump(),
-            }
-        ],
+        "summary": "Your organized activity with automatic CONFIRMED participation",
+        "value": [ACTIVITY_ORGANIZER_RESPONSE_EXAMPLE],
     },
     "joined_history": {
         "summary": "Ended membership preserved in your history",

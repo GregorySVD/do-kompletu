@@ -93,7 +93,7 @@ def lifecycle_activity(pg_engine, monkeypatch):
                         "start_at": start,
                         "end_at": start + timedelta(hours=2),
                         "min_participants": 2,
-                        "max_participants": 3,
+                        "max_participants": 4,
                     }
                 ),
                 users[0],
@@ -184,7 +184,7 @@ def test_lifecycle_writers_obey_both_postgres_lock_orders(
             ),
         ],
         "capacity_rejoin": [
-            lambda session: edit(session, {"max_participants": 2}),
+            lambda session: edit(session, {"max_participants": 3}),
             lambda session: join(session, 3),
         ],
         "double_confirm": [confirm, confirm],
@@ -243,14 +243,14 @@ def test_lifecycle_writers_obey_both_postgres_lock_orders(
                 assert row.confirmed_at is not None
         if scenario in {"final_slot", "rejoin_join"}:
             assert outcomes.count((201, None)) == 2
-            assert len(active) == 3
+            assert len(active) == 4
             if scenario == "rejoin_join":
                 rejoined = session.get(ActivityParticipation, (activity_id, users[3]))
                 assert rejoined.status == ("WAITLISTED" if reverse else "JOINED")
-                assert len(rows) == 4
+                assert len(rows) == 5
         elif scenario == "leave_join":
             assert outcomes == [(200, None), (201, None)]
-            assert member.status == "LEFT" and len(active) == 3
+            assert member.status == "LEFT" and len(active) == 4
         elif scenario == "confirm_leave":
             assert outcomes == (
                 [(409, "Not participating in this activity"), (200, None)]
@@ -299,7 +299,7 @@ def test_lifecycle_writers_obey_both_postgres_lock_orders(
             )
             assert member.status == "CONFIRMED"
             assert (body.max_participants, len(active)) == (
-                (3, 3) if reverse else (2, 2)
+                (4, 4) if reverse else (3, 3)
             )
         else:
             assert outcomes.count((200, None)) == 1
@@ -337,7 +337,7 @@ def test_postgres_retained_states_http_counts_privacy_and_query_counts(
                 assert response.status_code == 200
                 assert len(statements) == expected
             body = client.get(base, headers=headers).json()
-            assert body["participant_count"] == 1 and body["available_slots"] == 2
+            assert body["participant_count"] == 2 and body["available_slots"] == 2
             assert body["current_user_participation"]["status"] == "CONFIRMED"
             assert body["current_user_participation"]["confirmed_at"] is not None
             assert client.get(base).json()["current_user_participation"] is None
@@ -397,20 +397,20 @@ def test_postgres_confirmed_capacity_reduction_ignores_left_rows(
         join_activity(session, activity_id, users[3])
         with pytest.raises(ActivityManagementError, match="below current"):
             update_activity(
-                session, activity_id, users[0], ActivityUpdate(max_participants=2)
+                session, activity_id, users[0], ActivityUpdate(max_participants=3)
             )
         leave_activity(session, activity_id, users[3])
         result = update_activity(
-            session, activity_id, users[0], ActivityUpdate(max_participants=2)
+            session, activity_id, users[0], ActivityUpdate(max_participants=3)
         )
-        assert result.participant_count == 2
+        assert result.participant_count == 3
         assert (
             session.scalar(
                 select(func.count())
                 .select_from(ActivityParticipation)
                 .where(ActivityParticipation.activity_id == activity_id)
             )
-            == 3
+            == 4
         )
 
 

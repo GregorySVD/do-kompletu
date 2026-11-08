@@ -30,10 +30,11 @@ rejected with 422. This endpoint never exposes another caller's membership.
 
 ## RELATION
 
-`relation=organized` selects activities you organize, without treating you as a
-participant. `relation=joined` selects JOINED/CONFIRMED/CHECKED_IN before end;
-history also includes final COMPLETED/NO_SHOW outcomes. LEFT records and organizer
-activities are excluded. `relation=waitlisted` selects only your WAITLISTED rows,
+`relation=organized` selects activities you organize. `relation=joined` selects
+JOINED/CONFIRMED/CHECKED_IN before end, including your real organizer participation;
+history also includes final COMPLETED/NO_SHOW outcomes. LEFT records are excluded.
+Each activity appears at most once per relation. Historical organizer-owned events
+without participation appear only in organized. `relation=waitlisted` selects only your WAITLISTED rows,
 separately from joined. Relation is required; there is no combined/all relation.
 
 ## TIME AND SORTING
@@ -75,8 +76,9 @@ State changes are visible after refetch; no WebSocket/push channel is implemente
 Joined items include your own current or final state, joined_at, and nullable
 confirmed_at/checked_in_at/completed_at/no_show_at, plus effective_confirmation_deadline_at
 for JOINED. LEFT and system-expired states are inactive and excluded.
-Organized items normally have null membership. Counts/capacity use only unresolved
-JOINED/CONFIRMED/CHECKED_IN states; organizers do not consume places, and unlimited
+Organized items expose the organizer's real participation where present. New activities
+start with CONFIRMED organizer membership. Counts/capacity use only unresolved
+JOINED/CONFIRMED/CHECKED_IN states, including organizer participation, and unlimited
 activities have available_slots=null. Finalization reduces participant_count to
 zero, while checked_in_count preserves CHECKED_IN + COMPLETED.
 Cancelled activities remain in all relations and retain the same end-time scope;

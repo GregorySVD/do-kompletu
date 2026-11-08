@@ -22,6 +22,12 @@ client-reported GPS accuracy, `/ready` checks database connectivity, and product
 startup validates the JWT secret. Refresh authentication errors remain 401 while
 infrastructure failures follow the normal server-error path.
 
+Every new activity now includes its organizer as an automatically CONFIRMED
+participant in the creation transaction. The organizer consumes one place,
+counts toward the minimum, and can use the same time/location-validated check-in.
+Organizer JOIN, LEAVE, rejoin, and manual CONFIRM remain forbidden. Checked-in
+organizers follow ordinary gallery, finalization, and +10 attendance-point rules.
+
 The backend also provides a private activity photo gallery: CHECKED_IN/COMPLETED
 participants can upload up to three verified JPEG/PNG/WebP photos (10 MB each).
 They and the organizer can view until strictly before `end_at + 72h`.
@@ -149,6 +155,8 @@ Creation accepts title/description, canonical `category_id`, start/end timestamp
 venue name/address, latitude/longitude, participant limits, and FREE/PAID pricing.
 The organizer comes exclusively from the access JWT; client-supplied
 `organizer_id` is rejected.
+The development SQL seed also inserts each new activity and its organizer's
+CONFIRMED row in one statement; existing seed activity IDs are left untouched.
 
 - Timestamps require a timezone offset, normalize to UTC, and require `end_at > start_at`.
   Creation currently permits past/ongoing dates; the frontend additionally rejects past starts.
@@ -182,13 +190,20 @@ POST `/{activity_id}/join` creates membership (201); DELETE the same path leaves
 (200). Both paths are under `/api/v1/activities`, require an access token, take no
 body, and return updated `ActivityRead`.
 
-- The organizer is separate from participants, cannot join/leave their own
-  activity, and never consumes a participant place.
+- Creation atomically inserts the organizer's CONFIRMED participation with
+  `joined_at = confirmed_at` at automatic-confirmation time. A failed participation
+  insert rolls back the activity too. The existing activity/user primary key
+  prevents duplicates. The organizer cannot use JOIN, LEAVE, rejoin, or CONFIRM.
+- The organizer consumes one place and counts toward `min_participants` through
+  the same SQL-derived active-state counts. A new maximum-10 activity returns
+  `participant_count=1`, `available_slots=9`; unlimited returns 1/null. Existing
+  minimum/maximum validation stays 2–100: `max_participants=1` remains invalid.
 - One participation row persists per activity/user, with `status`, nullable `joined_at`, `waitlisted_at`,
   `left_at`, `confirmed_at`, `checked_in_at`, `completed_at`, and `no_show_at`.
   JOINED, CONFIRMED, and CHECKED_IN consume places; WAITLISTED, LEFT and final outcomes do not.
   `participant_count` counts only active rows; finite
-  `available_slots` reflects remaining capacity, while unlimited capacity is null.
+  `available_slots` is `max(0, maximum - participant_count)`, while unlimited
+  capacity is null. No organizer offset is added during serialization.
 - Non-organizers may join/rejoin strictly before `start_at`; at/after start is
   409. Full limited activities succeed as WAITLISTED (201), without consuming a
   place. Leave remains allowed until `end_at`. Duplicate joins return 409,
@@ -236,6 +251,8 @@ without promotion or NO_SHOW. Both states retain private timestamps, allow no
 participant actions/rejoin, and are excluded from joined/waitlisted My Activities.
 Cancellation skips automation and preserves its evidence. Explicit organizer
 attendance finalization is unchanged and is never scheduled automatically.
+The organizer already starts CONFIRMED, so the JOINED-only confirmation-expiry
+flow never expires their automatic participation.
 
 PARTICIPATION_LIFECYCLE_WORKER_ENABLED defaults true; disable it explicitly for
 tests or development if needed. PARTICIPATION_LIFECYCLE_SWEEP_INTERVAL_SECONDS
@@ -251,11 +268,15 @@ for state, shutdown, migration, testability, and deployment details.
 POST `/api/v1/activities/{activity_id}/check-in` requires an access token and JSON
 `{"latitude":52.4232,"longitude":16.9461,"accuracy_m":20}`. All three fields are
 required and finite; `accuracy_m` is a positive client-reported accuracy radius in
-meters. Unknown fields are rejected. Only CONFIRMED non-organizers may
+meters. Unknown fields are rejected. CONFIRMED participants, including organizers, may
 transition to CHECKED_IN (200); JOINED is not implicitly confirmed. Successful
 check-in sets checked_in_at, preserves joined_at/confirmed_at, and consumes the
 same existing place. Duplicate check-in, leave after check-in, and confirmation
 after check-in return 409. There is no undo check-in.
+For the organizer, `can_check_in` is false before the window, true during it while
+CONFIRMED, and false after check-in. Ownership grants no timing, accuracy, radius,
+cancellation, or duplicate-check exemption. `current_user_participation` exposes
+the real CONFIRMED/CHECKED_IN/COMPLETED organizer state through the existing DTO.
 
 The default window opens 30 minutes before start and closes at the earlier of
 60 minutes after start or activity end: opening inclusive, deadline exclusive.
@@ -305,7 +326,9 @@ so verified check-ins survive finalization. No public completed/no-show analytic
 or participant roster is added. Only rows that actually transition CHECKED_IN ->
 COMPLETED earn +10 points, including participants deactivated after check-in.
 Already-COMPLETED rows never earn again; cancelled activities cannot finalize or
-award points. The organizer earns nothing merely for organizing. There is no
+award points. The organizer earns nothing merely for organizing; their own real
+CHECKED_IN -> COMPLETED transition earns the same +10 exactly once. An organizer
+who stays CONFIRMED becomes NO_SHOW under the ordinary finalization rule. There is no
 award-history ledger, backfill of historical COMPLETED rows, levels or reviews. See the
 [finalization contract](backend/docs/activity-finalization.md).
 
@@ -316,7 +339,7 @@ that user; no client user ID is accepted.
 
 | Parameter | Behavior |
 | --- | --- |
-| `relation` | Required: `organized` (caller owns activity), `waitlisted` (caller WAITLISTED only), or `joined` (current JOINED/CONFIRMED/CHECKED_IN before end; history also includes COMPLETED/NO_SHOW; LEFT and owned activities excluded) |
+| `relation` | Required: `organized` (caller owns activity), `waitlisted` (caller WAITLISTED only), or `joined` (current JOINED/CONFIRMED/CHECKED_IN before end; history also includes COMPLETED/NO_SHOW; LEFT excluded, real organizer participation included) |
 | `scope` | Optional: `upcoming` or `history`; omit for all times, including all organized activities |
 | `limit`, `offset` | Default 20/0; limit 1–100, offset ≥ 0 |
 
@@ -326,6 +349,9 @@ ascending. History means `end_at <= cutoff`, sorted by end descending then UUID
 ascending. Omitted scope puts upcoming first, then history, using those same sorts.
 Cancelled activities remain in all relations and use the same end-time scopes;
 their status remains CANCELLED.
+The organizer may see the same activity in organized and joined sections because
+both relations are true. Each query returns the activity once, using the existing
+array contract and database EXISTS filter.
 The Waitlist section uses `relation=waitlisted&scope=upcoming`; it may include
 ongoing records because scopes still follow end time. Historical waitlists remain
 until the next sweep persists expiry (cancelled records are skipped); joining and promotion close at start.
@@ -346,8 +372,10 @@ ongoing, ended, or cancelled activities cannot be edited.
 Capacity cannot be reduced below active membership (409), including CHECKED_IN;
 WAITLISTED and LEFT do not count. Capacity increases promote earliest waiters into
 new places in the same locked transaction before start. Switching to unlimited
-promotes the entire queue. Actual changes to `start_at` or `end_at` return 409 while any participant
-is CONFIRMED or CHECKED_IN. Once anyone is CHECKED_IN, latitude, longitude,
+promotes the entire queue. Actual changes to `start_at` or `end_at` return 409 for
+external CONFIRMED/CHECKED_IN/COMPLETED or organizer CHECKED_IN/COMPLETED. Only the
+organizer's automatic CONFIRMED is excluded from schedule protection, preserving
+ordinary pre-attendance editing. Once anyone is CHECKED_IN/COMPLETED, latitude, longitude,
 location_name, and address changes also return 409. Unchanged values and other allowed fields can still be submitted;
 historical confirmations on LEFT rows do not block schedule edits. Confirmations
 are never silently cleared by editing. Removing the limit
@@ -367,8 +395,9 @@ activity returns 404. Invalid payloads return 422; missing/invalid access tokens
 return 401. PATCH also returns 200 on success.
 
 Cancelled activities disappear from public discovery but remain accessible by
-direct detail and relevant My Activities queries. All action permissions become
-false, and remaining slots no longer imply bookability. There is no hard deletion,
+direct detail and relevant My Activities queries. Attendance and upload permissions
+become false; eligible gallery viewing retains its strict 72-hour window. Remaining
+slots no longer imply bookability. There is no hard deletion,
 uncancel, cancellation reason, notification, or audit history. See the
 [management/cancellation contract](backend/docs/activity-management.md).
 
@@ -425,7 +454,7 @@ unexpected programming failures follow normal server-error handling.
 | POST | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Request JOINED or FIFO WAITLISTED |
 | DELETE | `/api/v1/activities/{activity_id}/join` | Access JWT; non-organizer | Leave membership |
 | POST | `/api/v1/activities/{activity_id}/confirm` | Access JWT; JOINED non-organizer | Confirm attendance inside the window |
-| POST | `/api/v1/activities/{activity_id}/check-in` | Access JWT; CONFIRMED non-organizer | Time- and PostGIS-validated check-in |
+| POST | `/api/v1/activities/{activity_id}/check-in` | Access JWT; CONFIRMED participant, including organizer | Time- and PostGIS-validated check-in |
 | GET | `/api/v1/activities/{activity_id}/photos` | Eligible participant or organizer access JWT | Private gallery, ordered by created_at/id; presigned URLs |
 | POST | `/api/v1/activities/{activity_id}/photos` | CHECKED_IN/COMPLETED access JWT | Multipart `file`, verified JPEG/PNG/WebP, max 10 MB, max 3/user/activity |
 | DELETE | `/api/v1/activities/{activity_id}/photos/{photo_id}` | Eligible uploader or active admin access JWT | 204, storage first; admin may moderate after gallery closure |
@@ -647,10 +676,13 @@ The lifecycle, check-in, and finalization migration tests exercise
 `0007 → 0008 → 0007 → 0008`; none downgrades the normal database. Isolated
 check-in tests stub proximity explicitly; only real PostGIS tests validate geography.
 
-Verified on 2026-10-31 for Minimal Admin. Actual pre-change baseline:
+The following verification table is the historical Minimal Admin result from
+2026-10-31. The organizer correction's current baseline/final results are recorded
+in the [organizer participation report](backend/docs/organizer-participation-report.md).
+Actual pre-admin baseline:
 701 default tests passed (167 skipped) and 166 PostgreSQL/PostGIS tests passed.
 
-| Check | Current result |
+| Check | Historical Minimal Admin result |
 | --- | --- |
 | Default `uv run pytest -v` without integration URLs | 760 passed, 177 skipped (176 PostgreSQL, 1 optional MinIO) |
 | Separate full PostgreSQL/PostGIS suite in an isolated test database | 176 passed |
@@ -693,7 +725,8 @@ The verified linear chain and current head are:
 | `20261018_0009` | `20261018_0009_add_activity_waitlist.py` | WAITLISTED, waitlisted_at, nullable joined_at with state CHECKs, FIFO index |
 | `20261019_0010` | `20261019_0010_add_participation_expiry.py` | System expiry states/timestamps, status VARCHAR(24), strict CHECKs |
 | `20261030_0011` | `20261030_0011_create_activity_photos.py` | Private photo metadata, FK/size/MIME constraints and indexes |
-| `20261031_0012` | `20261031_0012_add_user_is_admin.py` | NOT NULL admin boolean with retained false server default; **current head** |
+| `20261031_0012` | `20261031_0012_add_user_is_admin.py` | NOT NULL admin boolean with retained false server default |
+| `20261108_0013` | `20261108_0013_organizer_participation.py` | Data-only active legacy organizer backfill; **current source head** |
 
 Check file history with `uv run alembic history` and file heads with
 `uv run alembic heads`. `uv run alembic current` checks the configured database.
@@ -715,9 +748,29 @@ joined rows; it loses queue history. See the waitlist contract for this compromi
 Historical upgrade/downgrade probes are recorded in the contracts; normal onboarding uses
 `upgrade head`.
 
+Revision 0013 backfills only missing organizer rows on noncancelled legacy
+activities with `end_at > 2026-11-08T00:00:00Z`. This fixed eligibility cutoff is
+reproducible: an end exactly at the cutoff is historical and skipped. Activities
+ended by the cutoff and already-cancelled activities receive no synthetic
+commitment or attendance. Existing participation of any status is untouched.
+Backfilled rows are CONFIRMED, with joined_at/confirmed_at equal to the actual
+database transaction time, never synthetic check-in/completion timestamps.
+The activity-first lock and existing composite primary key plus ON CONFLICT keep
+the insertion safe and idempotent. Downgrade intentionally retains every row,
+photo, and point balance because migration provenance cannot safely be inferred.
+Re-upgrade neither duplicates nor rewrites retained participation.
+
+Adding an organizer to an already-full legacy activity can leave real occupancy
+above the old maximum. All external participants and FIFO queue evidence remain;
+the limit is unchanged, available_slots is clamped to zero, and joins keep using
+the existing waitlist until capacity becomes available. The invariant covers all
+new activities and eligible backfilled legacy activities; historical exceptions
+remain intentionally without fabricated organizer records.
+
 ## Backend documentation
 
 - [Administration contract](backend/docs/administration.md): simple boolean admin model, four endpoints, deactivation, shared cancellation, gallery moderation, provisioning and exact frontend work.
+- [Organizer participation correction](backend/docs/organizer-participation-report.md): automatic CONFIRMED organizer membership, safe legacy backfill, acceptance/concurrency validation, and frontend effects.
 - [Minimal Admin milestone report](backend/docs/minimal-admin-milestone-report.md): all 42 requested review points and actual validation.
 - [Real Points milestone report](backend/docs/real-points-milestone-report.md): 35 requested review points, actual validation and precise frontend follow-up.
 - [Private activity gallery](backend/docs/activity-gallery.md): eligibility, expiry,

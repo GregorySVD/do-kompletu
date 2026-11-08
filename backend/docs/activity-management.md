@@ -19,7 +19,7 @@ The management implementation started from a clean `backend` branch with
 migration-file/database head `20261018_0004`. Its historical baseline verification
 was 164 default tests and 20 separate PostgreSQL tests, with Ruff and lock validation
 passing. That describes the start of implementation, not the current working-tree
-status. Current migration-file/database head is `20261019_0010`; Compose uses host
+status. Current source migration head is `20261108_0013`; Compose uses host
 port 5433. See the [README](../../README.md#testing) for the current combined checks.
 
 ## Persistent lifecycle and schema
@@ -75,8 +75,10 @@ Only the JWT-authenticated organizer may edit. Both the existing activity start 
 the merged proposed start must be strictly in the future. Existing ongoing/ended
 or cancelled activities cannot be edited; moving their dates cannot reactivate them.
 This conservative policy avoids changing schedules, venue, or price during an event.
-Additionally, actual changes to start_at or end_at return 409 while any
-participation status is CONFIRMED or CHECKED_IN. Once anyone is CHECKED_IN, actual
+Additionally, actual changes to start_at or end_at return 409 while an external
+participant is CONFIRMED/CHECKED_IN/COMPLETED or the organizer is CHECKED_IN/COMPLETED.
+Only the organizer's automatic CONFIRMED row is excluded from schedule protection,
+so creation leaves ordinary schedule editing available. Once anyone is CHECKED_IN/COMPLETED, actual
 latitude, longitude, location_name, and address changes also return 409. This keeps
 the venue against which attendance was validated. Equivalent unchanged values are allowed,
 as are other fields under normal management rules. LEFT rows with historical
@@ -162,8 +164,8 @@ Authorization: Bearer <organizer_access_token>
 No body is needed. The organizer may cancel strictly before end_at, including while
 ONGOING. Cancellation sets cancelled_at once, preserves the activity and all
 memberships, and returns 200. A repeat returns 409 without changing the timestamp.
-Example IDs/timestamps below are illustrative; the participant count belongs to
-another user, because the organizer is separate from membership.
+Example IDs/timestamps below are illustrative; the participant count is the
+organizer's retained automatic CONFIRMED row, with no external participants.
 
 ```json
 {
@@ -204,7 +206,19 @@ another user, because the organizer is separate from membership.
   "checkin_radius_m": 150,
   "price_amount": null,
   "currency": null,
-  "current_user_participation": null,
+  "current_user_participation": {
+    "status": "CONFIRMED",
+    "joined_at": "2030-08-01T12:00:00Z",
+    "waitlisted_at": null,
+    "waitlist_position": null,
+    "confirmed_at": "2030-08-01T12:00:00Z",
+    "effective_confirmation_deadline_at": null,
+    "confirmation_expired_at": null,
+    "waitlist_expired_at": null,
+    "checked_in_at": null,
+    "completed_at": null,
+    "no_show_at": null
+  },
   "permissions": {
     "can_edit": false,
     "can_cancel": false,
@@ -226,7 +240,7 @@ another user, because the organizer is separate from membership.
 | --- | --- |
 | Public discovery | Excluded before sorting/pagination, including filtered requests |
 | Direct detail | Still available; CANCELLED and cancelled_at are public |
-| Organized My Activities | Retained, with null organizer membership |
+| Organized My Activities | Retained, with the organizer's real participation where present |
 | Joined My Activities | Retained for caller's JOINED/CONFIRMED/CHECKED_IN state; LEFT excluded |
 | Upcoming/history | Still split strictly by end_at; future cancelled activities remain upcoming; after end they are history with CANCELLED status |
 | Counts/capacity | Reflect all active membership including CHECKED_IN, excluding LEFT; checked_in_count is real, waitlist_count counts WAITLISTED; cancelled places are not bookable |
@@ -238,7 +252,8 @@ is true before end. Organizer can_finalize is true at/after end only if uncancel
 and at least one JOINED/CONFIRMED/CHECKED_IN row remains unresolved.
 Participant can_join/can_leave follow current state and lifecycle;
 CHECKED_IN cannot leave. can_check_in permits an attempt, still requiring PostGIS validation.
-Every cancelled permission is false. can_delete and all future permissions remain
+Cancellation blocks attendance and uploads; eligible gallery viewing remains
+available until end_at + 72h. can_delete and all future permissions remain
 false. The UI must render status rather than infer bookability from remaining slots.
 
 | Status | Exact detail or meaning |
@@ -276,8 +291,9 @@ The shared 401/403/404/422 management conventions apply.
 participant_count remains the active capacity count and becomes zero after
 finalization. checked_in_count includes CHECKED_IN + COMPLETED, retaining check-in
 evidence. No public completed/no-show analytics or participant list is added.
-The response carries only the caller's private attendance, normally null for an
-organizer. See the [complete finalization contract](activity-finalization.md)
+The response carries only the caller's private attendance, including the organizer's
+real COMPLETED or NO_SHOW outcome. Only actual CHECKED_IN -> COMPLETED earns +10,
+with the same exactly-once transaction as external participants. See the [complete finalization contract](activity-finalization.md)
 for constraints, downgrade mappings, history, and concurrency verification.
 
 ## Transactions, query efficiency, and migration validation

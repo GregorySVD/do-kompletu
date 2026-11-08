@@ -40,10 +40,11 @@ def queue(client, db_session, monkeypatch):
     headers = [
         {"Authorization": f"Bearer {create_access_token(user.id)}"} for user in users
     ]
+    # Preserve two external active places in addition to the automatic organizer.
     payload = {
         **ACTIVITY_CREATE_EXAMPLE,
         "min_participants": 2,
-        "max_participants": 2,
+        "max_participants": 3,
         "start_at": START.isoformat(),
         "end_at": (START + timedelta(hours=2)).isoformat(),
     }
@@ -92,7 +93,7 @@ def test_full_join_real_counts_caller_positions_privacy_and_permissions(client, 
             body["participant_count"],
             body["waitlist_count"],
             body["available_slots"],
-        ) == (2, 3, 0)
+        ) == (3, 3, 0)
         participation = body["current_user_participation"]
         assert participation["status"] == "WAITLISTED"
         assert participation["waitlist_position"] == position
@@ -119,14 +120,14 @@ def test_full_join_real_counts_caller_positions_privacy_and_permissions(client, 
             ]
             is None
         )
-    for user in (0, 6):
-        assert detail(client, queue, user)["current_user_participation"] is None
+    assert detail(client, queue, 0)["current_user_participation"]["status"] == "CONFIRMED"
+    assert detail(client, queue, 6)["current_user_participation"] is None
     assert detail(client, queue, 6)["permissions"]["can_join"]
     anonymous = client.get(path(queue)).json()
     assert anonymous["current_user_participation"] is None
     assert not any(anonymous["permissions"].values())
     cards = client.get("/api/v1/activities").json()
-    assert cards[0]["waitlist_count"] == 3 and cards[0]["participant_count"] == 2
+    assert cards[0]["waitlist_count"] == 3 and cards[0]["participant_count"] == 3
     assert "current_user_participation" not in cards[0]
 
 
@@ -163,7 +164,7 @@ def test_active_leave_promotes_fifo_with_same_order_as_position(
     result = action(client, queue, 1, "leave")
     assert result.status_code == 200
     assert (
-        result.json()["participant_count"] == 2 and result.json()["waitlist_count"] == 2
+        result.json()["participant_count"] == 3 and result.json()["waitlist_count"] == 2
     )
     assert result.json()["current_user_participation"] is None
     promoted = detail(client, queue, expected[0])["current_user_participation"]
@@ -194,7 +195,7 @@ def test_waitlist_leave_preserves_never_joined_row_and_fresh_rejoin_moves_to_tai
     left = action(client, queue, 3, "leave")
     assert left.status_code == 200
     assert left.json()["current_user_participation"] is None
-    assert (left.json()["participant_count"], left.json()["waitlist_count"]) == (2, 2)
+    assert (left.json()["participant_count"], left.json()["waitlist_count"]) == (3, 2)
     assert row(db_session, queue, 3).joined_at is None
     assert row(db_session, queue, 3).waitlisted_at.replace(tzinfo=UTC) == NOW
     assert row(db_session, queue, 3).left_at is not None
@@ -208,7 +209,7 @@ def test_waitlist_leave_preserves_never_joined_row_and_fresh_rejoin_moves_to_tai
     assert datetime.fromisoformat(rejoin["waitlisted_at"]) == NOW + timedelta(minutes=2)
     assert row(db_session, queue, 3).left_at is None
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 5
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 6
     )
 
 
@@ -232,7 +233,7 @@ def test_left_rejoin_reuses_row_and_resets_active_cycle(
     assert row(db_session, queue, 1).left_at is None
     assert db_session.scalar(
         select(func.count()).select_from(ActivityParticipation)
-    ) == (3 if full else 1)
+    ) == (4 if full else 2)
 
 
 def test_queue_departure_never_uses_unrelated_spare_capacity(client, db_session, queue):
@@ -240,11 +241,11 @@ def test_queue_departure_never_uses_unrelated_spare_capacity(client, db_session,
     # Simulate out-of-band capacity; leaving a queue still must not invoke the
     # active-place release path. Ordinary PATCH would promote immediately.
     activity = db_session.get(Activity, queue[0])
-    activity.max_participants = 3
+    activity.max_participants = 4
     db_session.commit()
     result = action(client, queue, 3, "leave")
     assert result.status_code == 200
-    assert result.json()["participant_count"] == 2
+    assert result.json()["participant_count"] == 3
     assert result.json()["waitlist_count"] == 2
     assert (
         detail(client, queue, 4)["current_user_participation"]["status"] == "WAITLISTED"
@@ -300,11 +301,11 @@ def test_leave_after_start_does_not_admit_waiter(client, queue, monkeypatch, off
     assert (
         detail(client, queue, 3)["current_user_participation"]["status"] == "WAITLISTED"
     )
-    assert detail(client, queue, 3)["participant_count"] == 1
+    assert detail(client, queue, 3)["participant_count"] == 2
     assert action(client, queue, 3, "leave").status_code == 200
 
 
-@pytest.mark.parametrize("maximum,promoted", [(3, 1), (4, 2), (8, 3), (None, 3)])
+@pytest.mark.parametrize("maximum,promoted", [(4, 1), (5, 2), (8, 3), (None, 3)])
 def test_capacity_increase_promotes_only_available_places(
     client, queue, maximum, promoted
 ):
@@ -314,7 +315,7 @@ def test_capacity_increase_promotes_only_available_places(
         payload["has_participant_limit"] = False
     result = client.patch(path(queue), headers=queue[2][0], json=payload)
     assert result.status_code == 200, result.text
-    assert result.json()["participant_count"] == 2 + promoted
+    assert result.json()["participant_count"] == 3 + promoted
     assert result.json()["waitlist_count"] == 3 - promoted
     for index, user in enumerate((3, 4, 5)):
         assert detail(client, queue, user)["current_user_participation"]["status"] == (
@@ -329,7 +330,7 @@ def test_capacity_increase_promotes_only_available_places(
 
 def test_capacity_reduction_cannot_evict_active_members(client, queue):
     fill(client, queue)
-    client.patch(path(queue), headers=queue[2][0], json={"max_participants": 4})
+    client.patch(path(queue), headers=queue[2][0], json={"max_participants": 5})
     result = client.patch(
         path(queue), headers=queue[2][0], json={"max_participants": 2}
     )
@@ -393,7 +394,9 @@ def test_finalization_preserves_waitlisted_history_without_attendance(
         assert [item["id"] for item in result.json()] == expected
 
 
-def test_waitlist_only_end_has_no_attendance_to_finalize(client, queue, monkeypatch):
+def test_waitlist_only_end_finalizes_organizer_without_affecting_waiters(
+    client, queue, monkeypatch
+):
     fill(client, queue)
     for user in (1, 2):
         assert action(client, queue, user, "confirm").status_code == 200
@@ -402,8 +405,11 @@ def test_waitlist_only_end_has_no_attendance_to_finalize(client, queue, monkeypa
     assert action(client, queue, 2, "leave").status_code == 200
     freeze(monkeypatch, START + timedelta(hours=2))
     result = action(client, queue, 0, "finalize")
-    assert result.status_code == 409
-    assert result.json() == {"detail": "No unresolved attendance to finalize"}
+    assert result.status_code == 200
+    assert result.json()["current_user_participation"]["status"] == "NO_SHOW"
+    repeated = action(client, queue, 0, "finalize")
+    assert repeated.status_code == 409
+    assert repeated.json() == {"detail": "No unresolved attendance to finalize"}
     assert detail(client, queue, 3)["waitlist_count"] == 3
 
 
@@ -438,11 +444,11 @@ def test_promotion_rolls_back_together_with_triggering_mutation(
         if operation == "leave":
             action(client, queue, 1, "leave")
         else:
-            client.patch(path(queue), headers=queue[2][0], json={"max_participants": 4})
+            client.patch(path(queue), headers=queue[2][0], json={"max_participants": 5})
     assert row(db_session, queue, 1).status == "JOINED"
     assert row(db_session, queue, 3).status == "WAITLISTED"
     assert (
-        db_session.get(Activity, queue[0], populate_existing=True).max_participants == 2
+        db_session.get(Activity, queue[0], populate_existing=True).max_participants == 3
     )
 
 
