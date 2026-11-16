@@ -2,7 +2,7 @@ import type { UseQueryResult } from '@tanstack/react-query'
 import { Add, Edit, Event, Explore } from '@mui/icons-material'
 import axios from 'axios'
 import { Alert, Button, Typography } from '@mui/material'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import ProfileActivitySection, {
   type ProfileActivitySectionProps,
@@ -180,7 +180,7 @@ function getQueryCount(query: UseQueryResult<ActivityDetails[], Error>) {
 }
 
 function ProfilePage() {
-  const { user } = useAuth()
+  const { refreshUser, user } = useAuth()
   const participatingActivitiesQuery = useMyActivitiesQuery(
     'joined',
     'upcoming',
@@ -189,6 +189,17 @@ function ProfilePage() {
   const historyActivitiesQuery = useMyActivitiesQuery('joined', 'history')
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const refreshedProfileUserIdRef = useRef<string | null>(null)
+  const userId = user?.id
+
+  useEffect(() => {
+    if (!userId || refreshedProfileUserIdRef.current === userId) {
+      return
+    }
+
+    refreshedProfileUserIdRef.current = userId
+    void refreshUser().catch(() => undefined)
+  }, [refreshUser, userId])
 
   if (!user) {
     return null

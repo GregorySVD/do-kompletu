@@ -22,6 +22,8 @@ interface ActivityQuerySectionProps extends Omit<
   sortActivities: (activities: ActivityDetails[]) => ActivityDetails[]
 }
 
+const lifecyclePollingOptions = { enableLifecyclePolling: true } as const
+
 function sortByStartTime(activities: ActivityDetails[]) {
   return activities.toSorted(
     (firstActivity, secondActivity) =>
@@ -149,7 +151,10 @@ function getActivitiesErrorMessage(error: Error | null) {
 function getQueryFallback(
   query: UseQueryResult<ActivityDetails[], Error>,
 ): ReactNode | undefined {
-  if (query.isPending) {
+  if (
+    query.isPending ||
+    (query.data === undefined && query.isError && axios.isCancel(query.error))
+  ) {
     return (
       <LoadingSkeleton
         embedded
@@ -159,7 +164,7 @@ function getQueryFallback(
     )
   }
 
-  if (query.isError) {
+  if (query.isError && query.data === undefined) {
     const errorMessage = getActivitiesErrorMessage(query.error)
 
     if (errorMessage === null) {
@@ -190,7 +195,7 @@ function ActivityQuerySection({
   ...sectionProps
 }: ActivityQuerySectionProps) {
   const contentFallback = getQueryFallback(query)
-  const activities = query.isSuccess ? sortActivities(query.data) : []
+  const activities = query.data ? sortActivities(query.data) : []
 
   return (
     <ProfileActivitySection
@@ -202,18 +207,31 @@ function ActivityQuerySection({
 }
 
 function getQueryCount(query: UseQueryResult<ActivityDetails[], Error>) {
-  return query.isSuccess ? String(query.data.length) : '—'
+  return query.data ? String(query.data.length) : '—'
 }
 
 function MyActivitiesPage() {
   const { user } = useAuth()
-  const upcomingActivitiesQuery = useMyActivitiesQuery('joined', 'upcoming')
+  const upcomingActivitiesQuery = useMyActivitiesQuery(
+    'joined',
+    'upcoming',
+    lifecyclePollingOptions,
+  )
   const waitlistedActivitiesQuery = useMyActivitiesQuery(
     'waitlisted',
     'upcoming',
+    lifecyclePollingOptions,
   )
-  const organizedActivitiesQuery = useMyActivitiesQuery('organized')
-  const historyActivitiesQuery = useMyActivitiesQuery('joined', 'history')
+  const organizedActivitiesQuery = useMyActivitiesQuery(
+    'organized',
+    undefined,
+    lifecyclePollingOptions,
+  )
+  const historyActivitiesQuery = useMyActivitiesQuery(
+    'joined',
+    'history',
+    lifecyclePollingOptions,
+  )
 
   return (
     <main className="my-activities-page">

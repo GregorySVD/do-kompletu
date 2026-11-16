@@ -8,7 +8,12 @@ import { useAuth } from '../../context/auth'
 
 const myActivitiesLimit = 100
 const myActivitiesOffset = 0
+const lifecycleRefetchIntervalMs = 45_000
 export const myActivitiesQueryKey = ['my-activities'] as const
+
+interface MyActivitiesQueryOptions {
+  enableLifecyclePolling?: boolean
+}
 
 export function getMyActivitiesUserQueryKey(userId: string) {
   return [...myActivitiesQueryKey, userId] as const
@@ -25,8 +30,10 @@ export function getMyActivitiesQueryKey(
 export function useMyActivitiesQuery(
   relation: ActivityRelation,
   scope?: ActivityScope,
+  { enableLifecyclePolling = false }: MyActivitiesQueryOptions = {},
 ) {
-  const { user } = useAuth()
+  const { isLoading, user } = useAuth()
+  const canLoadPrivateActivities = !isLoading && Boolean(user?.id)
 
   return useQuery({
     queryKey: getMyActivitiesQueryKey(user?.id, relation, scope),
@@ -37,9 +44,14 @@ export function useMyActivitiesQuery(
         limit: myActivitiesLimit,
         offset: myActivitiesOffset,
       }),
-    enabled: Boolean(user?.id),
+    enabled: canLoadPrivateActivities,
     staleTime: 60_000,
     retry: 1,
+    refetchInterval:
+      canLoadPrivateActivities && enableLifecyclePolling
+        ? lifecycleRefetchIntervalMs
+        : false,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   })
 }

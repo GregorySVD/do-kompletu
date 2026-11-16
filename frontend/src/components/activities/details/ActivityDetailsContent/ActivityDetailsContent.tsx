@@ -1,5 +1,6 @@
 import type { ActivityDetails } from '../../../../types/activity'
 import ActivityDetailsHero from '../ActivityDetailsHero/ActivityDetailsHero'
+import ActivityGalleryCard from '../ActivityGalleryCard/ActivityGalleryCard'
 import ActivityLocationCard from '../ActivityLocationCard/ActivityLocationCard'
 import ActivityOrganizerActions from '../ActivityOrganizerActions/ActivityOrganizerActions'
 import ActivityOrganizerCard from '../ActivityOrganizerCard/ActivityOrganizerCard'
@@ -29,6 +30,7 @@ function ActivityDetailsContent({ activity }: ActivityDetailsContentProps) {
           <ActivityParticipantsCard activity={activity} />
           <ActivityScheduleCard activity={activity} />
           <ActivityParticipationWindowsCard activity={activity} />
+          <ActivityGalleryCard activity={activity} />
         </div>
 
         <aside

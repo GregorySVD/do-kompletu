@@ -28,6 +28,7 @@ export interface UserProfile {
   avatar_url: string | null
   points_total: number
   is_active: boolean
+  is_admin: boolean
   created_at: string
 }
 

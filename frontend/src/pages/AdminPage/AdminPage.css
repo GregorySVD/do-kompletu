@@ -1,0 +1,488 @@
+.admin-page {
+  width: min(100%, var(--page-max-width));
+  margin-inline: auto;
+  padding: clamp(var(--space-6), 4vw, var(--space-10)) var(--page-gutter)
+    var(--space-16);
+}
+
+.admin-page__heading {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: var(--space-5);
+  gap: var(--space-4);
+  border-bottom: 2px solid var(--color-border-strong);
+}
+
+.admin-page__heading::after {
+  position: absolute;
+  right: 0;
+  bottom: -2px;
+  width: min(18rem, 48%);
+  height: 2px;
+  content: '';
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-error),
+    var(--brand-purple-400),
+    var(--brand-green-400)
+  );
+}
+
+.admin-page__eyebrow,
+.admin-section__eyebrow {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.1em;
+}
+
+.admin-page__heading .MuiTypography-h3 {
+  width: fit-content;
+  max-width: 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+  background: linear-gradient(
+    180deg,
+    transparent 0 74%,
+    color-mix(in srgb, var(--color-accent) 25%, transparent) 74% 100%
+  );
+  text-shadow: 3px 3px 0
+    color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.admin-page__heading .MuiTypography-body1 {
+  max-width: 58ch;
+  margin-top: var(--space-2);
+}
+
+.admin-page__status {
+  display: inline-flex;
+  min-height: var(--touch-target-min);
+  align-items: center;
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-2);
+  color: var(--brand-purple-400);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  background: color-mix(
+    in srgb,
+    var(--brand-purple-600) 9%,
+    var(--color-surface)
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--brand-purple-400) 50%, var(--color-border));
+  border-radius: 0.35rem;
+}
+
+.admin-page__status .MuiSvgIcon-root {
+  font-size: 1.2rem;
+}
+
+.admin-page__sections {
+  display: grid;
+  margin-top: clamp(var(--space-5), 4vw, var(--space-8));
+  gap: clamp(var(--space-5), 4vw, var(--space-8));
+}
+
+.admin-section.MuiCard-root {
+  --admin-section-accent: var(--brand-purple-400);
+
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 0.35rem,
+      color-mix(in srgb, var(--admin-section-accent) 3%, transparent) 0.35rem
+        0.4rem
+    ),
+    linear-gradient(
+      125deg,
+      var(--color-surface) 0 48%,
+      color-mix(in srgb, var(--admin-section-accent) 6%, var(--color-surface))
+        48% 74%,
+      color-mix(in srgb, var(--color-primary) 5%, var(--color-surface)) 74% 100%
+    );
+  border: 2px solid
+    color-mix(in srgb, var(--admin-section-accent) 46%, var(--color-border));
+  border-radius: 0.55rem;
+  box-shadow:
+    5px 5px 0 color-mix(in srgb, var(--admin-section-accent) 17%, transparent),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--admin-section-accent) 10%, transparent);
+}
+
+.admin-section--users.MuiCard-root {
+  --admin-section-accent: var(--category-technology-color);
+}
+
+.admin-section--activities.MuiCard-root {
+  --admin-section-accent: var(--brand-purple-400);
+}
+
+.admin-section--photos.MuiCard-root {
+  --admin-section-accent: var(--color-error);
+}
+
+.admin-section__content.MuiCardContent-root {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  padding: clamp(var(--space-4), 4vw, var(--space-6));
+  gap: var(--space-4);
+}
+
+.admin-section__heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-section__heading > div {
+  min-width: 0;
+}
+
+.admin-section__icon {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--admin-section-accent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--admin-section-accent) 16%, var(--color-surface)) 0
+      52%,
+    color-mix(in srgb, var(--color-primary) 14%, var(--color-surface)) 52% 100%
+  );
+  border: 2px solid
+    color-mix(in srgb, var(--admin-section-accent) 58%, var(--color-border));
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--admin-section-accent) 24%, transparent);
+}
+
+.admin-section__icon .MuiSvgIcon-root {
+  font-size: 2rem;
+}
+
+.admin-section__heading .MuiTypography-h4 {
+  width: fit-content;
+  max-width: 100%;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  background: linear-gradient(
+    180deg,
+    transparent 0 74%,
+    color-mix(in srgb, var(--admin-section-accent) 25%, transparent) 74% 100%
+  );
+}
+
+.admin-section__loading,
+.admin-section__error,
+.admin-section__empty {
+  display: grid;
+  min-height: 7rem;
+  place-items: center;
+  padding: var(--space-5);
+  gap: var(--space-3);
+  text-align: center;
+  background: color-mix(
+    in srgb,
+    var(--admin-section-accent) 5%,
+    var(--color-surface-soft)
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--admin-section-accent) 28%, var(--color-border));
+  border-radius: 0.4rem;
+}
+
+.admin-section__loading {
+  color: var(--admin-section-accent);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-semibold);
+}
+
+.admin-section__loading .MuiCircularProgress-root {
+  color: currentColor;
+}
+
+.admin-section__error .MuiAlert-root {
+  width: 100%;
+  text-align: start;
+}
+
+.admin-section__empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.admin-record-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.admin-record-card {
+  display: grid;
+  min-width: 0;
+  padding: var(--space-4);
+  gap: var(--space-4);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--color-surface) 96%, var(--admin-section-accent)) 0
+      56%,
+    color-mix(in srgb, var(--admin-section-accent) 8%, var(--color-surface)) 56%
+      100%
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--admin-section-accent) 32%, var(--color-border));
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0
+    color-mix(in srgb, var(--admin-section-accent) 12%, transparent);
+}
+
+.admin-record-card__heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-record-card__heading > div:first-child {
+  min-width: 0;
+}
+
+.admin-record-card__heading .MuiTypography-h6 {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+}
+
+.admin-record-card__identifier {
+  display: block;
+  margin-top: var(--space-1);
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.admin-record-card__badges {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.admin-record-card__badges .MuiChip-root,
+.admin-record-card__heading > .MuiChip-root {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+}
+
+.admin-record-card__metadata {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  gap: var(--space-2);
+}
+
+.admin-record-card__metadata--activity {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.admin-record-card__metadata > div {
+  min-width: 0;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-surface-strong) 62%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 0.3rem;
+}
+
+.admin-record-card__metadata dt,
+.admin-dialog__identifiers dt {
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.admin-record-card__metadata dd,
+.admin-dialog__identifiers dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.admin-record-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.admin-record-card__actions .MuiButton-root,
+.admin-photo-form__submit.MuiButton-root,
+.admin-pagination .MuiButton-root {
+  min-height: var(--touch-target-min);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: var(--font-weight-bold);
+  border-width: 2px;
+}
+
+.admin-pagination {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-pagination .MuiButton-root:first-child {
+  justify-self: start;
+}
+
+.admin-pagination .MuiButton-root:last-child {
+  justify-self: end;
+}
+
+.admin-pagination > span {
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.admin-photo-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.admin-photo-form__field .MuiOutlinedInput-root {
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+}
+
+.admin-photo-form__field .MuiInputBase-input {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.admin-photo-form__submit.MuiButton-root {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.admin-dialog__error {
+  margin-top: var(--space-4);
+}
+
+.admin-dialog__identifiers {
+  display: grid;
+  margin: var(--space-4) 0 0;
+  gap: var(--space-2);
+}
+
+.admin-dialog__identifiers > div {
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 0.3rem;
+}
+
+@media (max-width: 64rem) {
+  .admin-record-card__metadata--activity {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-record-card__metadata--activity > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 48rem) {
+  .admin-page__heading {
+    flex-direction: column;
+  }
+
+  .admin-record-card__metadata {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-record-card__metadata--activity > div:last-child {
+    grid-column: auto;
+  }
+
+  .admin-photo-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-photo-form__submit.MuiButton-root {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 36rem) {
+  .admin-section__heading,
+  .admin-record-card__heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-record-card__badges {
+    justify-content: flex-start;
+  }
+
+  .admin-record-card__actions,
+  .admin-photo-form__submit.MuiButton-root {
+    width: 100%;
+  }
+
+  .admin-record-card__actions .MuiButton-root,
+  .admin-photo-form__submit.MuiButton-root {
+    width: 100%;
+  }
+
+  .admin-pagination {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-pagination > span {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
+  }
+
+  .admin-pagination .MuiButton-root {
+    width: 100%;
+  }
+
+  .admin-dialog__actions.MuiDialogActions-root {
+    align-items: stretch;
+    flex-direction: column-reverse;
+    padding: var(--space-4) var(--space-6) var(--space-5);
+  }
+
+  .admin-dialog__actions > button {
+    width: 100%;
+    min-height: var(--touch-target-min);
+    margin: 0;
+  }
+}
