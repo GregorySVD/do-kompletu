@@ -82,7 +82,7 @@ def pg_activity(pg_engine):
                     {
                         **ACTIVITY_CREATE_EXAMPLE,
                         "min_participants": 2,
-                        "max_participants": 2,
+                        "max_participants": 3,
                     }
                 ),
                 users[0],
@@ -157,7 +157,7 @@ def test_postgres_unique_constraint_and_server_timestamp(pg_engine, pg_activity)
                 .select_from(ActivityParticipation)
                 .where(ActivityParticipation.activity_id == activity_id)
             )
-            == 1
+            == 2
         )
 
 
@@ -194,7 +194,7 @@ def test_postgres_membership_cascades(pg_engine, pg_activity, deleted):
                 .select_from(ActivityParticipation)
                 .where(ActivityParticipation.activity_id == activity_id)
             )
-            == 0
+            == (0 if deleted == "activity" else 1)
         )
 
 
@@ -213,7 +213,7 @@ def test_postgres_http_join_detail_list_and_leave(pg_engine, pg_activity):
             joined = client.post(f"{path}/join", headers=headers)
             assert joined.status_code == 201
             body = joined.json()
-            assert body["participant_count"] == body["available_slots"] == 1
+            assert body["participant_count"] == 2 and body["available_slots"] == 1
             assert body["latitude"] == pytest.approx(
                 ACTIVITY_CREATE_EXAMPLE["latitude"]
             )
@@ -227,11 +227,11 @@ def test_postgres_http_join_detail_list_and_leave(pg_engine, pg_activity):
             assert not any(anonymous["permissions"].values())
             cards = client.get("/api/v1/activities", params={"limit": 100}).json()
             card = next(card for card in cards if card["id"] == str(activity_id))
-            assert card["participant_count"] == 1
+            assert card["participant_count"] == 2
             assert client.post(f"{path}/join", headers=headers).status_code == 409
             left = client.delete(f"{path}/join", headers=headers)
             assert left.status_code == 200
-            assert left.json()["participant_count"] == 0
+            assert left.json()["participant_count"] == 1
             assert left.json()["available_slots"] == 2
             assert left.json()["current_user_participation"] is None
     finally:
@@ -312,12 +312,12 @@ def test_postgres_concurrent_membership_serializes_on_activity(
                 ActivityParticipation.status.in_(ACTIVE_PARTICIPATION_STATUSES),
             )
         )
-        assert result.participant_count == count <= 2
-        assert result.available_slots == 2 - count
+        assert result.participant_count == count <= 3
+        assert result.available_slots == 3 - count
         if scenario == "join_leave":
             assert outcomes[0] == 200
             assert outcomes[1] == 201
-            assert count == 2
+            assert count == 3
             assert (
                 session.get(ActivityParticipation, (activity_id, users[1])).status
                 == "LEFT"
@@ -325,7 +325,7 @@ def test_postgres_concurrent_membership_serializes_on_activity(
         elif scenario == "duplicate":
             assert outcomes.count(201) == 1
             assert outcomes.count((409, "Already joined this activity")) == 1
-            assert count == 2
+            assert count == 3
         else:
             assert outcomes.count(201) == 2
-            assert count == 2 and result.waitlist_count == 1
+            assert count == 3 and result.waitlist_count == 1

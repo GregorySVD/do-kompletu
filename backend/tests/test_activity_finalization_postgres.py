@@ -207,7 +207,7 @@ def test_finalization_races_respect_both_lock_orders_at_end(
             assert outcomes == [(409, "Activity is cancelled"), (200, None)]
             assert (
                 body.status == "CANCELLED"
-                and body.participant_count == 3
+                and body.participant_count == 4
                 and body.checked_in_count == 1
             )
             assert (

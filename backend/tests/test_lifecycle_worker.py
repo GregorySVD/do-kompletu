@@ -65,7 +65,7 @@ def lifecycle(db_session, monkeypatch):
                 "start_at": START,
                 "end_at": START + timedelta(hours=2),
                 "min_participants": 2,
-                "max_participants": 2,
+                "max_participants": 3,
             }
         ),
         users[0],
@@ -290,7 +290,7 @@ def test_waitlist_expires_at_start_without_promotion_or_automatic_finalization(
         4,
     )
     own = view(db_session, lifecycle, 3, START)
-    assert own.waitlist_count == own.participant_count == 0
+    assert own.waitlist_count == 0 and own.participant_count == 1
     assert own.current_user_participation.status == "WAITLIST_EXPIRED"
     assert own.current_user_participation.waitlist_position is None
     assert own.current_user_participation.joined_at is None
@@ -579,7 +579,7 @@ def test_sweep_queries_are_batched_and_read_routes_still_constant(
     db_session, session_factory, lifecycle, extra_joined
 ):
     seed(db_session, lifecycle)
-    db_session.get(Activity, lifecycle[0]).max_participants = 2 + extra_joined
+    db_session.get(Activity, lifecycle[0]).max_participants = 3 + extra_joined
     for index in range(extra_joined):
         person = User(
             email=f"batch{index}@example.com",

@@ -237,7 +237,9 @@ def test_pg_admin_cancel_serializes_same_parent_lock(
                 ActivityParticipation.activity_id == activity_id
             )
         ).all()
-        assert len(rows) == (3 if scenario == "join" and not admin_first else 2)
+        assert len(rows) == (4 if scenario == "join" and not admin_first else 3)
+        assert next(row for row in rows if row.user_id == users[0]).status == "CONFIRMED"
+        assert all(row.user_id != users[4] for row in rows)
 
 
 def test_pg_admin_cancel_rolls_back_on_snapshot_failure(
