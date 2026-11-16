@@ -3,7 +3,7 @@ import {
   type QueryClient,
   type QueryKey,
 } from '@tanstack/react-query'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { getCurrentUser, loginUser, registerUser } from '../api/authApi'
 import {
   clearStoredTokens,
@@ -30,15 +30,21 @@ interface AuthProviderProps {
 
 function isPrivateQueryKey(queryKey: QueryKey) {
   return (
+    queryKey[0] === 'admin' ||
     queryKey[0] === 'my-activities' ||
+    queryKey[0] === 'activity-photos' ||
     (queryKey[0] === 'activity-details' && queryKey[1] !== 'anonymous')
   )
 }
 
 function clearPrivateClientState(queryClient: QueryClient) {
-  queryClient.removeQueries({
-    predicate: (query) => isPrivateQueryKey(query.queryKey),
-  })
+  const privateQueryFilters = {
+    predicate: (query: { queryKey: QueryKey }) =>
+      isPrivateQueryKey(query.queryKey),
+  }
+
+  void queryClient.cancelQueries(privateQueryFilters, { silent: true })
+  queryClient.removeQueries(privateQueryFilters)
   queryClient.getMutationCache().clear()
 }
 
@@ -75,6 +81,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [sessionRestoreError, setSessionRestoreError] = useState(false)
   const [isSessionRestoreRetrying, setIsSessionRestoreRetrying] =
     useState(false)
+  const profileUpdateVersionRef = useRef(0)
 
   function applySessionRestoreResult(result: SessionRestoreResult) {
     setIsSessionRestoreRetrying(false)
@@ -82,6 +89,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (result.status === 'stale') {
       return
     }
+
+    profileUpdateVersionRef.current += 1
 
     if (result.status === 'error') {
       setUser(null)
@@ -98,6 +107,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(
     () =>
       subscribeToSessionExpiration(() => {
+        profileUpdateVersionRef.current += 1
         clearPrivateClientState(queryClient)
         setUser(null)
         setSessionRestoreError(false)
@@ -123,8 +133,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   async function login(values: LoginFormValues) {
     const tokens = await loginUser(values)
+    profileUpdateVersionRef.current += 1
+    const loginProfileUpdateVersion = profileUpdateVersionRef.current
     clearPrivateClientState(queryClient)
     storeTokenPair(tokens.access_token, tokens.refresh_token)
+    const loginSessionIdentity = getStoredSessionIdentity()
     setUser(null)
     setSessionRestoreError(false)
     setIsSessionRestoreRetrying(false)
@@ -132,9 +145,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     try {
       const loggedInUser = await getCurrentUser()
+
+      if (
+        profileUpdateVersionRef.current !== loginProfileUpdateVersion ||
+        getStoredSessionIdentity() !== loginSessionIdentity
+      ) {
+        return
+      }
+
       setUser(loggedInUser)
       setIsLoading(false)
     } catch (error) {
+      if (
+        profileUpdateVersionRef.current !== loginProfileUpdateVersion ||
+        getStoredSessionIdentity() !== loginSessionIdentity
+      ) {
+        throw error
+      }
+
       clearPrivateClientState(queryClient)
       setUser(null)
 
@@ -159,6 +187,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   function logout() {
+    profileUpdateVersionRef.current += 1
     clearStoredTokens()
     clearPrivateClientState(queryClient)
     setUser(null)
@@ -176,12 +205,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
     void getRestoredSession().then(applySessionRestoreResult)
   }
 
-  async function refreshUser() {
-    setUser(await getCurrentUser())
-  }
+  const refreshUser = useCallback(async () => {
+    const sessionIdentity = getStoredSessionIdentity()
+
+    if (!sessionIdentity) {
+      return
+    }
+
+    const profileUpdateVersion = profileUpdateVersionRef.current + 1
+    profileUpdateVersionRef.current = profileUpdateVersion
+    const refreshedUser = await getCurrentUser()
+
+    if (
+      profileUpdateVersionRef.current !== profileUpdateVersion ||
+      getStoredSessionIdentity() !== sessionIdentity
+    ) {
+      return
+    }
+
+    setUser((currentUser) =>
+      currentUser?.id === refreshedUser.id ? refreshedUser : currentUser,
+    )
+  }, [])
 
   function syncUserProfile(profile: UserProfile) {
-    setUser(profile)
+    profileUpdateVersionRef.current += 1
+    setUser((currentUser) =>
+      currentUser?.id === profile.id ? profile : currentUser,
+    )
   }
 
   const value = {

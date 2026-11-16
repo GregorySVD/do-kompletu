@@ -60,10 +60,11 @@ def context(client, db_session, monkeypatch):
     headers = [
         {"Authorization": f"Bearer {create_access_token(user.id)}"} for user in users
     ]
+    # The organizer occupies one place; preserve this fixture's external capacity.
     response = client.post(
         "/api/v1/activities",
         headers=headers[0],
-        json={**ACTIVITY_CREATE_EXAMPLE, "min_participants": 2, "max_participants": 4},
+        json={**ACTIVITY_CREATE_EXAMPLE, "min_participants": 2, "max_participants": 5},
     )
     assert response.status_code == 201
     yield UUID(response.json()["id"]), users, headers
@@ -111,7 +112,7 @@ def test_check_in_preserves_timestamps_and_disallows_duplicate_leave_confirm_joi
     )
     assert row.checked_in_at.replace(tzinfo=UTC) == NOW
     checked = row.checked_in_at
-    assert body["participant_count"] == body["checked_in_count"] == 1
+    assert body["participant_count"] == 2 and body["checked_in_count"] == 1
     assert body["available_slots"] == 3
     assert_only_gallery_permissions(body["permissions"], upload=True)
     assert response.headers["cache-control"] == "private, no-store"
@@ -125,7 +126,7 @@ def test_check_in_preserves_timestamps_and_disallows_duplicate_leave_confirm_joi
         assert response.status_code == 409 and response.json() == {"detail": detail}
     assert stored(db_session, context).checked_in_at == checked
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 1
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 2
     )
 
 
@@ -218,18 +219,16 @@ def test_check_in_unknown_or_invalid_activity(client, context, activity_id, code
     )
 
 
-@pytest.mark.parametrize("state", ["organizer", "nonmember", "JOINED", "LEFT"])
+@pytest.mark.parametrize("state", ["nonmember", "JOINED", "LEFT"])
 def test_check_in_does_not_implicitly_confirm(client, context, state):
     if state in {"JOINED", "LEFT"}:
         action(client, context, "join")
     if state == "LEFT":
         action(client, context, "leave")
-    response = action(client, context, "check-in", 0 if state == "organizer" else 1)
+    response = action(client, context, "check-in")
     assert response.status_code == 409
     expected = (
-        "Organizer cannot check in to their own activity"
-        if state == "organizer"
-        else "Attendance must be confirmed before check-in"
+        "Attendance must be confirmed before check-in"
         if state == "JOINED"
         else "Not participating in this activity"
     )
@@ -418,7 +417,7 @@ def test_mixed_state_counts_my_activities_and_privacy(
         (5, None),
     ]:
         body = client.get(path(context), headers=context[2][user]).json()
-        assert body["participant_count"] == 3 and body["checked_in_count"] == 1
+        assert body["participant_count"] == 4 and body["checked_in_count"] == 1
         assert body["available_slots"] == (None if unlimited else 1)
         membership = body["current_user_participation"]
         assert (membership["status"] if membership else None) == state
@@ -439,7 +438,7 @@ def test_mixed_state_counts_my_activities_and_privacy(
     assert "checked_in_at" not in str(anonymous)
     assert client.get("/api/v1/activities").json()[0]["checked_in_count"] == 1
     assert (
-        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 4
+        db_session.scalar(select(func.count()).select_from(ActivityParticipation)) == 5
     )
 
 
@@ -492,7 +491,8 @@ def test_cancel_preserves_check_in_and_disables_actions(client, db_session, cont
     body = client.get(path(context), headers=context[2][1]).json()
     assert (
         body["status"] == "CANCELLED"
-        and body["checked_in_count"] == body["participant_count"] == 1
+        and body["checked_in_count"] == 1
+        and body["participant_count"] == 2
     )
     assert body["current_user_participation"]["status"] == "CHECKED_IN"
     assert_only_gallery_permissions(body["permissions"])

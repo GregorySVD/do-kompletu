@@ -1,0 +1,82 @@
+.admin-access-denied {
+  display: grid;
+  width: min(100%, var(--page-max-width));
+  min-height: calc(100dvh - 5rem);
+  place-items: center;
+  margin-inline: auto;
+  padding: clamp(var(--space-6), 7vw, var(--space-12)) var(--page-gutter);
+}
+
+.admin-access-denied__panel {
+  position: relative;
+  display: grid;
+  width: min(100%, 42rem);
+  justify-items: start;
+  padding: clamp(var(--space-6), 6vw, var(--space-10));
+  overflow: hidden;
+  gap: var(--space-4);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 0.35rem,
+      color-mix(in srgb, var(--color-error) 5%, transparent) 0.35rem 0.4rem
+    ),
+    linear-gradient(
+      125deg,
+      var(--color-surface) 0 52%,
+      color-mix(in srgb, var(--color-error) 8%, var(--color-surface)) 52% 76%,
+      color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)) 76% 100%
+    );
+  border: 2px solid
+    color-mix(in srgb, var(--color-error) 62%, var(--color-border));
+  border-radius: 0.55rem;
+  box-shadow: 5px 5px 0 color-mix(in srgb, var(--color-error) 22%, transparent);
+}
+
+.admin-access-denied__icon {
+  display: grid;
+  width: 4rem;
+  height: 4rem;
+  place-items: center;
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface));
+  border: 2px solid var(--color-error);
+  border-radius: 0.4rem;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--color-error) 24%, transparent);
+}
+
+.admin-access-denied__icon .MuiSvgIcon-root {
+  font-size: 2rem;
+}
+
+.admin-access-denied__eyebrow {
+  margin: 0;
+  color: var(--color-error);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.12em;
+}
+
+.admin-access-denied__panel .MuiTypography-h3 {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: clamp(1.7rem, 5vw, 2.65rem);
+  line-height: 1.1;
+  background: linear-gradient(
+    180deg,
+    transparent 0 76%,
+    color-mix(in srgb, var(--color-error) 24%, transparent) 76% 100%
+  );
+}
+
+@media (max-width: 30rem) {
+  .admin-access-denied__panel {
+    justify-items: stretch;
+    text-align: center;
+  }
+
+  .admin-access-denied__icon,
+  .admin-access-denied__panel .minecraft-back-button {
+    margin-inline: auto;
+  }
+}

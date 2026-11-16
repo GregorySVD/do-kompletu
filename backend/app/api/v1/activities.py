@@ -29,6 +29,7 @@ from app.schemas.activity import (
     ACTIVITY_FINALIZE_RESPONSE_EXAMPLE,
     ACTIVITY_JOIN_RESPONSE_EXAMPLE,
     ACTIVITY_LEAVE_RESPONSE_EXAMPLE,
+    ACTIVITY_ORGANIZER_RESPONSE_EXAMPLE,
     ACTIVITY_PROMOTED_RESPONSE_EXAMPLE,
     ACTIVITY_WAITLIST_EXPIRED_RESPONSE_EXAMPLE,
     ACTIVITY_WAITLIST_RESPONSE_EXAMPLE,
@@ -116,12 +117,17 @@ The organizer is derived exclusively from the bearer token. Clients cannot provi
 or override an `organizer_id`, so they cannot create an activity in another user's
 name.
 
-## CURRENT LIMITATIONS
+## PARTICIPATION AND LIFECYCLE
 
-Create, list, detail, edit, cancel, join, leave, attendance confirmation, and PostGIS check-in are implemented. The organizer is separate
-from membership and does not consume a participant place. Counts reflect persisted
-JOINED/CONFIRMED/CHECKED_IN memberships; LEFT records do not count. Waitlists, galleries, and nearby-distance
-calculation are not implemented; their related fields remain placeholders.
+The organizer automatically receives CONFIRMED participation in the same transaction
+as activity creation, with joined_at and confirmed_at set to automatic commitment time.
+They count toward min/max participants and occupy one place: initially participant_count=1,
+available_slots=max_participants-1 (null for unlimited activities). They cannot use
+ordinary join, leave or confirm, but may use the existing check-in endpoint under
+the same time, accuracy and PostGIS rules. CHECKED_IN/COMPLETED participation enables
+gallery upload; CHECKED_IN -> COMPLETED earns the same +10 attendance points.
+Counts derive from persisted participation. FIFO waitlists, lifecycle expiry,
+private galleries and manual finalization are implemented. Nearby distance remains null.
 """
 
 
@@ -133,6 +139,11 @@ calculation are not implemented; their related fields remain placeholders.
     description=ACTIVITY_CREATE_DESCRIPTION,
     response_description="The created activity including its authenticated organizer.",
     responses={
+        201: {
+            "content": {
+                "application/json": {"example": ACTIVITY_ORGANIZER_RESPONSE_EXAMPLE}
+            }
+        },
         401: {
             "description": "A valid access bearer token is required.",
             "content": {
@@ -231,7 +242,8 @@ Set PAID together with a positive
 PLN price_amount (at most two decimal places); switching to FREE requires explicit
 price_amount=null. Omission does not silently clear a price or maximum.
 Only active states consume capacity. Changing start_at or end_at while any
-participant is CONFIRMED or CHECKED_IN returns 409. Once anyone is CHECKED_IN,
+other participant is CONFIRMED, or anyone is CHECKED_IN, returns 409. The organizer's
+automatic CONFIRMED state alone does not block their own schedule edits. Once anyone is CHECKED_IN,
 actual latitude/longitude/location_name/address changes also return 409. Unchanged
 values and other allowed edits remain valid. LEFT records do not block edits.
 
@@ -360,7 +372,8 @@ Returns the normal ActivityRead for the organizer. participant_count remains the
 active capacity count and becomes zero once all unresolved rows are finalized;
 checked_in_count includes CHECKED_IN + COMPLETED, preserving successful check-ins.
 There is no public no-show analytics field or new wrapper. The organizer's own
-current_user_participation is normally null; can_finalize becomes false.
+current_user_participation shows their own COMPLETED or NO_SHOW outcome when present;
+can_finalize becomes false. A checked-in organizer earns the same +10 attendance points.
 The response shape is unchanged. Participants see the updated points_total on
 their next GET /api/v1/users/me; clients cannot choose the award amount.
 
@@ -569,7 +582,7 @@ In Swagger, register/login as a user other than the organizer, select **Authoriz
 `activity_id`. Public `GET /api/v1/activities` supplies activity IDs.
 
 Send `Authorization: Bearer <access_token>`; refresh tokens are not accepted.
-The organizer cannot join and is excluded from participant counts and capacity.
+The organizer cannot join: their automatic CONFIRMED participation already consumes one place.
 Joining/rejoining/entering the queue is allowed only while current UTC time is
 strictly before start_at; exact start and later return 409. Cancelled and ended
 activities reject joining. can_join=true allows requesting a place and may result
@@ -650,7 +663,7 @@ The 200 response is updated activity detail: counts reflect any promotion and
 `current_user_participation` becomes null. Use authenticated detail to observe
 your own promotion later; the periodic worker may change participation without
 a request. No notifications or server push channel exist.
-The organizer cannot leave because organizers are separate from membership.
+The organizer cannot leave: their automatic participation persists through the lifecycle.
 CONFIRMED/WAITLISTED leave is allowed strictly before end_at unless cancelled.
 JOINED additionally must be before its effective confirmation deadline; an overdue
 reservation cannot voluntarily leave and rejoin to reset its deadline (409).
@@ -729,10 +742,12 @@ and out-of-window attempts return 409. There is no unconfirm.
 A confirmed participant may leave before end unless cancelled. Overdue JOINED cannot
 leave to bypass expiry by rejoining. Leaving preserves
 confirmed_at as last-cycle evidence; rejoining clears it and starts JOINED again.
-Activity schedule changes are blocked while any participant remains CONFIRMED.
+Activity schedule changes are blocked while another participant remains CONFIRMED;
+automatic organizer confirmation alone does not freeze their own schedule.
 CHECKED_IN users cannot confirm again (409). Check-in is a separate POST with
 time and PostGIS validation. After end, organizer finalization resolves attendance
-to COMPLETED/NO_SHOW; these terminal outcomes cannot confirm. Rewards remain unimplemented.
+to COMPLETED/NO_SHOW; these terminal outcomes cannot confirm. Only a new
+CHECKED_IN -> COMPLETED transition earns +10 attendance points.
 """,
     responses={
         200: {
@@ -773,7 +788,8 @@ def confirm(
     description="""
 Use **Authorize** or Authorization: Bearer <access_token>. Submit WGS 84 latitude
 (-90..90), longitude (-180..180), and required accuracy_m, a finite positive
-client-reported location accuracy radius in meters. Only a CONFIRMED non-organizer may check in;
+client-reported location accuracy radius in meters. Any CONFIRMED participant, including
+the automatically confirmed organizer, may check in under the same rules;
 JOINED is not implicitly confirmed, WAITLISTED has no place and is rejected with
 409, LEFT is inactive, duplicate CHECKED_IN is 409.
 
@@ -804,7 +820,8 @@ Schedule/location edits are protected, and cancellation preserves check-in evide
 Submitted coordinates can be spoofed: this is not device attestation or fraud-proof
 GPS verification. After end, organizer finalization converts CHECKED_IN to COMPLETED
 and unresolved JOINED/CONFIRMED to NO_SHOW; final outcomes cannot check in.
-No rewards or undo check-in exists.
+Only CHECKED_IN -> COMPLETED awards +10 attendance points, including to an organizer
+who actually checked in. Organizing alone earns no points. There is no undo check-in.
 """,
     responses={
         200: {
@@ -813,7 +830,6 @@ No rewards or undo check-in exists.
             }
         },
         **_membership_responses(
-            "Organizer cannot check in to their own activity",
             "Attendance outcome is final",
             "Not participating in this activity",
             "Attendance must be confirmed before check-in",
