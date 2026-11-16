@@ -180,7 +180,7 @@ def test_openapi_membership_endpoints_document_auth_conflicts_and_valid_examples
             if method == "post"
             else ACTIVITY_LEAVE_RESPONSE_EXAMPLE
         )
-        assert activity.participant_count == (1 if method == "post" else 0)
+        assert activity.participant_count == (2 if method == "post" else 1)
         assert activity.permissions.can_leave is (method == "post")
         assert activity.permissions.can_join is (method == "delete")
         conflicts = operation["responses"]["409"]["content"]["application/json"][

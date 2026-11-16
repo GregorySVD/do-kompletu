@@ -83,11 +83,24 @@ place. All previous attendance-state CHECK requirements remain enforced.
 separate these concepts centrally in the participation model. WAITLISTED never
 enters active counts, joined relation, check-in counts, or finalization mappings.
 
-- `participant_count`: SQL count of capacity-consuming states only.
+- `participant_count`: SQL count of capacity-consuming states, including the organizer's automatic CONFIRMED row.
 - `waitlist_count`: SQL count of WAITLISTED only, including retained historical
   queues on direct detail/personal lists.
-- `available_slots`: maximum minus active count; null for unlimited capacity.
+- `available_slots`: max(0, maximum minus active count); null for unlimited capacity.
 - `checked_in_count`: unchanged CHECKED_IN + COMPLETED historical evidence.
+
+The organizer occupies the first place automatically and never uses JOIN, LEAVE,
+rejoin, manual CONFIRM, or the waitlist. With maximum 2, organizer CONFIRMED leaves
+one slot: external A becomes JOINED and external B becomes WAITLISTED. Organizer
+leave cannot trigger promotion; an ordinary eligible active leave still promotes
+the earliest waiter under the same activity-first lock. The existing minimum and
+finite maximum remain at least 2; maximum 1 is still rejected by validation.
+
+The fixed-cutoff [organizer backfill](activity-participation.md#legacy-backfill-and-downgrade)
+preserves all external participants and queues. If a legacy activity was full,
+adding its organizer may put real occupancy above the unchanged maximum. Report
+zero available slots and preserve FIFO; no participant is demoted, and promotion
+or new active placement requires real free capacity.
 
 ## FIFO and transaction protocol
 

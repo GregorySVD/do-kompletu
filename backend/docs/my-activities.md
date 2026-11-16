@@ -76,8 +76,10 @@ the frontend's existing all-organized section without merging the relations.
 
 Organized selects `organizer_id == current_user.id`. Joined selects persisted
 JOINED/CONFIRMED/CHECKED_IN membership for the caller before end. At/after end it
-also selects COMPLETED/NO_SHOW outcomes. LEFT and the caller's organized activities
-are always excluded. Leaving an uncancelled activity before end marks its row
+also selects COMPLETED/NO_SHOW outcomes. LEFT is always excluded. The organizer's
+real automatic participation is included under these same rules, so an activity
+may appear once in organized and once in joined, never twice within either query.
+Leaving an uncancelled external participant before end marks their row
 LEFT and removes the item from joined lists without deleting the record. Eligible
 rejoin reactivates the row. Ended/cancelled active memberships remain listed;
 cancellation blocks all participation actions. CHECKED_IN cannot leave even before
@@ -145,10 +147,10 @@ Authorization: Bearer <access_token>
     "price_type": "FREE",
     "min_participants": 4,
     "max_participants": 12,
-    "participant_count": 1,
+    "participant_count": 2,
     "checked_in_count": 0,
     "waitlist_count": 0,
-    "available_slots": 11,
+    "available_slots": 10,
     "status": "PUBLISHED",
     "cancelled_at": null,
     "description": "Amatorski mecz siatkówki dla każdego chętnego.",
@@ -168,6 +170,11 @@ Authorization: Bearer <access_token>
     "current_user_participation": {
       "status": "JOINED",
       "joined_at": "2030-08-01T12:00:00Z",
+      "waitlisted_at": null,
+      "waitlist_position": null,
+      "effective_confirmation_deadline_at": "2030-08-08T15:30:00Z",
+      "confirmation_expired_at": null,
+      "waitlist_expired_at": null,
       "confirmed_at": null,
       "checked_in_at": null,
       "completed_at": null,
@@ -191,14 +198,14 @@ Authorization: Bearer <access_token>
 
 Example IDs/timestamps are illustrative. Swagger also includes complete selectable
 organized, joined-history, and empty-array examples. Organized responses use the
-same schema with normally null membership and organizer can_edit/can_cancel/can_finalize
+same schema with the organizer's real participation where present and organizer can_edit/can_cancel/can_finalize
 based on lifecycle; history keeps unresolved JOINED/CONFIRMED/CHECKED_IN plus final
 COMPLETED/NO_SHOW, with all participant actions disabled. Final outcomes never
 appear in upcoming. Cancelled
 activities retain membership and disable attendance/upload mutations. Eligible callers
 retain [gallery viewing](activity-gallery.md) until end_at + 72h; COMPLETED callers may
 also upload in uncancelled galleries within that window. Unlimited capacity returns null for both
-`max_participants` and `available_slots`. Participant counts exclude the organizer;
+`max_participants` and `available_slots`. Participant counts include the organizer's real active row;
 participant_count remains the active capacity count and becomes zero after finalization.
 checked_in_count counts CHECKED_IN + COMPLETED and waitlist_count counts WAITLISTED only.
 Current participation includes nullable confirmed_at/checked_in_at/completed_at/no_show_at
@@ -240,10 +247,16 @@ migration-file/database head was `20261018_0004`, using `localhost:5433`.
 The subsequent management migration adds cancelled_at, and lifecycle migration
 `20261018_0006` adds status/left_at/confirmed_at; 0007 adds checked_in_at and CHECKED_IN.
 Migration 0008 adds COMPLETED/NO_SHOW and completed_at/no_show_at.
-Current head is `20261019_0010`; see the waitlist contract for nullable joined_at,
+Current source head is `20261108_0013`; see the waitlist contract for nullable joined_at,
 waitlisted_at, FIFO index, unchanged-data upgrade, and lossy inactive-LEFT downgrade.
 The relation/scope query contract is unchanged; membership predicates/projections
 now distinguish upcoming current states from current/final history states in SQL.
+The organizer backfill adds only missing CONFIRMED rows for noncancelled legacy
+activities ending strictly after `2026-11-08T00:00:00Z`. Ended-by-cutoff and cancelled
+legacy activities receive no synthetic organizer state; organized still lists
+them independently, while joined requires an actual eligible participation.
+Existing rows and conservative no-op downgrade behavior are detailed in the
+[participation contract](activity-participation.md#legacy-backfill-and-downgrade).
 
 ## Tests and integration work
 

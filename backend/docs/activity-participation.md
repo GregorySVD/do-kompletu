@@ -3,17 +3,77 @@
 ## Scope and compatibility
 
 The current lifecycle replaces row-existence membership with retained WAITLISTED/JOINED/CONFIRMED/CHECKED_IN/COMPLETED/NO_SHOW/LEFT
-state. Existing join (201), leave (200), ActivityRead responses, organizer separation,
+state. Existing join (201), leave (200), ActivityRead response shapes,
 JWT authentication, and cancellation rules remain. Leave keeps its DELETE URL but
 now changes state instead of deleting the record. New confirmation uses
 `POST /api/v1/activities/{activity_id}/confirm` (200), without a request body.
 PostGIS check-in adds `POST /api/v1/activities/{activity_id}/check-in` with coordinate
 JSON. Its detailed window, proximity, privacy, and error contract is in
 [Activity check-in](activity-check-in.md). Organizer-triggered
-[finalization](activity-finalization.md) resolves attendance after end; current head is 0010. See the [automated lifecycle contract](participation-lifecycle-worker.md) for worker and deadline details. The [waitlist contract](activity-waitlist.md) adds FIFO admission and promotion.
+[finalization](activity-finalization.md) resolves attendance after end; current source head is `20261108_0013`. See the [automated lifecycle contract](participation-lifecycle-worker.md) for worker and deadline details. The [waitlist contract](activity-waitlist.md) adds FIFO admission and promotion.
 
 The [README](../../README.md#testing) records current verification. Related contracts
 cover [My Activities](my-activities.md) and [organizer management](activity-management.md).
+
+## Automatic organizer participation
+
+Activity creation inserts the activity and its organizer's CONFIRMED
+ActivityParticipation in one transaction, with both rows flushed before the
+single commit. Any failure rolls back both. `joined_at = confirmed_at` records
+the actual automatic commitment time; joined_at is required by the existing
+CONFIRMED timestamp CHECK. All waitlist, expiry, leave, check-in, and final
+attendance timestamps start null. The composite `(activity_id, user_id)` primary
+key already prevents a second organizer row.
+
+The organizer never manually JOINs, LEAVEs, rejoins, or CONFIRMs their own activity;
+those operations still return 409 regardless of stored participation. Check-in
+uses the ordinary endpoint and all ordinary authentication, status, timing,
+accuracy, PostGIS radius, cancellation, and duplicate checks. Before the window
+can_check_in is false; within it a CONFIRMED organizer may attempt check-in; after
+success their status is CHECKED_IN and can_check_in becomes false.
+
+The row consumes one capacity slot and counts toward the minimum without special
+arithmetic. A maximum-10 activity starts at participant_count=1/available_slots=9;
+unlimited starts at 1/null. Existing validation still requires minimum and finite
+maximum at least 2, so maximum 1 remains 422. With maximum 2, the first external
+user fills the other place and the next is WAITLISTED. The organizer never joins
+the queue and cannot free their place through ordinary leave.
+
+The organizer's real row appears in current_user_participation and both organized
+and joined My Activities under their normal scope/status rules, once per query.
+They retain organizer gallery viewing before check-in but cannot upload until
+CHECKED_IN/COMPLETED. Their check-in contributes to checked_in_count. Finalization
+maps their CHECKED_IN to COMPLETED (+10 exactly once), or un-checked-in CONFIRMED
+to NO_SHOW (+0), using the same rules as all other participants. Organizing alone
+awards nothing. The JOINED-only expiry worker never expires automatic CONFIRMED.
+Cancellation keeps the row and evidence while blocking check-in and uploads.
+
+### Legacy backfill and downgrade
+
+Data-only revision `20261108_0013` follows `20261031_0012`. It locks eligible
+activity rows before insertion, in activity-ID order, and inserts only missing
+organizer participation for noncancelled activities whose end is strictly after
+the fixed cutoff `2026-11-08T00:00:00Z`. End exactly at/before the cutoff and
+already-cancelled legacy activities are skipped; historical attendance is unknown.
+Existing organizer rows of every status remain untouched. New backfill rows are
+CONFIRMED, with joined_at/confirmed_at equal to the actual database
+transaction_timestamp(), and no check-in/final-attendance timestamps or points.
+The fixed cutoff preserves classification across reruns; ON CONFLICT on the
+existing primary key makes direct reruns and downgrade/re-upgrade idempotent.
+
+The invariant applies to every new activity and eligible backfilled legacy
+activity. Historical exceptions deliberately have no fabricated organizer row.
+If legacy external participants already fill capacity, no one is demoted or
+deleted and the maximum stays unchanged; the organizer may take occupancy above
+that limit. available_slots stays zero and ordinary waitlisting/promotion waits
+for actual free capacity. Existing FIFO order is preserved.
+
+Downgrade is intentionally a data-preserving no-op: without persistent provenance,
+even unchanged CONFIRMED rows cannot safely be identified as synthetic backfill.
+All rows, subsequent CHECKED_IN/COMPLETED attendance, photos, and points survive.
+Real PostgreSQL tests cover cutoff boundaries, cancelled/history exclusion,
+all existing states, primary-key rejection, direct repeated execution, and the
+0012 -> 0013 -> 0012 -> 0013 cycle without deleting genuine evidence.
 
 ## Repository/frontend inspection
 
@@ -109,10 +169,10 @@ dropped; see the finalization contract for the temporary 0007/0008 cycle.
 The participation model centralizes CAPACITY_CONSUMING_STATES,
 CURRENT_PARTICIPATION_STATES, FINAL_ATTENDANCE_STATES, and history/check-in groups.
 ACTIVE_PARTICIPATION_STATUSES remains an internal alias for capacity states.
-`participant_count` is JOINED + CONFIRMED + CHECKED_IN, excluding the organizer and
-all final states. It becomes zero after finalization; it is not a historical
+`participant_count` is JOINED + CONFIRMED + CHECKED_IN, including the organizer's
+real active row and excluding all final states. It becomes zero after finalization; it is not a historical
 attendance total. checked_in_count counts CHECKED_IN + COMPLETED; waitlist_count counts WAITLISTED only.
-Finite available_slots is maximum minus that count; unlimited remains null.
+Finite available_slots is max(0, maximum minus that count); unlimited remains null.
 LEFT frees a seat even though its record remains stored. Cancellation does not
 change participation statuses; its preserved active rows still count.
 
@@ -168,10 +228,11 @@ the application reloads settings; no database timing columns are introduced.
 | can_join | Authenticated non-organizer, no row or LEFT (never final or system-expired outcomes), uncancelled, strictly before start; full activities may return WAITLISTED |
 | can_leave | Authenticated non-organizer with JOINED/CONFIRMED/WAITLISTED, uncancelled, before end; JOINED must also precede effective confirmation deadline |
 | can_confirm | Authenticated non-organizer with JOINED, uncancelled, inside the effective confirmation window |
-| can_check_in | CONFIRMED non-organizer, uncancelled, within check-in window before end; allows an attempt, not a proximity guarantee |
+| can_check_in | Authenticated CONFIRMED participant including organizer, uncancelled, within check-in window before end; allows an attempt, not a proximity guarantee |
 | can_finalize | Organizer, uncancelled, at/after end, at least one unresolved JOINED/CONFIRMED/CHECKED_IN row |
 
-Confirmed users cannot confirm again but may leave until the existing end boundary.
+Confirmed external users cannot confirm again but may leave until the existing end boundary.
+The organizer cannot leave or manually confirm regardless of their row's status.
 Cancelled activities disable attendance/upload mutations, while eligible participants
 and the organizer retain [gallery viewing](activity-gallery.md) until end_at + 72h.
 Organizer edit/cancel permissions retain their
@@ -199,7 +260,8 @@ lifecycle rules; can_edit does not promise every proposed field change is valid.
 | 422 | Standard FastAPI validation body for malformed activity UUID |
 
 Domain errors use `{"detail":"message"}`. After input validation/authentication,
-all mutations check activity existence, organizer identity, then cancellation.
+all mutations check activity existence and cancellation. JOIN/LEAVE/CONFIRM retain
+explicit organizer rejection; check-in has no ownership-only rejection.
 Join/leave next check membership and end time; join additionally rejects at/after start, then chooses JOINED or WAITLISTED from actual capacity. Confirmation
 checks end time, active membership, already-confirmed state, then its window.
 All conflict paths roll back; failed rejoin leaves the LEFT row untouched.
@@ -218,8 +280,11 @@ also use populate_existing after the parent lock, preventing stale cached status
 from overwriting another transaction. No inconsistent membership-first lock path
 is introduced. Time is evaluated after waiting for the lock.
 
-Actual start_at/end_at changes are rejected with 409 while any row is CONFIRMED/CHECKED_IN.
-CHECKED_IN additionally blocks actual latitude/longitude/location_name/address changes.
+Actual start_at/end_at changes are rejected with 409 while any external row is
+CONFIRMED/CHECKED_IN/COMPLETED or the organizer is CHECKED_IN/COMPLETED. Only the
+organizer's automatic CONFIRMED is excluded from schedule protection, so creation
+does not immediately prevent normal rescheduling. CHECKED_IN/COMPLETED, including
+the organizer, additionally blocks actual latitude/longitude/location_name/address changes.
 Unchanged equivalent timestamps and other permitted edits remain valid. LEFT rows
 with historical confirmed_at do not block schedule changes. Capacity changes use
 the same active-state count; no confirmations are silently cleared.
@@ -289,10 +354,10 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "price_type": "FREE",
   "min_participants": 4,
   "max_participants": 12,
-  "participant_count": 1,
+  "participant_count": 2,
   "checked_in_count": 0,
   "waitlist_count": 0,
-  "available_slots": 11,
+  "available_slots": 10,
   "status": "PUBLISHED",
   "cancelled_at": null,
   "description": "Amatorski mecz siatkówki dla każdego chętnego.",
@@ -312,6 +377,11 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "current_user_participation": {
     "status": "JOINED",
     "joined_at": "2030-08-01T12:00:00Z",
+    "waitlisted_at": null,
+    "waitlist_position": null,
+    "effective_confirmation_deadline_at": "2030-08-08T15:30:00Z",
+    "confirmation_expired_at": null,
+    "waitlist_expired_at": null,
     "confirmed_at": null,
     "checked_in_at": null,
     "completed_at": null,
@@ -353,10 +423,10 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "price_type": "FREE",
   "min_participants": 4,
   "max_participants": 12,
-  "participant_count": 0,
+  "participant_count": 1,
   "checked_in_count": 0,
   "waitlist_count": 0,
-  "available_slots": 12,
+  "available_slots": 11,
   "status": "PUBLISHED",
   "cancelled_at": null,
   "description": "Amatorski mecz siatkówki dla każdego chętnego.",
@@ -410,10 +480,10 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "price_type": "FREE",
   "min_participants": 4,
   "max_participants": 12,
-  "participant_count": 1,
+  "participant_count": 2,
   "checked_in_count": 0,
   "waitlist_count": 0,
-  "available_slots": 11,
+  "available_slots": 10,
   "status": "PUBLISHED",
   "cancelled_at": null,
   "description": "Amatorski mecz siatkówki dla każdego chętnego.",
@@ -433,7 +503,12 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "current_user_participation": {
     "status": "CONFIRMED",
     "joined_at": "2030-08-01T12:00:00Z",
+    "waitlisted_at": null,
+    "waitlist_position": null,
     "confirmed_at": "2030-08-08T15:05:00Z",
+    "effective_confirmation_deadline_at": null,
+    "confirmation_expired_at": null,
+    "waitlist_expired_at": null,
     "checked_in_at": null,
     "completed_at": null,
     "no_show_at": null
@@ -474,10 +549,10 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "price_type": "FREE",
   "min_participants": 4,
   "max_participants": 12,
-  "participant_count": 1,
+  "participant_count": 2,
   "checked_in_count": 1,
   "waitlist_count": 0,
-  "available_slots": 11,
+  "available_slots": 10,
   "status": "PUBLISHED",
   "cancelled_at": null,
   "description": "Amatorski mecz siatkówki dla każdego chętnego.",
@@ -497,7 +572,12 @@ the organizer. The following snapshots show joined, left, and confirmed response
   "current_user_participation": {
     "status": "CHECKED_IN",
     "joined_at": "2030-08-01T12:00:00Z",
+    "waitlisted_at": null,
+    "waitlist_position": null,
     "confirmed_at": "2030-08-08T15:05:00Z",
+    "effective_confirmation_deadline_at": null,
+    "confirmation_expired_at": null,
+    "waitlist_expired_at": null,
     "checked_in_at": "2030-08-08T15:45:00Z",
     "completed_at": null,
     "no_show_at": null
@@ -511,8 +591,8 @@ the organizer. The following snapshots show joined, left, and confirmed response
     "can_leave": false,
     "can_confirm": false,
     "can_check_in": false,
-    "can_view_gallery": false,
-    "can_upload_photo": false
+    "can_view_gallery": true,
+    "can_upload_photo": true
   }
 }
 ```

@@ -108,7 +108,7 @@ ACTIVITY_CREATE_EXAMPLE = {
 ACTIVITY_CREATE_EXAMPLES = {
     "valid_free_activity": {
         "summary": "Free activity with a participant limit",
-        "description": "A free activity with twelve available participant places.",
+        "description": "A free activity with twelve total places, one occupied by its organizer.",
         "value": ACTIVITY_CREATE_EXAMPLE,
     },
     "free_unbounded": {
@@ -220,7 +220,7 @@ class ActivityCreate(BaseModel):
     min_participants: int = Field(
         ge=2,
         le=100,
-        description="Minimum desired number of participants, from 2 to 100.",
+        description="Minimum desired number of participants including the organizer, from 2 to 100.",
     )
     has_participant_limit: bool = Field(
         default=False,
@@ -347,7 +347,7 @@ class ActivityPermissionsRead(BaseModel):
     )
     can_check_in: bool = Field(
         default=False,
-        description="True for a CONFIRMED non-organizer inside the check-in window unless cancelled/ended. Allows attempting check-in; submitted accuracy must pass the configured limit and coordinates must pass PostGIS proximity validation.",
+        description="True for a CONFIRMED participant, including the automatically confirmed organizer, inside the check-in window unless cancelled/ended. Allows attempting check-in; submitted accuracy must pass the configured limit and coordinates must pass PostGIS proximity validation.",
     )
     can_view_gallery: bool = Field(
         default=False,
@@ -380,7 +380,7 @@ class ActivityListItem(BaseModel):
     min_participants: int
     max_participants: int | None
     participant_count: int = Field(
-        description="Active capacity count: JOINED + CONFIRMED + CHECKED_IN. WAITLISTED/LEFT/system-expired/final attendance states and organizer excluded. Overdue JOINED remains counted until a sweep persists expiry."
+        description="Active capacity count: JOINED + CONFIRMED + CHECKED_IN, including organizer participation. WAITLISTED/LEFT/system-expired/final attendance states excluded. Overdue JOINED remains counted until a sweep persists expiry."
     )
     checked_in_count: int = Field(
         description="Historical successful check-in count: CHECKED_IN + COMPLETED. CONFIRMED/NO_SHOW do not count."
@@ -390,7 +390,7 @@ class ActivityListItem(BaseModel):
     )
     available_slots: int | None = Field(
         description=(
-            "Derived capacity remaining (max_participants minus participant_count), "
+            "Derived capacity remaining (max_participants minus participant_count, floored at zero), "
             "or null for an activity without a participant limit."
         )
     )
@@ -501,7 +501,7 @@ class ActivityRead(ActivityListItem):
         default=None,
         description=(
             "The authenticated caller's current, waitlisted, or final attendance, or null for anonymous "
-            "users, organizers, non-members, and inactive LEFT records. Never another user's membership."
+            "users, non-members, and inactive LEFT records. Includes the organizer's real participation. Never another user's membership."
         ),
     )
     permissions: ActivityPermissionsRead = Field(
@@ -534,10 +534,10 @@ ACTIVITY_JOIN_RESPONSE_EXAMPLE = ActivityRead.model_validate(
         "currency": None,
         "min_participants": 4,
         "max_participants": 12,
-        "participant_count": 1,
+        "participant_count": 2,
         "checked_in_count": 0,
         "waitlist_count": 0,
-        "available_slots": 11,
+        "available_slots": 10,
         "status": "PUBLISHED",
         "organizer": {
             "id": "bb1aedb3-54f4-45c4-ab10-2fb0a07b53ca",
@@ -559,8 +559,8 @@ ACTIVITY_JOIN_RESPONSE_EXAMPLE = ActivityRead.model_validate(
 ).model_dump(mode="json")
 ACTIVITY_LEAVE_RESPONSE_EXAMPLE = {
     **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
-    "participant_count": 0,
-    "available_slots": 12,
+    "participant_count": 1,
+    "available_slots": 11,
     "current_user_participation": None,
     "permissions": ActivityPermissionsRead(can_join=True).model_dump(),
 }
@@ -614,6 +614,18 @@ ACTIVITY_CONFIRM_RESPONSE_EXAMPLE = {
     },
     "permissions": ActivityPermissionsRead(can_leave=True).model_dump(),
 }
+ACTIVITY_ORGANIZER_RESPONSE_EXAMPLE = {
+    **ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
+    "participant_count": 1,
+    "available_slots": 11,
+    "current_user_participation": {
+        **ACTIVITY_CONFIRM_RESPONSE_EXAMPLE["current_user_participation"],
+        "confirmed_at": "2030-08-01T12:00:00Z",
+    },
+    "permissions": ActivityPermissionsRead(
+        can_edit=True, can_cancel=True, can_view_gallery=True
+    ).model_dump(),
+}
 ACTIVITY_CHECK_IN_RESPONSE_EXAMPLE = {
     **ACTIVITY_CONFIRM_RESPONSE_EXAMPLE,
     "checked_in_count": 1,
@@ -656,14 +668,19 @@ ACTIVITY_NO_SHOW_RESPONSE_EXAMPLE = ActivityRead.model_validate(
 ).model_dump(mode="json")
 ACTIVITY_FINALIZE_RESPONSE_EXAMPLE = {
     **ACTIVITY_COMPLETED_RESPONSE_EXAMPLE,
-    "current_user_participation": None,
-    "permissions": ActivityPermissionsRead(can_view_gallery=True).model_dump(),
+    "current_user_participation": {
+        **ACTIVITY_COMPLETED_RESPONSE_EXAMPLE["current_user_participation"],
+        "confirmed_at": "2030-08-01T12:00:00Z",
+    },
+    "permissions": ActivityPermissionsRead(
+        can_view_gallery=True, can_upload_photo=True
+    ).model_dump(),
 }
 ACTIVITY_CONFIRMATION_EXPIRED_RESPONSE_EXAMPLE = ActivityRead.model_validate(
     {
         **ACTIVITY_JOIN_RESPONSE_EXAMPLE,
-        "participant_count": 0,
-        "available_slots": 12,
+        "participant_count": 1,
+        "available_slots": 11,
         "current_user_participation": {
             **ACTIVITY_JOIN_RESPONSE_EXAMPLE["current_user_participation"],
             "status": "CONFIRMATION_EXPIRED",

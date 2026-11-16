@@ -49,18 +49,24 @@ class ParticipationError(Exception):
 def _lock_activity(
     session: Session,
     activity_id: UUID,
-    user_id: UUID,
-    *,
-    organizer_error: str = "Organizer cannot join or leave their own activity",
 ) -> Activity:
     activity = get_activity_for_update(session, activity_id)
     if activity is None:
         raise ParticipationError("Activity not found", 404)
-    if activity.organizer_id == user_id:
-        raise ParticipationError(organizer_error)
     if activity.cancelled_at is not None:
         raise ParticipationError("Activity is cancelled")
     return activity
+
+
+def _require_non_organizer(
+    activity: Activity,
+    user_id: UUID,
+    detail: str = "Organizer cannot join or leave their own activity",
+) -> None:
+    # Ordinary membership changes remain forbidden; check-in intentionally uses
+    # the shared locked lifecycle/status/location path without this restriction.
+    if activity.organizer_id == user_id:
+        raise ParticipationError(detail)
 
 
 def _require_open(activity: Activity, now: datetime) -> None:
@@ -95,7 +101,8 @@ def _mutable_participation(
 
 def join_activity(session: Session, activity_id: UUID, user_id: UUID) -> ActivityResult:
     try:
-        activity = _lock_activity(session, activity_id, user_id)
+        activity = _lock_activity(session, activity_id)
+        _require_non_organizer(activity, user_id)
         participation = _mutable_participation(session, activity_id, user_id)
         if (
             participation is not None
@@ -149,7 +156,8 @@ def leave_activity(
     session: Session, activity_id: UUID, user_id: UUID
 ) -> ActivityResult:
     try:
-        activity = _lock_activity(session, activity_id, user_id)
+        activity = _lock_activity(session, activity_id)
+        _require_non_organizer(activity, user_id)
         participation = _mutable_participation(session, activity_id, user_id)
         if (
             participation is None
@@ -190,11 +198,11 @@ def confirm_activity(
     session: Session, activity_id: UUID, user_id: UUID
 ) -> ActivityResult:
     try:
-        activity = _lock_activity(
-            session,
-            activity_id,
+        activity = _lock_activity(session, activity_id)
+        _require_non_organizer(
+            activity,
             user_id,
-            organizer_error="Organizer cannot confirm their own activity",
+            "Organizer cannot confirm their own activity",
         )
         now = datetime.now(UTC)
         _require_open(activity, now)
@@ -251,12 +259,7 @@ def check_in_activity(
     session: Session, activity_id: UUID, user_id: UUID, payload: ActivityCheckIn
 ) -> ActivityResult:
     try:
-        activity = _lock_activity(
-            session,
-            activity_id,
-            user_id,
-            organizer_error="Organizer cannot check in to their own activity",
-        )
+        activity = _lock_activity(session, activity_id)
         now = datetime.now(UTC)
         _require_open(activity, now)
         participation = _mutable_participation(session, activity_id, user_id)

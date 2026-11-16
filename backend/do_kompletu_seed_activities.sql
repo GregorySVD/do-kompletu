@@ -128,7 +128,8 @@ seed (
      'Kawiarnia Stare Miasto',
      'Stary Rynek, Poznań',
      52.4084, 16.9342, 2, 8, 'PAID', 12.00)
-)
+),
+created_activities AS (
 INSERT INTO activities (
     id, organizer_id, title, description, category,
     start_at, end_at, location_name, address, location,
@@ -154,7 +155,17 @@ SELECT
     now()
 FROM seed
 CROSS JOIN organizer
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO NOTHING
+RETURNING id, organizer_id
+)
+-- The data-modifying CTE keeps both records atomic. Existing seed activities
+-- are untouched; legacy adoption belongs to the Alembic backfill policy.
+INSERT INTO activity_participations (
+    activity_id, user_id, status, joined_at, confirmed_at
+)
+SELECT id, organizer_id, 'CONFIRMED', now(), now()
+FROM created_activities
+ON CONFLICT (activity_id, user_id) DO NOTHING;
 
 SELECT
     category,
